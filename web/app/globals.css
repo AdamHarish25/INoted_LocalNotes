@@ -123,4 +123,72 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Restore default HTML heading styles that Tailwind resets */
+  h1 {
+    @apply text-4xl font-extrabold scroll-m-20 tracking-tight lg:text-5xl;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold tracking-tight first:mt-0;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  h4 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+}
+
+/* Tiptap Styles */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 1em 0;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 1em 0;
+}
+
+.ProseMirror li {
+  margin: 0.5em 0;
+}
+
+.ProseMirror li p {
+  margin: 0;
+}
+
+/* Task List */
+ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+ul[data-type="taskList"] li {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+ul[data-type="taskList"] li>label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  user-select: none;
+}
+
+ul[data-type="taskList"] li>div {
+  flex: 1 1 auto;
+}
+
+/* Tiptap Placeholder */
+.ProseMirror p.is-empty::before {
+  color: theme('colors.slate.400');
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }

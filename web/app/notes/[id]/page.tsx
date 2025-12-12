@@ -11,7 +11,9 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
     const { data: note } = await supabase
         .from("notes")
         .select(`
+            title,
             content,
+            is_public,
             workspace:workspaces(name)
         `)
         .eq("id", id)
@@ -24,6 +26,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                 <TiptapEditor
                     noteId={id}
                     initialContent={note?.content}
+                    initialTitle={note?.title || "Untitled Note"}
+                    initialIsPublic={note?.is_public}
                     initialWorkspace={(note as any)?.workspace?.name}
                 />
             </div>

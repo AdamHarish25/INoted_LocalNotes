@@ -85,14 +85,18 @@ export async function createWhiteboard(formData: FormData | { title: string, wor
     }
 }
 
-export async function updateNote(id: string, content: any) {
+export async function updateNote(id: string, data: { content?: any, title?: string }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: "Unauthorized" }
 
-    const { data, error } = await supabase
+    const updates: any = { updated_at: new Date().toISOString() }
+    if (data.content !== undefined) updates.content = data.content
+    if (data.title !== undefined) updates.title = data.title
+
+    const { data: result, error } = await supabase
         .from("notes")
-        .update({ content, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq("id", id)
         .eq("owner_id", user.id)
         .select("id")
@@ -102,9 +106,28 @@ export async function updateNote(id: string, content: any) {
         return { error: error.message }
     }
 
-    if (!data || data.length === 0) {
+    if (!result || result.length === 0) {
         console.error("No note updated. Check RLS or owner_id match.")
         return { error: "No permission or note not found" }
+    }
+
+    return { success: true }
+}
+
+export async function updateNoteSharing(id: string, is_public: boolean) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("notes")
+        .update({ is_public })
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error updating note sharing:", error)
+        return { error: error.message }
     }
 
     return { success: true }

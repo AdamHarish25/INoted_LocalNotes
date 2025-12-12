@@ -13,10 +13,18 @@ import * as Y from "yjs"
 
 // Imports for Header UI
 import { Button } from "@/components/ui/button"
-import { Share, Cloud } from "lucide-react"
+import { Share, Cloud, Globe, Copy, Check } from "lucide-react"
 import { WorkspaceSelector } from "@/components/workspace-selector"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
-export function TiptapEditor({ noteId = "example-document", initialContent, initialWorkspace }: { noteId?: string, initialContent?: any, initialWorkspace?: string }) {
+import { SlashCommand, suggestion } from "./slash-command"
+
+import Placeholder from "@tiptap/extension-placeholder"
+
+import TaskItem from '@tiptap/extension-task-item'
+import TaskList from '@tiptap/extension-task-list'
+
+export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialWorkspace }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string }) {
     const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
 
     // 1. Buat dokumen Yjs secara eksplisit dan stabil menggunakan useMemo
@@ -42,11 +50,46 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
     }
 
     // Pass ydoc ke komponen editor juga
-    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialWorkspace={initialWorkspace} />
+    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialWorkspace={initialWorkspace} />
 }
 
-function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialWorkspace }: { provider: HocuspocusProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialWorkspace?: string }) {
+function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialWorkspace }: { provider: HocuspocusProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string }) {
     const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Error">("Saved")
+    const [title, setTitle] = useState(initialTitle || "Untitled Note")
+    const [isPublic, setIsPublic] = useState(initialIsPublic || false)
+    const [isCopied, setIsCopied] = useState(false)
+
+    const handleShareToggle = async () => {
+        const newStatus = !isPublic
+        setIsPublic(newStatus)
+        const { updateNoteSharing } = await import("@/app/actions")
+        await updateNoteSharing(noteId, newStatus)
+    }
+
+    const copyLink = () => {
+        const url = `${window.location.origin}/notes/${noteId}`
+        navigator.clipboard.writeText(url)
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+    }
+
+    // Simple debounce implementation
+    const debouncedSave = useMemo(() => {
+        let timeoutId: NodeJS.Timeout
+        return (data: { content?: any, title?: string }) => {
+            clearTimeout(timeoutId)
+            timeoutId = setTimeout(async () => {
+                const { updateNote } = await import("@/app/actions")
+                const result = await updateNote(noteId, data)
+
+                if (result.success) {
+                    setSaveStatus("Saved")
+                } else {
+                    setSaveStatus("Error")
+                }
+            }, 500)
+        }
+    }, [noteId])
 
     const editor = useEditor({
         immediatelyRender: false,
@@ -57,15 +100,25 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialWor
             Collaboration.configure({
                 document: ydoc,
             }),
+            SlashCommand.configure({
+                suggestion,
+            }),
+            Placeholder.configure({
+                placeholder: 'Type / to open slash commands',
+            }),
+            TaskList,
+            TaskItem.configure({
+                nested: true,
+            }),
         ],
         editorProps: {
             attributes: {
-                className: 'prose prose-slate max-w-none focus:outline-none min-h-[500px] p-8',
+                className: 'prose prose-lg prose-slate max-w-none focus:outline-none min-h-[500px]',
             },
         },
         onUpdate: ({ editor }) => {
             setSaveStatus("Saving...")
-            handleSave(editor.getJSON())
+            debouncedSave({ content: editor.getJSON() })
         },
     }, [provider]) // Re-run if provider changes
 
@@ -77,7 +130,6 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialWor
             const fragment = ydoc.getXmlFragment('default')
 
             // Check if Yjs is effectively empty.
-            // Tiptap's "empty" doc usually has one empty paragraph, but Yjs might be truly empty (0 length).
             if (fragment.toArray().length === 0) {
                 // Prevent duplicate hydration if yjs already has sync going on
                 // but here we assume if XML is empty, we must be the first.
@@ -86,57 +138,51 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialWor
         }
     }, [editor, initialContent, ydoc])
 
-    // Simple debounce implementation
-    const handleSave = useMemo(() => {
-        let timeoutId: NodeJS.Timeout
-        return (content: any) => {
-            clearTimeout(timeoutId)
-            timeoutId = setTimeout(async () => {
-                const { updateNote } = await import("@/app/actions")
-
-                // Extract title logic temporarily removed or ignored as action doesn't support it yet
-                // ... code kept for future reference or just call updateNote directly
-                const result = await updateNote(noteId, content)
-
-                if (result.success) {
-                    setSaveStatus("Saved")
-                } else {
-                    setSaveStatus("Error")
-                }
-            }, 1000)
-        }
-    }, [noteId])
-
-    // State for the document title
-    const [title, setTitle] = useState("Untitled Note")
-
-    // Update title logic when content changes
+    // Force save on checkbox toggle (TaskItem)
+    // Tiptap's onUpdate sometimes misses attribute changes in collaborative environments
+    // or if the event is swallowed by the NodeView.
+    // Force sync of checkbox state to Tiptap model
     useEffect(() => {
-        if (editor) {
-            const updateTitle = () => {
-                const json = editor.getJSON()
-                const headingNode = json.content?.find((node: any) => node.type === 'heading' && node.attrs?.level === 1)
+        if (!editor) return
 
-                if (headingNode && headingNode.content && headingNode.content.length > 0) {
-                    // Extract text from heading node
-                    const text = headingNode.content.map((c: any) => c.text).join("")
-                    setTitle(text || "Untitled Note")
-                } else {
-                    setTitle("Untitled Note")
+        const handleCheckboxChange = (e: Event) => {
+            const target = e.target as HTMLInputElement
+            if (target.tagName === 'INPUT' && target.type === 'checkbox') {
+                const item = target.closest('li[data-type="taskItem"]')
+                if (item) {
+                    // We need to find the node position. 
+                    // posAtDOM gives the position inside the node if offset is provided, 
+                    // or before it? 
+                    // For a node view, we usually want the pos of the node itself.
+                    const pos = editor.view.posAtDOM(item, 0)
+
+                    if (pos > -1) {
+                        // Explicitly update the attribute in the model
+                        // editor.chain().updateAttributesAt(pos, { checked: target.checked }).run() // updateAttributesAt might not exist on chain
+                        // Use ProseMirror transaction directly for precision
+                        editor.view.dispatch(editor.state.tr.setNodeAttribute(pos, 'checked', target.checked))
+                        setSaveStatus("Saving...")
+                    }
                 }
             }
+        }
 
-            // Run initially
-            updateTitle()
+        const viewDom = editor.view.dom
+        viewDom.addEventListener('change', handleCheckboxChange)
 
-            // Run on updates
-            editor.on('update', updateTitle)
-
-            return () => {
-                editor.off('update', updateTitle)
-            }
+        return () => {
+            viewDom.removeEventListener('change', handleCheckboxChange)
         }
     }, [editor])
+
+
+
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newTitle = e.target.value
+        setTitle(newTitle)
+        setSaveStatus("Saving...")
+        debouncedSave({ title: newTitle })
+    }
 
     return (
         <div className="flex flex-col h-full">
@@ -159,16 +205,62 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialWor
                 <div className="flex items-center gap-4">
                     <WorkspaceSelector noteId={noteId} initialWorkspaceName={initialWorkspace} />
 
-                    <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600">
-                        <span className="mr-2">Share</span>
-                        <Share className="w-4 h-4" />
-                    </Button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600">
+                                <span className="mr-2">Share</span>
+                                <Share className="w-4 h-4" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Share Note</DialogTitle>
+                                <DialogDescription>
+                                    Publish this note to the web to share it with others.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex flex-col gap-4 py-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Globe className="w-5 h-5 text-slate-500" />
+                                        <span className="font-medium">Publish to web</span>
+                                    </div>
+                                    <Button
+                                        variant={isPublic ? "default" : "outline"}
+                                        onClick={handleShareToggle}
+                                    >
+                                        {isPublic ? "Published" : "Private"}
+                                    </Button>
+                                </div>
+
+                                {isPublic && (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            className="flex-1 text-sm border p-2 rounded bg-slate-50 text-slate-600 outline-none"
+                                            readOnly
+                                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/notes/${noteId}`}
+                                        />
+                                        <Button onClick={copyLink} size="icon" variant="outline">
+                                            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
-            <div className="relative w-full max-w-4xl mx-auto bg-white rounded-lg min-h-screen">
+            <div className="relative w-full max-w-4xl mb-10 mx-auto border border-gray-500 bg-white p-16 text-black rounded-lg min-h-screen flex flex-col gap-4">
+                <input
+                    type="text"
+                    value={title}
+                    onChange={handleTitleChange}
+                    placeholder="Note Title"
+                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 w-full bg-transparent pt-8"
+                />
+
                 <EditorContent editor={editor} />
-                {editor && <EditorToolbar editor={editor} />}
             </div>
         </div>
     )

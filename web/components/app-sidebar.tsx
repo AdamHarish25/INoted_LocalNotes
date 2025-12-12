@@ -165,9 +165,9 @@ export function AppSidebar({ className }: SidebarProps) {
             </span>
           </div>
           <Button
-            variant="ghost"
+            // variant="ghost"
             size="icon"
-            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full"
+            className="h-8 w-8 text-white bg-red-500 hover:text-red-700 hover:bg-red-200 rounded-full"
             onClick={async () => {
               const { signOut } = await import("@/app/actions")
               await signOut()
