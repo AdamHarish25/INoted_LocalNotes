@@ -1,11 +1,12 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 
 export function SearchInput() {
     const router = useRouter()
+    const pathname = usePathname()
     const searchParams = useSearchParams()
     const [text, setText] = useState(searchParams.get("q") || "")
 
@@ -18,16 +19,16 @@ export function SearchInput() {
             } else {
                 params.delete("q")
             }
-            router.replace(`/?${params.toString()}`)
+            router.replace(`${pathname}?${params.toString()}`)
         }, 300)
 
         return () => clearTimeout(timeoutId)
-    }, [text, router, searchParams])
+    }, [text, router, searchParams, pathname])
 
     return (
         <div className="relative w-full max-w-xl">
             <Input
-                placeholder="Search Notes & Whiteboards..."
+                placeholder={pathname === "/whiteboard" ? "Search Whiteboards..." : (pathname === "/notes" ? "Search Notes..." : "Search Notes & Whiteboards...")}
                 className="pl-4 pr-10 py-6 rounded-2xl border-slate-200 shadow-sm bg-white text-slate-800"
                 value={text}
                 onChange={(e) => setText(e.target.value)}

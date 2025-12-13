@@ -196,15 +196,17 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
 
           {/* New Whiteboard Button */}
           <CreateResourceModal type="whiteboard" workspaces={workspaces || []}>
-            <button className="w-full h-full">
-              <Card className="h-40 border-slate-200 bg-white group hover:bg-slate-800  flex items-center justify-center hover:shadow-md transition-colors duration-200 cursor-pointer group">
+            <button className="w-full h-full group">
+              <Card className="h-40 border-slate-200 bg-white group hover:bg-slate-800 flex items-center justify-center hover:shadow-md transition-colors duration-200 cursor-pointer mb-2">
                 <div className="flex flex-col items-center">
                   <div className="w-10 h-10 bg-blue-500 group-hover:shadow-md shadow-white rounded-full flex items-center justify-center group-hover:scale-105 transition-transform mb-2">
                     <Plus className="text-white w-5 h-5" />
                   </div>
-                  <span className="text-xs font-medium text-slate-400 group-hover:text-white">New Whiteboard +</span>
                 </div>
               </Card>
+              <div className="text-center">
+                <span className="text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors">New Whiteboard +</span>
+              </div>
             </button>
           </CreateResourceModal>
         </div>
