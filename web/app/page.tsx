@@ -2,12 +2,15 @@ import { Plus } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { createClient } from "@/utils/supabase/server"
 // createNote and createWhiteboard actions are now used within the modal component
 import { CreateResourceModal } from "@/components/CreateResourceModal"
+import { SearchInput } from "@/components/search-input"
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: { searchParams?: Promise<{ q?: string }> }) {
+  const searchParams = await props.searchParams
+  const query = searchParams?.q || ""
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -19,10 +22,16 @@ export default async function DashboardPage() {
   }
 
   // Fetch Notes
-  const { data: notes } = await supabase
+  let notesQuery = supabase
     .from("notes")
     .select("*, workspaces(name)")
     .order("created_at", { ascending: false })
+
+  if (query) {
+    notesQuery = notesQuery.ilike("title", `%${query}%`)
+  }
+
+  const { data: notes } = await notesQuery
 
   // Helper to extract text from TipTap JSON
   const getPreviewText = (content: any): string => {
@@ -46,10 +55,16 @@ export default async function DashboardPage() {
   }
 
   // Fetch Whiteboards
-  const { data: whiteboards } = await supabase
+  let whiteboardsQuery = supabase
     .from("whiteboards")
     .select("*")
     .order("created_at", { ascending: false })
+
+  if (query) {
+    whiteboardsQuery = whiteboardsQuery.ilike("title", `%${query}%`)
+  }
+
+  const { data: whiteboards } = await whiteboardsQuery
 
   // Fetch Workspaces
   const { data: workspaces } = await supabase
@@ -61,26 +76,7 @@ export default async function DashboardPage() {
     <div className="p-8 space-y-8 bg-gray-50/30 min-h-screen">
       {/* Search Bar */}
       <div className="flex justify-center mb-8">
-        <div className="relative w-full max-w-xl">
-          <Input
-            placeholder="Search Notes"
-            className="pl-4 pr-10 py-6 rounded-2xl border-slate-200 shadow-sm bg-white"
-          />
-          <svg
-            className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        </div>
+        <SearchInput />
       </div>
 
       {/* My Notes Section */}
