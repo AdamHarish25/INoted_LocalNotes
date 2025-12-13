@@ -7,7 +7,7 @@ services:
     # Subdirektori tempat file package.json dan index.js berada
     rootDir: web/collab-server 
     env: node
-    plan: starter # Gunakan "starter" jika free tier Render tidak cukup, atau pastikan port didukung.
+    plan: free # Gunakan "starter" jika free tier Render tidak cukup, atau pastikan port didukung.
     buildCommand: npm install
     startCommand: node index.js # Atau sesuai script start Anda
     port: 1234 # Atau port yang Anda gunakan di index.js
