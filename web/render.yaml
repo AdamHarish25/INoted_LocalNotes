@@ -1,0 +1,26 @@
+# render.yaml (di root repository Anda)
+
+services:
+  # --- 1. Konfigurasi Backend (Web Service untuk WebSocket) ---
+  - type: web
+    name: inoted-collab-server
+    # Subdirektori tempat file package.json dan index.js berada
+    rootDir: web/collab-server 
+    env: node
+    plan: starter # Gunakan "starter" jika free tier Render tidak cukup, atau pastikan port didukung.
+    buildCommand: npm install
+    startCommand: node index.js # Atau sesuai script start Anda
+    port: 1234 # Atau port yang Anda gunakan di index.js
+    envVars:
+      # URL ini akan digunakan oleh Frontend Anda di Netlify
+      - key: COLLAB_SERVER_URL 
+        value: https://inoted-collab-server.onrender.com 
+
+  # --- 2. Konfigurasi Frontend (Optional, tapi lebih bersih jika dikelola Render) ---
+  # Namun, karena Anda sudah di Netlify, ini hanya untuk referensi
+  # Anda TIDAK perlu menyertakan ini jika Anda tetap menggunakan Netlify.
+  # - type: web
+  #   name: inoted-frontend
+  #   rootDir: web/
+  #   env: node
+  #   ...
