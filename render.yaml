@@ -10,7 +10,7 @@ services:
     plan: free # Gunakan "starter" jika free tier Render tidak cukup, atau pastikan port didukung.
     buildCommand: npm install
     startCommand: node index.js # Atau sesuai script start Anda
-    port: 1234 # Atau port yang Anda gunakan di index.js
+    # port: 1234 # Atau port yang Anda gunakan di index.js
     envVars:
       # URL ini akan digunakan oleh Frontend Anda di Netlify
       - key: COLLAB_SERVER_URL 
