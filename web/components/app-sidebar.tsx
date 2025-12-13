@@ -117,7 +117,7 @@ export function AppSidebar({ className }: SidebarProps) {
           </div>
         </div>
 
-        <div className="px-3 py-2">
+        {/* <div className="px-3 py-2">
           <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-slate-500">
             Tags
           </h2>
@@ -129,7 +129,7 @@ export function AppSidebar({ className }: SidebarProps) {
               </Button>
             </Link>
           </div>
-        </div>
+        </div> */}
 
         <div className="px-3 py-2">
           <div className="flex items-center justify-between px-4 mb-2">

@@ -214,7 +214,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                         <span className="font-medium text-slate-700 truncate max-w-[200px]">{title}</span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-slate-300 text-xs">
+                    <div className={`flex items-center gap-1 text-slate-700 text-xs ${saveStatus === "Saved" ? "animate-none" : "animate-pulse"}`}>
                         <Cloud className="w-3 h-3" />
                         <span>{saveStatus === 'Saved' ? 'Saved to Cloud' : saveStatus}</span>
                     </div>

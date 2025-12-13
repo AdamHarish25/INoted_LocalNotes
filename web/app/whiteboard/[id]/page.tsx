@@ -10,14 +10,14 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ id:
 
     const { data: whiteboard } = await supabase
         .from("whiteboards")
-        .select("content")
+        .select("content, is_public")
         .eq("id", id)
         .single()
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
             <div className="flex-1 w-full h-full bg-white relative">
-                <Whiteboard roomId={id} initialContent={whiteboard?.content} />
+                <Whiteboard roomId={id} initialContent={whiteboard?.content} isPublic={whiteboard?.is_public} />
             </div>
         </div>
     )

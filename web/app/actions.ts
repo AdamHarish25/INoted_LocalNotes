@@ -216,6 +216,25 @@ export async function updateWhiteboard(id: string, content: any) {
     return { success: true }
 }
 
+export async function updateWhiteboardSharing(id: string, is_public: boolean) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("whiteboards")
+        .update({ is_public })
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error updating whiteboard sharing:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
 
 // Workspaces
 

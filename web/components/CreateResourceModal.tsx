@@ -16,12 +16,13 @@ interface CreateResourceModalProps {
     type: "note" | "whiteboard"
     workspaces: Workspace[]
     children: React.ReactNode
+    defaultWorkspaceId?: string
 }
 
-export function CreateResourceModal({ type, workspaces, children }: CreateResourceModalProps) {
+export function CreateResourceModal({ type, workspaces, children, defaultWorkspaceId }: CreateResourceModalProps) {
     const [open, setOpen] = React.useState(false)
     const [title, setTitle] = React.useState("")
-    const [workspaceId, setWorkspaceId] = React.useState("")
+    const [workspaceId, setWorkspaceId] = React.useState(defaultWorkspaceId || "")
     const [isLoading, setIsLoading] = React.useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
