@@ -91,15 +91,40 @@ export async function updateNote(id: string, data: { content?: any, title?: stri
     if (!user) return { error: "Unauthorized" }
 
     const updates: any = { updated_at: new Date().toISOString() }
-    if (data.content !== undefined) updates.content = data.content
+    if (data.content !== undefined) {
+        updates.content = data.content
+
+        // Extract tasks from content to save separately
+        try {
+            const tasks = extractTasks(data.content)
+            updates.tasks = tasks
+        } catch (e) {
+            console.error("Error extracting tasks:", e)
+        }
+    }
     if (data.title !== undefined) updates.title = data.title
 
-    const { data: result, error } = await supabase
+    let { data: result, error } = await supabase
         .from("notes")
         .update(updates)
         .eq("id", id)
         .eq("owner_id", user.id)
         .select("id")
+
+    // Retry logic: If 'tasks' column invalid, retry without it
+    if (error && error.code === '42703' && updates.tasks) {
+        console.warn("Tasks column missing, retrying update without tasks...")
+        delete updates.tasks
+        const retryResult = await supabase
+            .from("notes")
+            .update(updates)
+            .eq("id", id)
+            .eq("owner_id", user.id)
+            .select("id")
+
+        result = retryResult.data
+        error = retryResult.error
+    }
 
     if (error) {
         console.error("Error updating note:", error)
@@ -112,6 +137,39 @@ export async function updateNote(id: string, data: { content?: any, title?: stri
     }
 
     return { success: true }
+}
+
+function extractTasks(content: any): any[] {
+    const tasks: any[] = []
+
+    function traverse(node: any) {
+        if (node.type === 'taskItem') {
+            // Extract text from node content (simplified)
+            let text = ""
+            if (node.content) {
+                // Task items usually contain a paragraph which contains text
+                // or directly text? Tiptap task item has 'paragraph' as content usually.
+                node.content.forEach((child: any) => {
+                    if (child.type === 'paragraph' && child.content) {
+                        text += child.content.map((c: any) => c.text || "").join(" ")
+                    } else if (child.text) {
+                        text += child.text
+                    }
+                })
+            }
+            tasks.push({
+                checked: node.attrs?.checked || false,
+                text: text.trim()
+            })
+        }
+
+        if (node.content) {
+            node.content.forEach(traverse)
+        }
+    }
+
+    if (content) traverse(content)
+    return tasks
 }
 
 export async function updateNoteSharing(id: string, is_public: boolean) {

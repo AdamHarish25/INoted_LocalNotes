@@ -79,8 +79,12 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         return (data: { content?: any, title?: string }) => {
             clearTimeout(timeoutId)
             timeoutId = setTimeout(async () => {
+                // Sanitize payload to remove any Proxy/Client References causing Server Action errors
+                // This fixes: "Cannot access checked on the server..."
+                const sanitizedData = JSON.parse(JSON.stringify(data))
+
                 const { updateNote } = await import("@/app/actions")
-                const result = await updateNote(noteId, data)
+                const result = await updateNote(noteId, sanitizedData)
 
                 if (result.success) {
                     setSaveStatus("Saved")
@@ -117,8 +121,9 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             },
         },
         onUpdate: ({ editor }) => {
+            const json = editor.getJSON()
             setSaveStatus("Saving...")
-            debouncedSave({ content: editor.getJSON() })
+            debouncedSave({ content: json })
         },
     }, [provider]) // Re-run if provider changes
 
@@ -150,17 +155,30 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             if (target.tagName === 'INPUT' && target.type === 'checkbox') {
                 const item = target.closest('li[data-type="taskItem"]')
                 if (item) {
-                    // We need to find the node position. 
-                    // posAtDOM gives the position inside the node if offset is provided, 
-                    // or before it? 
-                    // For a node view, we usually want the pos of the node itself.
-                    const pos = editor.view.posAtDOM(item, 0)
+                    // Normalize position logic
+                    // posAtDOM(item, 0) usually points to the start of the content inside the node
+                    // So the node itself starts ideally at pos - 1 if it's a block node context, or pos?
+                    // Let's verify.
+                    let pos = editor.view.posAtDOM(item, 0)
 
-                    if (pos > -1) {
-                        // Explicitly update the attribute in the model
-                        // editor.chain().updateAttributesAt(pos, { checked: target.checked }).run() // updateAttributesAt might not exist on chain
-                        // Use ProseMirror transaction directly for precision
-                        editor.view.dispatch(editor.state.tr.setNodeAttribute(pos, 'checked', target.checked))
+                    // Check directly at pos
+                    let node = editor.state.doc.nodeAt(pos)
+
+                    // If not found or wrong type, try shifting. 
+                    // Tiptap/ProseMirror indexing can be tricky with NodeViews.
+                    if (!node || node.type.name !== 'taskItem') {
+                        // Try -1 (common for block start vs content start)
+                        const prevPos = pos - 1
+                        const prevNode = editor.state.doc.nodeAt(prevPos)
+                        if (prevNode && prevNode.type.name === 'taskItem') {
+                            pos = prevPos
+                            node = prevNode
+                        }
+                    }
+
+                    if (node && node.type.name === 'taskItem') {
+                        // Use chain to ensure all Tiptap/Yjs side effects trigger (Collaboration, History)
+                        editor.chain().setNodeSelection(pos).updateAttributes('taskItem', { checked: target.checked }).run()
                         setSaveStatus("Saving...")
                     }
                 }

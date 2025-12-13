@@ -1,8 +1,9 @@
 "use client"
 
-import { Tldraw } from "tldraw"
+import { Tldraw, getSvgAsImage } from "tldraw"
 import "tldraw/tldraw.css"
 import { useYjsStore } from "@/lib/useYjsStore"
+import { updateWhiteboard } from "@/app/actions"
 
 import { useState } from "react"
 
@@ -48,16 +49,11 @@ export default function Whiteboard({ roomId = 'example-whiteboard', initialConte
         const save = () => {
             clearTimeout(timeoutId)
             timeoutId = setTimeout(async () => {
-                const { updateWhiteboard } = await import("@/app/actions")
-
                 // Generate Preview
                 let preview = ""
                 try {
                     const shapeIds = editor.getCurrentPageShapeIds()
                     if (shapeIds.size > 0) {
-                        const { getSvgAsImage } = await import("tldraw")
-                        // It seems getSvgAsImage takes (editor, options) in this version
-                        // We will capture a fixed thumbnail size of the current view
                         const blob = await getSvgAsImage(editor, {
                             type: 'png',
                             quality: 0.8,
@@ -82,9 +78,13 @@ export default function Whiteboard({ roomId = 'example-whiteboard', initialConte
                 // Use getStoreSnapshot as per user feedback
                 const snapshot = editor.store.getStoreSnapshot()
 
+                // Ensure snapshot is a plain object to avoid "opaque temporary reference" errors
+                // This strips out any proxies or non-serializable internal Tldraw structures
+                const plainSnapshot = JSON.parse(JSON.stringify(snapshot))
+
                 // Wrap snapshot and preview
                 const contentPayload = {
-                    snapshot,
+                    snapshot: plainSnapshot,
                     preview
                 }
 
