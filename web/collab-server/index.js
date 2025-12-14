@@ -24,4 +24,4 @@ const server = new Server({
 })
 
 server.listen()
-console.log('Scaling up... Hocuspocus is running on port ' + process.env.PORT || 1234)
+// console.log('Scaling up... Hocuspocus is running on port ' + process.env.PORT || 1234)

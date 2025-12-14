@@ -31,8 +31,8 @@ export default function Whiteboard({ roomId = 'example-whiteboard', initialConte
     const [isFullscreen, setIsFullscreen] = useState(false)
 
     const store = useYjsStore({
-        roomId: roomId,
-        hostUrl: 'ws://127.0.0.1:1234',
+        roomId: roomId ?? 'example-whiteboard',
+        hostUrl: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234',
     })
 
     const handleShare = () => {
