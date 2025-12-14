@@ -12,6 +12,16 @@ const server = new Server({
         new Logger(),
     ],
 
+    // Add basic health check handler
+    async onRequest(data) {
+        const { request, response } = data
+        // Handle health checks so Railway/platforms don't kill the service
+        if (request.url === '/' || request.url === '/health') {
+            response.writeHead(200, { 'Content-Type': 'text/plain' })
+            response.end('OK')
+        }
+    },
+
     // Example data persistence (Commented out until Supabase is ready)
     /*
     async onLoadDocument(data) {
