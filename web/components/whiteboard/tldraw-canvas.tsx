@@ -30,9 +30,16 @@ export default function Whiteboard({ roomId = 'example-whiteboard', initialConte
     const [isOpen, setIsOpen] = useState(false)
     const [isFullscreen, setIsFullscreen] = useState(false)
 
+    const formattedHostUrl = (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234')
+        .replace(/^https?:\/\//, 'wss://') // Replace http/https with wss
+        .replace(/^ws:\/\//, 'ws://')       // keep ws if explicit (localhost)
+        .match(/^(ws|wss):\/\//)
+        ? (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234').replace(/^https?:\/\//, 'wss://')
+        : `wss://${process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || '127.0.0.1:1234'}`
+
     const store = useYjsStore({
         roomId: roomId ?? 'example-whiteboard',
-        hostUrl: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'https://127.0.0.1:1234',
+        hostUrl: formattedHostUrl,
     })
 
     const handleShare = () => {
@@ -283,6 +290,7 @@ export default function Whiteboard({ roomId = 'example-whiteboard', initialConte
             <div className="flex-1 w-full h-full relative overflow-hidden">
                 <Tldraw
                     store={store}
+                    licenseKey={process.env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY}
                     onMount={handleMount}
                     components={{
                         StylePanel: () => (
