@@ -13,13 +13,17 @@ const server = new Server({
     ],
 
     // Add basic health check handler
+    // Add basic health check handler
     async onRequest(data) {
         const { request, response } = data
+
+        console.log(`[onRequest] Handling HTTP request: ${request.method} ${request.url}`)
+
         // Handle health checks so Railway/platforms don't kill the service
-        if (request.url === '/' || request.url === '/health') {
-            response.writeHead(200, { 'Content-Type': 'text/plain' })
-            response.end('OK')
-        }
+        // We respond 200 for everything here to ensure we catch whatever path Railway is probing
+        // (e.g. '/' or '/health' or '/web/collab-server')
+        response.writeHead(200, { 'Content-Type': 'text/plain' })
+        response.end('OK')
     },
 
     // Example data persistence (Commented out until Supabase is ready)
