@@ -32,7 +32,7 @@ export default function Whiteboard({ roomId = 'example-whiteboard', initialConte
 
     const store = useYjsStore({
         roomId: roomId ?? 'example-whiteboard',
-        hostUrl: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234',
+        hostUrl: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'https://127.0.0.1:1234',
     })
 
     const handleShare = () => {

@@ -33,7 +33,7 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
     useEffect(() => {
         // 2. Pass dokumen yang kita buat ke provider
         const newProvider = new HocuspocusProvider({
-            url: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || "ws://127.0.0.1:1234",
+            url: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || "https://127.0.0.1:1234",
             name: noteId,
             document: ydoc, // PENTING: Gunakan doc yang sama
         })
