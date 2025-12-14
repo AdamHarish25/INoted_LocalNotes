@@ -7,7 +7,7 @@ import { Logger } from '@hocuspocus/extension-logger'
 // But first let's get the real-time sync working.
 
 const server = new Server({
-    port: 1234,
+    port: process.env.PORT ? Number(process.env.PORT) : 1234,
     extensions: [
         new Logger(),
     ],
@@ -24,4 +24,4 @@ const server = new Server({
 })
 
 server.listen()
-console.log('Scaling up... Hocuspocus is running on port 1234')
+console.log('Scaling up... Hocuspocus is running on port ' + process.env.PORT || 1234)
