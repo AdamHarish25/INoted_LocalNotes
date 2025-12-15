@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.0",
     "@hocuspocus/provider": "^3.4.1",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -37,7 +38,6 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "tippy.js": "^6.3.7",
-    "tldraw": "^4.2.1",
     "y-protocols": "^1.0.6",
     "yjs": "^13.6.27"
   },
