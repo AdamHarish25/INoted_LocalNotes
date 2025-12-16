@@ -1,4 +1,4 @@
-import ExcalidrawCanvas from "@/components/whiteboard/excalidraw-canvas"
+import CanvasBoard from "@/components/whiteboard/canvas-board"
 import { Button } from "@/components/ui/button"
 import { Share, Cloud } from "lucide-react"
 
@@ -16,7 +16,7 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ id:
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-white">
-            <ExcalidrawCanvas roomId={id} />
+            <CanvasBoard roomId={id} />
         </div>
     )
 }

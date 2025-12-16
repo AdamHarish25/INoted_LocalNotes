@@ -81,11 +81,11 @@ export default function ExcalidrawCanvas({ roomId }: { roomId: string }) {
     }
 
     return (
-        <div className="flex flex-col bg-slate-50" style={{ height: '100%', width: '100%' }}>
+        <div className="flex flex-col bg-slate-50 overflow-hidden h-full">
             {/* Header */}
             <div
                 className="flex items-center p-4 bg-white border-b border-gray-200 shrink-0"
-                style={{ height: '73px' }}
+                style={{ height: '10px' }}
             >
                 <Link href="/dashboard" className="flex items-center text-slate-500 hover:text-slate-800 transition-colors">
                     <ArrowLeft className="w-5 h-5 mr-2" />
