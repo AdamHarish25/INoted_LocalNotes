@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
+import { createClient } from "@/utils/supabase/client"
 import {
     ArrowLeft,
     Hand,
@@ -15,7 +16,14 @@ import {
     Minus,
     Pencil,
     Type,
-    Eraser
+    Eraser,
+    Cloud,
+    Loader2,
+    AlignLeft,
+
+    AlignCenter,
+    AlignRight,
+    Move
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -29,15 +37,50 @@ interface CanvasElement {
     width: number
     height: number
     strokeColor: string
+    strokeWidth?: number
     points?: { x: number; y: number }[]
     text?: string
+    fontFamily?: string
+    textAlign?: string
 }
 
-export default function CanvasBoard({ roomId }: { roomId: string }) {
+const COLORS = [
+    { name: 'Black', value: 'black' },
+    { name: 'Red', value: '#ef4444' }, // red-500
+    { name: 'Blue', value: '#3b82f6' }, // blue-500
+    { name: 'Green', value: '#22c55e' }, // green-500
+    { name: 'Yellow', value: '#eab308' }, // yellow-500
+    { name: 'Purple', value: '#a855f7' }, // purple-500
+]
+
+const WIDTHS = [2, 4, 6, 12]
+
+const FONTS = [
+    { name: 'Sans', value: 'sans-serif' },
+    { name: 'Serif', value: 'serif' },
+    { name: 'Mono', value: 'monospace' },
+    { name: 'Script', value: 'cursive' },
+]
+
+const ALIGNS = [
+    { value: 'left', icon: <AlignLeft className="w-4 h-4" /> },
+    { value: 'center', icon: <AlignCenter className="w-4 h-4" /> },
+    { value: 'right', icon: <AlignRight className="w-4 h-4" /> },
+]
+
+export default function CanvasBoard({ roomId, initialData }: { roomId: string, initialData?: any[] }) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null)
     const [activeTool, setActiveTool] = useState<Tool>('pencil')
+
+    // Tool Options State
+    const [toolOptions, setToolOptions] = useState({
+        strokeColor: 'black',
+        strokeWidth: 2,
+        fontFamily: 'sans-serif',
+        textAlign: 'left'
+    })
 
     // State for Vector Elements
     const [elements, setElements] = useState<CanvasElement[]>([])
@@ -53,17 +96,70 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
     const [startPanMousePosition, setStartPanMousePosition] = useState({ x: 0, y: 0 })
     const [writingText, setWritingText] = useState<{ x: number, y: number, text: string } | null>(null)
     const textAreaRef = useRef<HTMLTextAreaElement>(null)
+    const [draggingElement, setDraggingElement] = useState<{ id: string, startX: number, startY: number, initialElementX: number, initialElementY: number } | null>(null)
+    const [isDraggingTextRef, setIsDraggingTextRef] = useState(false)
+    const dragOffsetRef = useRef({ x: 0, y: 0 }) // Track visual delta without re-rendering
+    const textDragStartRef = useRef<{ startX: number, startY: number, initialX: number, initialY: number } | null>(null)
+
+    // Supabase Client
+    const supabase = createClient()
+
+    // Save Status State
+    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
+
+    // Debounced Save to Supabase
+    useEffect(() => {
+        if (elements.length === 0) return
+
+        const saveToDb = async () => {
+            setSaveStatus('saving')
+            console.log("Saving to Supabase (Client-side)...")
+            try {
+                const { error } = await supabase
+                    .from('whiteboards')
+                    .update({ content: elements })
+                    .eq('id', roomId)
+
+                if (error) {
+                    console.error("Supabase Save Error:", error)
+                } else {
+                    console.log("Saved to Supabase successfully")
+                }
+            } catch (err) {
+                console.error("Save failed:", err)
+            } finally {
+                setSaveStatus('saved')
+            }
+        }
+
+        const timeoutId = setTimeout(saveToDb, 2000) // Debounce 2s
+
+        return () => clearTimeout(timeoutId)
+    }, [elements, roomId, supabase])
 
     // Setup Collaboration
     useEffect(() => {
         const ydoc = new Y.Doc()
 
-        // Use environment variable or default, ensuring wss/ws protocol
+        // Initialize with server-fetched data if available and doc is empty
+        const yArray = ydoc.getArray<CanvasElement>("elements")
+        if (initialData && initialData.length > 0 && yArray.length === 0) {
+            console.log("Hydrating from initialData:", initialData.length, "elements")
+            yArray.insert(0, initialData as CanvasElement[])
+            setElements(yArray.toArray())
+        }
+
+        yElementsRef.current = yArray
+
+        // Use environment variable or default
         let hostUrl = (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234')
+
         if (hostUrl.startsWith('http')) hostUrl = hostUrl.replace(/^http/, 'ws')
         if (typeof window !== 'undefined' && window.location.protocol === 'https:' && !hostUrl.startsWith('wss:')) {
             hostUrl = hostUrl.replace('ws://', 'wss://')
         }
+
+        console.log('Connecting to Hocuspocus at:', hostUrl)
 
         const provider = new HocuspocusProvider({
             url: hostUrl,
@@ -71,15 +167,22 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
             document: ydoc,
         })
 
-        const yArray = ydoc.getArray<CanvasElement>("elements")
-        yElementsRef.current = yArray
+        provider.on('status', (event: any) => {
+            console.log('Hocuspocus Connection Status:', event.status)
+        })
+        provider.on('synced', () => {
+            console.log('Hocuspocus Synced! Document State:', ydoc.getArray("elements").toArray())
+        })
+        provider.on('disconnect', () => {
+            console.log('Hocuspocus Disconnected')
+        })
 
         // Sync Listener
         const handleSync = () => {
             setElements(yArray.toArray())
         }
 
-        // Initial Load
+        // Initial Load (if not hydrated above, checking again)
         if (yArray.length > 0) {
             setElements(yArray.toArray())
         }
@@ -110,13 +213,13 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
             if (ctx) {
                 ctx.lineCap = 'round'
                 ctx.lineJoin = 'round'
-                ctx.strokeStyle = 'black'
-                ctx.lineWidth = 2
+                ctx.strokeStyle = toolOptions.strokeColor
+                ctx.lineWidth = toolOptions.strokeWidth
                 ctx.font = '20px sans-serif'
                 setContext(ctx)
             }
         }
-    }, [])
+    }, [toolOptions]) // Re-run when options change
 
     // Render Loop
     const renderCanvas = () => {
@@ -129,7 +232,18 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
         context.translate(panOffset.x, panOffset.y)
 
         // 2. Draw Saved Elements
-        elements.forEach(el => drawElement(context, el))
+        elements.forEach(el => {
+            if (draggingElement && el.id === draggingElement.id) {
+                // Apply temporary drag offset
+                drawElement(context, {
+                    ...el,
+                    x: el.x + dragOffsetRef.current.x,
+                    y: el.y + dragOffsetRef.current.y
+                })
+            } else {
+                drawElement(context, el)
+            }
+        })
 
         // 3. Draw Current Element being created
         if (currentElement) {
@@ -146,24 +260,26 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
 
     // Helper to draw a single element
     const drawElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
-        const { type, x, y, width, height, strokeColor, points, text } = element
+        const { type, x, y, width, height, strokeColor, points, text, strokeWidth } = element
+
         ctx.strokeStyle = strokeColor
-        ctx.lineWidth = 2
+        ctx.lineWidth = strokeWidth || 2
         ctx.fillStyle = strokeColor // For text
+
         ctx.beginPath()
 
         switch (type) {
             case 'text':
                 if (text) {
-                    ctx.font = '20px sans-serif'
-                    ctx.fillText(text, x, y + 20) // +20 to align with top-left coordinate system roughly
+                    ctx.font = `20px ${element.fontFamily || 'sans-serif'}`
+                    ctx.textAlign = (element.textAlign as CanvasTextAlign) || 'left'
+                    ctx.fillText(text, x, y + 20)
                 }
                 break
             case 'rectangle':
                 ctx.strokeRect(x, y, width, height)
                 break
             case 'circle':
-                // Ellipse based on bounding box
                 ctx.ellipse(x + width / 2, y + height / 2, Math.abs(width / 2), Math.abs(height / 2), 0, 0, 2 * Math.PI)
                 ctx.stroke()
                 break
@@ -181,16 +297,14 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
                 ctx.stroke()
                 break
             case 'arrow':
-                // Main line
                 const endX = x + width
                 const endY = y + height
                 ctx.moveTo(x, y)
                 ctx.lineTo(endX, endY)
                 ctx.stroke()
 
-                // Arrowhead calculation
                 const angle = Math.atan2(endY - y, endX - x)
-                const headLen = 10
+                const headLen = 10 + (strokeWidth || 2) // Scale head with width slightly
                 ctx.beginPath()
                 ctx.moveTo(endX, endY)
                 ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI / 6), endY - headLen * Math.sin(angle - Math.PI / 6))
@@ -207,7 +321,7 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
                     if (type === 'eraser') {
                         ctx.save()
                         ctx.globalCompositeOperation = 'destination-out'
-                        ctx.lineWidth = 20
+                        ctx.lineWidth = strokeWidth ? strokeWidth * 5 : 20 // Eraser is wider
                         ctx.stroke()
                         ctx.restore()
                     } else {
@@ -217,16 +331,6 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
                 break
             default:
                 break
-        }
-    }
-
-    // Handle cursor style
-    const getCursorStyle = () => {
-        switch (activeTool) {
-            case 'hand': return 'grab'
-            case 'selection': return 'default'
-            case 'text': return 'text'
-            default: return 'crosshair'
         }
     }
 
@@ -243,6 +347,8 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
                 if (ctx) {
                     ctx.lineCap = 'round'
                     ctx.lineJoin = 'round'
+                    ctx.strokeStyle = toolOptions.strokeColor
+                    ctx.lineWidth = toolOptions.strokeWidth
                     ctx.font = '20px sans-serif'
                     setContext(ctx)
                 }
@@ -253,73 +359,82 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
         window.addEventListener('resize', handleResize)
         handleResize()
         return () => window.removeEventListener('resize', handleResize)
-    }, [elements]) // Re-bind if elements change so renderCanvas has access
+    }, [elements, toolOptions])
 
     const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        // Prevent interaction if clicking on UI elements overlaying the canvas
-        // This stops the text box from resetting if you click inside it
-        if ((e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'BUTTON') return
+        // Prevent interaction if clicking on UI elements
+        if ((e.target as HTMLElement).tagName !== 'CANVAS') return
 
         if (!context) return
         const { offsetX, offsetY } = e.nativeEvent
 
         if (activeTool === 'hand') {
-            console.log("Started Panning at:", offsetX, offsetY)
             setIsPanning(true)
             setStartPanMousePosition({ x: offsetX, y: offsetY })
             return
         }
 
         if (activeTool === 'text') {
-            // Prevent default browser behavior that might steal focus back immediately
             e.preventDefault()
-
-            // Check if we are already writing text.
-            // If so, clicking elsewhere should commit the current text first (via blur),
-            // effectively creating a new one in the next tick, but let's be safe.
-            // If input is active, do nothing (let blur handle it)
             if (writingText) return
 
-            console.log("Initiating Text Tool at:", offsetX, offsetY)
-            // Adjust click coordinates by subtracting pan offset to get "Virtual World" coordinates
             const worldX = offsetX - panOffset.x
             const worldY = offsetY - panOffset.y
             setWritingText({ x: worldX, y: worldY, text: '' })
             return
         }
 
+        if (activeTool === 'selection') {
+            const worldX = offsetX - panOffset.x
+            const worldY = offsetY - panOffset.y
+
+            // Find clicked element (reverse order to find top-most first)
+            for (let i = elements.length - 1; i >= 0; i--) {
+                const el = elements[i]
+                if (isHit(el, worldX, worldY, context)) {
+                    setDraggingElement({
+                        id: el.id,
+                        startX: worldX,
+                        startY: worldY,
+                        initialElementX: el.x,
+                        initialElementY: el.y
+                    })
+                    setIsDrawing(true) // Re-use isDrawing to capture mouse moves globally if needed, or just use separate state
+                    return
+                }
+            }
+            return
+        }
+
         if (['selection'].includes(activeTool)) return
 
-        console.log(`Started Drawing [${activeTool}] at:`, offsetX, offsetY)
         setIsDrawing(true)
 
-        // Convert Mouse Screen Coords -> World Coords
         const x = offsetX - panOffset.x
         const y = offsetY - panOffset.y
-
         const id = crypto.randomUUID()
+
+        const baseElement = {
+            id,
+            type: activeTool,
+            x,
+            y,
+            strokeColor: toolOptions.strokeColor,
+            strokeWidth: toolOptions.strokeWidth
+        }
 
         if (activeTool === 'pencil' || activeTool === 'eraser') {
             setCurrentElement({
-                id,
-                type: activeTool,
-                x,
-                y,
+                ...baseElement,
                 width: 0,
                 height: 0,
-                strokeColor: 'black',
                 points: [{ x, y }]
             })
         } else {
-            // Shapes start at 0 width/height
             setCurrentElement({
-                id,
-                type: activeTool,
-                x,
-                y,
+                ...baseElement,
                 width: 0,
                 height: 0,
-                strokeColor: 'black'
             })
         }
     }
@@ -332,6 +447,47 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
             const deltaY = offsetY - startPanMousePosition.y
             setPanOffset(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }))
             setStartPanMousePosition({ x: offsetX, y: offsetY })
+            return
+        }
+
+        // Handle Moving the Text Input Box (Direct DOM manipulation for performance)
+        if (isDraggingTextRef && writingText && textAreaRef.current) {
+            const worldX = offsetX - panOffset.x
+            const worldY = offsetY - panOffset.y
+
+            // Initialize textDragStartRef if it's null (first move after drag start)
+            if (!textDragStartRef.current) {
+                textDragStartRef.current = {
+                    startX: worldX,
+                    startY: worldY,
+                    initialX: writingText.x,
+                    initialY: writingText.y
+                }
+            }
+
+            const dx = worldX - textDragStartRef.current.startX
+            const dy = worldY - textDragStartRef.current.startY
+
+            setWritingText({
+                ...writingText,
+                x: textDragStartRef.current.initialX + dx,
+                y: textDragStartRef.current.initialY + dy
+            })
+            return
+        }
+
+        // Handle Moving an Element (Selection Tool)
+        if (draggingElement) {
+            const worldX = offsetX - panOffset.x
+            const worldY = offsetY - panOffset.y
+            const deltaX = worldX - draggingElement.startX
+            const deltaY = worldY - draggingElement.startY
+
+            // Update Ref instead of State
+            dragOffsetRef.current = { x: deltaX, y: deltaY }
+
+            // Request Render
+            requestAnimationFrame(renderCanvas)
             return
         }
 
@@ -363,6 +519,53 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
             return
         }
 
+        if (isDraggingTextRef) {
+            console.log("Finished Moving Text Box")
+            setIsDraggingTextRef(false)
+            textDragStartRef.current = null // Reset for next drag
+            // The `writingText` state is already updated during `draw` for text, so no commit needed here.
+            return
+        }
+
+        if (draggingElement) {
+            console.log("Finished Moving Element")
+
+            // Commit the drag
+            const deltaX = dragOffsetRef.current.x
+            const deltaY = dragOffsetRef.current.y
+
+            if (deltaX !== 0 || deltaY !== 0) {
+                const updatedElements = elements.map(el => {
+                    if (el.id === draggingElement.id) {
+                        return {
+                            ...el,
+                            x: draggingElement.initialElementX + deltaX,
+                            y: draggingElement.initialElementY + deltaY
+                        }
+                    }
+                    return el
+                })
+                setElements(updatedElements)
+
+                // Sync to Yjs
+                if (yElementsRef.current) {
+                    const index = elements.findIndex(el => el.id === draggingElement.id)
+                    if (index !== -1) {
+                        // We need the *updated* element, calculated above
+                        const updatedEl = updatedElements[index]
+                        yElementsRef.current.delete(index, 1)
+                        yElementsRef.current.insert(index, [updatedEl])
+                    }
+                }
+            }
+
+            // Reset
+            setDraggingElement(null)
+            dragOffsetRef.current = { x: 0, y: 0 }
+            requestAnimationFrame(renderCanvas) // Final draw to clear any temporary offsets
+            return
+        }
+
         if (!isDrawing) return
         console.log("Finished Drawing. Element added:", currentElement)
         setIsDrawing(false)
@@ -383,8 +586,11 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
                 y: writingText.y,
                 width: 0,
                 height: 0,
-                strokeColor: 'black',
-                text: writingText.text
+                strokeColor: toolOptions.strokeColor,
+                text: writingText.text,
+                strokeWidth: toolOptions.strokeWidth,
+                fontFamily: toolOptions.fontFamily,
+                textAlign: toolOptions.textAlign
             }
             if (yElementsRef.current) {
                 yElementsRef.current.push([newElement])
@@ -393,6 +599,15 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
             console.log("Cancelled Text (Empty)")
         }
         setWritingText(null)
+    }
+
+    const getCursorStyle = () => {
+        switch (activeTool) {
+            case 'hand': return 'grab'
+            case 'selection': return 'default'
+            case 'text': return 'text'
+            default: return 'crosshair'
+        }
     }
 
     const tools: { id: Tool, icon: React.ReactNode }[] = [
@@ -408,6 +623,11 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
         { id: 'eraser', icon: <Eraser className="w-5 h-5" /> },
     ]
 
+    // ... (Render UI)
+    const showProperties = !['hand', 'selection', 'eraser'].includes(activeTool)
+    const showEraserProps = activeTool === 'eraser'
+    const showTextProps = activeTool === 'text'
+
     return (
         <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">
             {/* Header */}
@@ -416,8 +636,20 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
                     <ArrowLeft className="w-5 h-5 mr-2" />
                     <span className="font-medium">Back to Dashboard</span>
                 </Link>
-                <div className="ml-auto text-sm text-slate-400">
-                    Custom HTML5 Canvas
+
+                {/* Save Status Indicator */}
+                <div className="ml-auto flex items-center text-sm text-slate-400">
+                    {saveStatus === 'saving' ? (
+                        <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            <span>Saving...</span>
+                        </>
+                    ) : (
+                        <>
+                            <Cloud className="w-4 h-4 mr-2" />
+                            <span>Saved to Cloud</span>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -433,40 +665,188 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
                     style={{ cursor: getCursorStyle() }}
                 />
 
-                {/* Text Input Overlay */}
-                {writingText && (
-                    <textarea
-                        ref={textAreaRef}
-                        className="absolute border border-blue-500 p-1 outline-none resize-none font-sans text-[20px] leading-none z-30 shadow-md rounded-md"
-                        style={{
-                            top: writingText.y + panOffset.y,
-                            left: writingText.x + panOffset.x,
-                            width: '200px',
-                            height: '100px', // Explicit default size
-                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                            color: 'black'
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        value={writingText.text}
-                        onChange={(e) => setWritingText({ ...writingText, text: e.target.value })}
-                        onBlur={() => {
-                            console.log("Textarea blurred")
-                            handleTextComplete()
-                        }}
-                        placeholder="Type here..."
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault()
-                                handleTextComplete()
-                            }
-                            if (e.key === 'Escape') {
-                                setWritingText(null) // Cancel
-                            }
-                        }}
-                    />
+                {/* Properties Toolbar (Left) */}
+                {(showProperties || showEraserProps || showTextProps) && (
+                    <div className="absolute top-4 left-4 flex flex-col gap-4 p-4 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-xl z-20 w-64">
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                            {activeTool.charAt(0).toUpperCase() + activeTool.slice(1)} Properties
+                        </h3>
+
+                        {/* Stroke Color */}
+                        {showProperties && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-gray-600">Stroke Color</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {COLORS.map(c => (
+                                        <button
+                                            key={c.value}
+                                            onClick={() => setToolOptions({ ...toolOptions, strokeColor: c.value })}
+                                            className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${toolOptions.strokeColor === c.value
+                                                ? 'border-gray-900 scale-110 shadow-sm'
+                                                : 'border-transparent'
+                                                }`}
+                                            style={{ backgroundColor: c.value }}
+                                            title={c.name}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Text Properties */}
+                        {showTextProps && (
+                            <>
+                                {/* Stroke Color (Text Color) */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-gray-600">Text Color</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {COLORS.map(c => (
+                                            <button
+                                                key={c.value}
+                                                onClick={() => setToolOptions({ ...toolOptions, strokeColor: c.value })}
+                                                className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${toolOptions.strokeColor === c.value
+                                                    ? 'border-gray-900 scale-110 shadow-sm'
+                                                    : 'border-transparent'
+                                                    }`}
+                                                style={{ backgroundColor: c.value }}
+                                                title={c.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Font Family */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-gray-600">Font</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {FONTS.map(f => (
+                                            <button
+                                                key={f.value}
+                                                onClick={() => setToolOptions({ ...toolOptions, fontFamily: f.value })}
+                                                className={`px-3 py-1 text-xs rounded-md border transition-all ${toolOptions.fontFamily === f.value
+                                                    ? 'bg-blue-100 border-blue-500 text-blue-700'
+                                                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                                                    }`}
+                                                style={{ fontFamily: f.value }}
+                                            >
+                                                {f.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Text Alignment */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-gray-600">Alignment</label>
+                                    <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-max">
+                                        {ALIGNS.map(a => (
+                                            <button
+                                                key={a.value}
+                                                onClick={() => setToolOptions({ ...toolOptions, textAlign: a.value })}
+                                                className={`p-1.5 rounded-md transition-all ${toolOptions.textAlign === a.value
+                                                    ? 'bg-white shadow-sm text-gray-900'
+                                                    : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                                title={a.value.charAt(0).toUpperCase() + a.value.slice(1)}
+                                            >
+                                                {a.icon}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Stroke Width / Eraser Size (Hide for Text) */}
+                        {(!showTextProps) && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-gray-600">
+                                    {activeTool === 'eraser' ? 'Eraser Size' : 'Stroke Width'}
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    {WIDTHS.map(w => (
+                                        <button
+                                            key={w}
+                                            onClick={() => setToolOptions({ ...toolOptions, strokeWidth: w })}
+                                            className={`flex items-center justify-center h-8 w-8 rounded-lg transition-all ${toolOptions.strokeWidth === w
+                                                ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-500 ring-offset-1'
+                                                : 'hover:bg-gray-100 text-gray-500'
+                                                }`}
+                                        >
+                                            <div
+                                                className="rounded-full bg-current"
+                                                style={{ width: activeTool === 'eraser' ? Math.min(w * 2, 20) : w, height: activeTool === 'eraser' ? Math.min(w * 2, 20) : w }}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
 
-                {/* Toolbar */}
+                {/* Text Input Overlay */}
+                {writingText && (
+                    <>
+                        <textarea
+                            ref={textAreaRef}
+                            className="absolute border border-blue-500 p-1 outline-none resize-none font-sans text-[20px] leading-none z-30 shadow-md rounded-md"
+                            style={{
+                                top: writingText.y + panOffset.y,
+                                left: writingText.x + panOffset.x,
+                                width: '200px',
+                                height: '100px', // Explicit default size
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                color: toolOptions.strokeColor, // Use Tool Color
+                                fontFamily: toolOptions.fontFamily,
+                                textAlign: toolOptions.textAlign as any
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            value={writingText.text}
+                            onChange={(e) => setWritingText({ ...writingText, text: e.target.value })}
+                            onBlur={() => {
+                                // Only complete if we aren't just clicking the drag handle
+                                // Checking related target is tricky here. 
+                                // Let's rely on explicit Enter or clicking outside.
+                                // actually blur is fine usually.
+                                // console.log("Textarea blurred")
+                                // handleTextComplete() 
+                            }}
+                            placeholder="Type here..."
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault()
+                                    handleTextComplete()
+                                }
+                                if (e.key === 'Escape') {
+                                    setWritingText(null) // Cancel
+                                }
+                            }}
+                        />
+                        {/* Drag Handle for Text Area */}
+                        <div
+                            className="absolute bg-blue-500 text-white p-1 rounded-t-md cursor-move flex items-center justify-center shadow-md hover:bg-blue-600 z-40"
+                            style={{
+                                top: writingText.y + panOffset.y - 24, // Above the input
+                                left: writingText.x + panOffset.x,
+                                width: '30px',
+                                height: '24px'
+                            }}
+                            onMouseDown={(e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                // Set the flag. The `draw` (mousemove) function will handle the actual position updates.
+                                setIsDraggingTextRef(true)
+                                // Reset textDragStartRef to null so the first mousemove can initialize it
+                                textDragStartRef.current = null
+                            }}
+                        >
+                            <Move className="w-3 h-3" />
+                        </div>
+                    </>
+                )}
+
+                {/* Tools Toolbar (Bottom) */}
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-[#4285F4] rounded-lg shadow-xl z-20">
                     {tools.map((tool) => (
                         <button
@@ -485,4 +865,46 @@ export default function CanvasBoard({ roomId }: { roomId: string }) {
             </div>
         </div>
     )
+}
+
+// Helper for Hit Testing
+function isHit(element: CanvasElement, x: number, y: number, context: CanvasRenderingContext2D | null): boolean {
+    if (!context) return false
+
+    switch (element.type) {
+        case 'text':
+            if (!element.text) return false
+            context.font = `20px ${element.fontFamily || 'sans-serif'}`
+            const metrics = context.measureText(element.text)
+            const textW = metrics.width
+            const textH = 20; // Approx height
+            // Text is drawn at y+20. So bounds are [y, y+20] roughly.
+            // Let's use a slightly generous box
+            return x >= element.x && x <= element.x + textW && y >= element.y && y <= element.y + 30
+        case 'pencil':
+        case 'eraser':
+            if (!element.points) return false
+            // Optimization: check bounding box first
+            const xs = element.points.map(p => p.x)
+            const ys = element.points.map(p => p.y)
+            const minX = Math.min(...xs) - 10
+            const maxX = Math.max(...xs) + 10
+            const minY = Math.min(...ys) - 10
+            const maxY = Math.max(...ys) + 10
+            return x >= minX && x <= maxX && y >= minY && y <= maxY
+        default:
+            // box shapes
+            const bx = element.x
+            const by = element.y
+            const bw = element.width
+            const bh = element.height
+
+            // Normalize rect
+            const rx = bw < 0 ? bx + bw : bx
+            const ry = bh < 0 ? by + bh : by
+            const rw = Math.abs(bw)
+            const rh = Math.abs(bh)
+
+            return x >= rx && x <= rx + rw && y >= ry && y <= ry + rh
+    }
 }
