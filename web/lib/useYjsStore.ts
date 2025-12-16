@@ -1,41 +1,129 @@
-import {
-    createTLStore,
-    defaultShapeUtils,
-    throttle,
-} from 'tldraw'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import * as Y from 'yjs'
 
-export function useYjsStore({ roomId, hostUrl }: { roomId: string; hostUrl: string }) {
-    const [store] = useState(() => {
-        return createTLStore({
-            shapeUtils: defaultShapeUtils,
-        })
-    })
+export type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser'
 
-    // NOTE: A full Yjs <-> Tldraw binding is 500+ lines of code to handle 
-    // correct delta updates, undo/redo manager syncing, etc.
-    // For this MVP, we are establishing the connection.
-    // In a real production app, you would copy the 'y-tldraw' binding utility 
-    // from the Tldraw examples repo.
+export interface CanvasElement {
+    id: string
+    type: Tool
+    x: number
+    y: number
+    width: number
+    height: number
+    strokeColor: string
+    strokeWidth?: number
+    points?: { x: number; y: number }[]
+    text?: string
+    fontFamily?: string
+    textAlign?: string
+}
+
+interface UseWhiteboardStoreProps {
+    roomId: string
+    initialData?: CanvasElement[]
+}
+
+interface UseWhiteboardStoreReturn {
+    elements: CanvasElement[]
+    setElements: (elements: CanvasElement[]) => void // Note: Local setElements usually not used directly if we sync, but needed for dragging optimization sometimes
+    yElementsRef: React.MutableRefObject<Y.Array<CanvasElement> | null>
+    providerRef: React.MutableRefObject<HocuspocusProvider | null>
+    status: string
+}
+
+export function useYjsStore({ roomId, initialData }: UseWhiteboardStoreProps): UseWhiteboardStoreReturn {
+    const [elements, setElements] = useState<CanvasElement[]>([])
+    const [status, setStatus] = useState('disconnected')
+
+    // Yjs Refs
+    const yDocRef = useRef<Y.Doc | null>(null)
+    const yElementsRef = useRef<Y.Array<CanvasElement> | null>(null)
+    const providerRef = useRef<HocuspocusProvider | null>(null)
 
     useEffect(() => {
+        if (!roomId) return
+
+        // 1. Initialize Yjs Doc
+        const ydoc = new Y.Doc()
+        yDocRef.current = ydoc
+
+        const yArray = ydoc.getArray<CanvasElement>("elements")
+        yElementsRef.current = yArray
+
+        // 2. Hydrate from Initial Data if Yjs is empty
+        // This is important because Hocuspocus might load empty state initially, 
+        // OR if it's a new room, we want to start with Supabase data.
+        // We only do this check once on mount essentially (via the effect dependency).
+        if (initialData && initialData.length > 0) {
+            // We only insert if we believe the doc is fresh. 
+            // However, Yjs sync is async. We might insert duplicate data if we are not careful.
+            // Best practice: Wait for 'synced' to verify emptiness? 
+            // Or just trust that if we have initialData, we put it in local state first to show something,
+            // and let Yjs catch up.
+
+            // For this implementation, we will follow the CanvasBoard logic:
+            // Check immediate length. 
+            if (yArray.length === 0) {
+                console.log("[useYjsStore] Hydrating Yjs from initialData")
+                yArray.insert(0, initialData)
+            }
+            // Also set local state immediately so user sees it before connection
+            setElements(yArray.toArray())
+        }
+
+        // 3. Connect Provider
+        let hostUrl = (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234')
+        if (hostUrl.startsWith('http')) hostUrl = hostUrl.replace(/^http/, 'ws')
+        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && !hostUrl.startsWith('wss:')) {
+            hostUrl = hostUrl.replace('ws://', 'wss://')
+        }
+
+        console.log('[useYjsStore] Connecting to:', hostUrl)
+
         const provider = new HocuspocusProvider({
             url: hostUrl,
             name: roomId,
-            document: new Y.Doc(),
+            document: ydoc,
+        })
+        providerRef.current = provider
+
+        provider.on('status', (event: any) => {
+            console.log('[useYjsStore] Status:', event.status)
+            setStatus(event.status)
         })
 
-        // Simplified sync: Check if we connected
         provider.on('synced', () => {
-            console.log('Connected to whiteboard room:', roomId)
+            console.log('[useYjsStore] Synced. Items:', yArray.length)
+            setElements(yArray.toArray())
+
+            // Late hydration check: if synced and still empty, but we have initialData?
+            // Usually redundancy not needed if we insert above.
         })
 
-        return () => {
-            provider.destroy()
+        // 4. Observe Changes
+        const handleObserve = () => {
+            setElements(yArray.toArray())
         }
-    }, [roomId, hostUrl])
+        yArray.observe(handleObserve)
 
-    return store
+        // Cleanup
+        return () => {
+            console.log('[useYjsStore] Disconnecting')
+            yArray.unobserve(handleObserve)
+            provider.destroy()
+            ydoc.destroy()
+            yDocRef.current = null
+            yElementsRef.current = null
+            providerRef.current = null
+        }
+    }, [roomId])
+
+    return {
+        elements,
+        setElements, // Expose this if components need to optimistically update (mostly for dragging)
+        yElementsRef,
+        providerRef,
+        status
+    }
 }
