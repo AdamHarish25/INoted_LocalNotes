@@ -7,13 +7,14 @@ import Collaboration from "@tiptap/extension-collaboration"
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import { EditorToolbar } from "./toolbar"
 import { useEffect, useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import * as Y from "yjs"
 
 // Mock content handled by Yjs now
 
 // Imports for Header UI
 import { Button } from "@/components/ui/button"
-import { Share, Cloud, Globe, Copy, Check } from "lucide-react"
+import { Share, Cloud, Globe, Copy, Check, CircleDashed } from "lucide-react"
 import { WorkspaceSelector } from "@/components/workspace-selector"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
@@ -195,6 +196,8 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
 
 
+    const router = useRouter()
+
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value
         setTitle(newTitle)
@@ -205,28 +208,28 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     return (
         <div className="flex flex-col h-full">
             {/* Integrated Header */}
-            <div className="flex items-center justify-between px-8 py-4 border-b border-gray-100 mb-4">
-                <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-100 mb-4 sticky top-0 bg-white z-40">
+                <div className="flex items-center gap-2 md:gap-4">
                     <div className="flex items-center gap-2 text-slate-400 text-sm">
-                        <span className="p-1 border rounded bg-slate-50">
+                        <button onClick={() => router.back()} className="p-1 border rounded bg-slate-50 hover:bg-slate-100 transition-colors">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
-                        </span>
-                        <span className="font-medium text-slate-700 truncate max-w-[200px]">{title}</span>
+                        </button>
+                        <span className="font-medium text-slate-700 truncate max-w-[100px] md:max-w-[200px]">{title}</span>
                     </div>
 
-                    <div className={`flex items-center gap-1 text-slate-700 text-xs ${saveStatus === "Saved" ? "animate-none" : "animate-pulse"}`}>
-                        <Cloud className="w-3 h-3" />
-                        <span>{saveStatus === 'Saved' ? 'Saved to Cloud' : saveStatus}</span>
+                    <div className={`flex items-center gap-1 text-slate-700 text-xs`}>
+                        {saveStatus === "Saved" ? <Cloud className="w-3 h-3 " /> : <CircleDashed className={`w-3 h-3 animate-spin`} />}
+                        <span className="hidden md:inline">{saveStatus === 'Saved' ? 'Saved to Cloud' : saveStatus}</span>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 md:gap-4">
                     <WorkspaceSelector noteId={noteId} initialWorkspaceName={initialWorkspace} />
 
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600">
-                                <span className="mr-2">Share</span>
+                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent">
+                                <span className="mr-2 hidden md:inline">Share</span>
                                 <Share className="w-4 h-4" />
                             </Button>
                         </DialogTrigger>
@@ -269,7 +272,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 </div>
             </div>
 
-            <div className="relative w-full max-w-4xl mb-10 mx-auto border border-gray-500 bg-white p-16 text-black rounded-lg min-h-screen flex flex-col gap-4">
+            <div className="relative w-full max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-500 bg-white p-4 md:p-16 text-black rounded-lg min-h-screen flex flex-col gap-4">
                 <input
                     type="text"
                     value={title}

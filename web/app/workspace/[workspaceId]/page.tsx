@@ -5,6 +5,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { createClient } from "@/utils/supabase/server"
 import { CreateResourceModal } from "@/components/CreateResourceModal"
 import { SearchInput } from "@/components/search-input"
+import { WorkspaceOptions } from "@/components/workspace-options"
+import { ResourceOptions } from "@/components/resource-options"
 
 export default async function WorkspaceDashboardPage(props: {
     params: Promise<{ workspaceId: string }>
@@ -102,6 +104,7 @@ export default async function WorkspaceDashboardPage(props: {
                         <h1 className="text-2xl font-bold text-slate-800">{currentWorkspace.name}</h1>
                         <p className="text-slate-500 text-sm">Workspace Dashboard</p>
                     </div>
+                    <WorkspaceOptions workspaceId={workspaceId} workspaceName={currentWorkspace.name} />
                 </div>
 
                 <div className="flex justify-center mb-2">
@@ -133,26 +136,29 @@ export default async function WorkspaceDashboardPage(props: {
                         const truncatedPreview = words.slice(0, 5).join(" ") + (words.length > 5 ? "..." : "");
 
                         return (
-                            <Link href={`/notes/${note.id}`} key={note.id}>
-                                <Card className="h-48 py-4 hover:shadow-md hover:bg-slate-800 group transition-all duration-200 cursor-pointer border-slate-200 bg-white flex flex-col">
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-medium group-hover:text-white text-slate-500 truncate">{note.title || "Untitled"}</CardTitle>
-                                        <p className="text-[10px] text-slate-300 group-hover:text-white">
-                                            {new Date(note.created_at).toLocaleDateString()}
-                                        </p>
-                                    </CardHeader>
-                                    <CardContent className="flex-1 overflow-hidden flex items-center justify-center p-4">
-                                        <p className="text-sm text-slate-400 group-hover:text-white font-medium text-center break-all italic">
-                                            {truncatedPreview || "No content"}
-                                        </p>
-                                    </CardContent>
-                                    <CardFooter className="pt-2 pb-4 flex justify-end">
-                                        <span className="bg-yellow-400/90 text-white group-hover:text-white text-[10px] px-3 py-1 rounded-full font-medium shadow-sm truncate max-w-[100px]">
-                                            {currentWorkspace.name}
-                                        </span>
-                                    </CardFooter>
-                                </Card>
-                            </Link>
+                            <div key={note.id} className="relative group">
+                                <Link href={`/notes/${note.id}`}>
+                                    <Card className="h-48 py-4 hover:shadow-md hover:bg-slate-800 transition-all duration-200 cursor-pointer border-slate-200 bg-white flex flex-col group/card">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm font-medium group-hover/card:text-white text-slate-500 truncate mr-6">{note.title || "Untitled"}</CardTitle>
+                                            <p className="text-[10px] text-slate-300 group-hover/card:text-white">
+                                                {new Date(note.created_at).toLocaleDateString()}
+                                            </p>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 overflow-hidden flex items-center justify-center p-4">
+                                            <p className="text-sm text-slate-400 group-hover/card:text-white font-medium text-center break-all italic">
+                                                {truncatedPreview || "No content"}
+                                            </p>
+                                        </CardContent>
+                                        <CardFooter className="pt-2 pb-4 flex justify-end">
+                                            <span className="bg-yellow-400/90 text-white group-hover/card:text-white text-[10px] px-3 py-1 rounded-full font-medium shadow-sm truncate max-w-[100px]">
+                                                {currentWorkspace.name}
+                                            </span>
+                                        </CardFooter>
+                                    </Card>
+                                </Link>
+                                <ResourceOptions id={note.id} title={note.title || "Untitled"} type="note" />
+                            </div>
                         )
                     })}
 
@@ -191,36 +197,39 @@ export default async function WorkspaceDashboardPage(props: {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Whiteboards List */}
                     {whiteboards?.map((board) => (
-                        <Link href={`/whiteboard/${board.id}`} key={board.id} className="block group">
-                            <Card className="h-40 hover:shadow-md transition-all duration-200 group-hover:bg-slate-800 cursor-pointer border-slate-200 bg-white overflow-hidden mb-2">
-                                <div className="p-4 flex flex-col h-full">
-                                    <div className="flex-1 flex items-center justify-center">
-                                        {board.content?.preview ? (
-                                            board.content.preview.startsWith('data:image') ? (
-                                                <img
-                                                    src={board.content.preview}
-                                                    alt="Whiteboard preview"
-                                                    className="w-full h-full object-contain"
-                                                />
+                        <div key={board.id} className="relative group block">
+                            <Link href={`/whiteboard/${board.id}`}>
+                                <Card className="h-40 hover:shadow-md transition-all duration-200 hover:bg-slate-800 cursor-pointer border-slate-200 bg-white overflow-hidden mb-2 group/card">
+                                    <div className="p-4 flex flex-col h-full">
+                                        <div className="flex-1 flex items-center justify-center">
+                                            {board.content?.preview ? (
+                                                board.content.preview.startsWith('data:image') ? (
+                                                    <img
+                                                        src={board.content.preview}
+                                                        alt="Whiteboard preview"
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <div
+                                                        className="w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
+                                                        dangerouslySetInnerHTML={{ __html: board.content.preview }}
+                                                    />
+                                                )
                                             ) : (
-                                                <div
-                                                    className="w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
-                                                    dangerouslySetInnerHTML={{ __html: board.content.preview }}
-                                                />
-                                            )
-                                        ) : (
-                                            <svg viewBox="0 0 100 60" className="w-full h-40 stroke-slate-600 group-hover:stroke-white transition-colors duration-200 stroke-2 fill-none">
-                                                <path d="M10,10 Q30,50 50,30 T90,30" />
-                                                <rect x="20" y="20" width="10" height="10" />
-                                            </svg>
-                                        )}
+                                                <svg viewBox="0 0 100 60" className="w-full h-40 stroke-slate-600 group-hover/card:stroke-white transition-colors duration-200 stroke-2 fill-none">
+                                                    <path d="M10,10 Q30,50 50,30 T90,30" />
+                                                    <rect x="20" y="20" width="10" height="10" />
+                                                </svg>
+                                            )}
+                                        </div>
                                     </div>
+                                </Card>
+                                <div className="text-center">
+                                    <span className="text-sm text-slate-500 font-medium hover:text-slate-700 transition-colors">{board.title || "Untitled"}</span>
                                 </div>
-                            </Card>
-                            <div className="text-center">
-                                <span className="text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors">{board.title || "Untitled"}</span>
-                            </div>
-                        </Link>
+                            </Link>
+                            <ResourceOptions id={board.id} title={board.title || "Untitled"} type="whiteboard" />
+                        </div>
                     ))}
 
                     {/* New Whiteboard Button */}

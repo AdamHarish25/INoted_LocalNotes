@@ -191,14 +191,18 @@ export async function updateNoteSharing(id: string, is_public: boolean) {
     return { success: true }
 }
 
-export async function updateWhiteboard(id: string, content: any) {
+export async function updateWhiteboard(id: string, data: { content?: any, title?: string }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: "Unauthorized" }
 
-    const { data, error } = await supabase
+    const updates: any = { updated_at: new Date().toISOString() }
+    if (data.content !== undefined) updates.content = data.content
+    if (data.title !== undefined) updates.title = data.title
+
+    const { data: result, error } = await supabase
         .from("whiteboards")
-        .update({ content, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq("id", id)
         .eq("owner_id", user.id)
         .select("id")
@@ -208,7 +212,7 @@ export async function updateWhiteboard(id: string, content: any) {
         return { error: error.message }
     }
 
-    if (!data || data.length === 0) {
+    if (!result || result.length === 0) {
         console.error("No whiteboard updated. Check RLS or owner_id match.")
         return { error: "No permission or whiteboard not found" }
     }
@@ -302,3 +306,80 @@ export async function signOut() {
     await supabase.auth.signOut()
     redirect("/login")
 }
+
+export async function updateWorkspace(id: string, name: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("workspaces")
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error updating workspace:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+export async function deleteWorkspace(id: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("workspaces")
+        .delete()
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error deleting workspace:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+export async function deleteNote(id: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("notes")
+        .delete()
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error deleting note:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+export async function deleteWhiteboard(id: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("whiteboards")
+        .delete()
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error deleting whiteboard:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+

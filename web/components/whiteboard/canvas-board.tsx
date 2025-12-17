@@ -23,9 +23,19 @@ import {
 
     AlignCenter,
     AlignRight,
-    Move
+
+    Move,
+    Share,
+    Globe,
+    Copy,
+    Check,
+    X,
+    Palette,
+    MenuIcon,
+    Menu
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser'
 
@@ -68,11 +78,11 @@ const ALIGNS = [
     { value: 'right', icon: <AlignRight className="w-4 h-4" /> },
 ]
 
-export default function CanvasBoard({ roomId, initialData }: { roomId: string, initialData?: any[] }) {
+export default function CanvasBoard({ roomId, initialData, initialIsPublic = false }: { roomId: string, initialData?: any[], initialIsPublic?: boolean }) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null)
-    const [activeTool, setActiveTool] = useState<Tool>('pencil')
+    const [activeTool, setActiveTool] = useState<Tool>('hand')
 
     // Tool Options State
     const [toolOptions, setToolOptions] = useState({
@@ -106,6 +116,27 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
 
     // Save Status State
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
+
+    // Share State
+    const [isPublic, setIsPublic] = useState(initialIsPublic)
+    const [isCopied, setIsCopied] = useState(false)
+
+    // Mobile Menu State
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+    const handleShareToggle = async () => {
+        const newStatus = !isPublic
+        setIsPublic(newStatus)
+        const { updateWhiteboardSharing } = await import("@/app/actions")
+        await updateWhiteboardSharing(roomId, newStatus)
+    }
+
+    const copyLink = () => {
+        const url = `${window.location.origin}/whiteboard/${roomId}`
+        navigator.clipboard.writeText(url)
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+    }
 
     // Debounced Save to Supabase
     useEffect(() => {
@@ -361,13 +392,70 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
         return () => window.removeEventListener('resize', handleResize)
     }, [elements, toolOptions])
 
+
+
+    // Touch Handling Helpers
+    const getTouchPos = (e: React.TouchEvent<HTMLCanvasElement>, index: number = 0) => {
+        if (!canvasRef.current || !e.touches[index]) return { x: 0, y: 0 }
+        const rect = canvasRef.current.getBoundingClientRect()
+        return {
+            x: e.touches[index].clientX - rect.left,
+            y: e.touches[index].clientY - rect.top
+        }
+    }
+
+    const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        if (!context) return
+
+        // 2-Finger Pan Support
+        if (e.touches.length === 2) {
+            const p1 = getTouchPos(e, 0)
+            const p2 = getTouchPos(e, 1)
+            const cx = (p1.x + p2.x) / 2
+            const cy = (p1.y + p2.y) / 2
+
+            // Cancel any current drawing if switching from 1 to 2 fingers quickly
+            setIsDrawing(false)
+            setCurrentElement(null)
+
+            setIsPanning(true)
+            setStartPanMousePosition({ x: cx, y: cy })
+            return
+        }
+
+        const { x: offsetX, y: offsetY } = getTouchPos(e)
+        processStartDrawing(offsetX, offsetY)
+    }
+
+    const touchDraw = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        // Handle 2-Finger Panning
+        if (isPanning && e.touches.length === 2) {
+            const p1 = getTouchPos(e, 0)
+            const p2 = getTouchPos(e, 1)
+            const cx = (p1.x + p2.x) / 2
+            const cy = (p1.y + p2.y) / 2
+
+            const deltaX = cx - startPanMousePosition.x
+            const deltaY = cy - startPanMousePosition.y
+
+            setPanOffset(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }))
+            setStartPanMousePosition({ x: cx, y: cy })
+            return
+        }
+
+        const { x: offsetX, y: offsetY } = getTouchPos(e)
+        processDraw(offsetX, offsetY)
+    }
+
     const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
         // Prevent interaction if clicking on UI elements
         if ((e.target as HTMLElement).tagName !== 'CANVAS') return
-
         if (!context) return
         const { offsetX, offsetY } = e.nativeEvent
+        processStartDrawing(offsetX, offsetY)
+    }
 
+    const processStartDrawing = (offsetX: number, offsetY: number) => {
         if (activeTool === 'hand') {
             setIsPanning(true)
             setStartPanMousePosition({ x: offsetX, y: offsetY })
@@ -375,7 +463,6 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
         }
 
         if (activeTool === 'text') {
-            e.preventDefault()
             if (writingText) return
 
             const worldX = offsetX - panOffset.x
@@ -391,7 +478,7 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
             // Find clicked element (reverse order to find top-most first)
             for (let i = elements.length - 1; i >= 0; i--) {
                 const el = elements[i]
-                if (isHit(el, worldX, worldY, context)) {
+                if (isHit(el, worldX, worldY, context!)) {
                     setDraggingElement({
                         id: el.id,
                         startX: worldX,
@@ -399,10 +486,14 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
                         initialElementX: el.x,
                         initialElementY: el.y
                     })
-                    setIsDrawing(true) // Re-use isDrawing to capture mouse moves globally if needed, or just use separate state
+                    setIsDrawing(true)
                     return
                 }
             }
+
+            // If no element hit, fallback to panning
+            setIsPanning(true)
+            setStartPanMousePosition({ x: offsetX, y: offsetY })
             return
         }
 
@@ -441,7 +532,10 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
 
     const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
         const { offsetX, offsetY } = e.nativeEvent
+        processDraw(offsetX, offsetY)
+    }
 
+    const processDraw = (offsetX: number, offsetY: number) => {
         if (isPanning) {
             const deltaX = offsetX - startPanMousePosition.x
             const deltaY = offsetY - startPanMousePosition.y
@@ -637,19 +731,63 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
                     <span className="font-medium">Back to Dashboard</span>
                 </Link>
 
-                {/* Save Status Indicator */}
-                <div className="ml-auto flex items-center text-sm text-slate-400">
+                {/* Save Status Indicator & Share Button */}
+                <div className="ml-auto flex items-center gap-2 md:gap-4 text-sm text-slate-400">
                     {saveStatus === 'saving' ? (
-                        <>
+                        <div className="flex items-center">
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            <span>Saving...</span>
-                        </>
+                            <span className="hidden md:inline">Saving...</span>
+                        </div>
                     ) : (
-                        <>
+                        <div className="flex items-center">
                             <Cloud className="w-4 h-4 mr-2" />
-                            <span>Saved to Cloud</span>
-                        </>
+                            <span className="hidden md:inline">Saved</span>
+                        </div>
                     )}
+
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent">
+                                <span className="mr-2 hidden md:inline">Share</span>
+                                <Share className="w-4 h-4" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Share Whiteboard</DialogTitle>
+                                <DialogDescription>
+                                    Publish this whiteboard to the web.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex flex-col gap-4 py-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Globe className="w-5 h-5 text-slate-500" />
+                                        <span className="font-medium">Publish to web</span>
+                                    </div>
+                                    <Button
+                                        variant={isPublic ? "default" : "outline"}
+                                        onClick={handleShareToggle}
+                                    >
+                                        {isPublic ? "Published" : "Private"}
+                                    </Button>
+                                </div>
+
+                                {isPublic && (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            className="flex-1 text-sm border p-2 rounded bg-slate-50 text-slate-600 outline-none"
+                                            readOnly
+                                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/whiteboard/${roomId}`}
+                                        />
+                                        <Button onClick={copyLink} size="icon" variant="outline">
+                                            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
@@ -661,13 +799,78 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
                     onMouseMove={draw}
                     onMouseUp={stopDrawing}
                     onMouseLeave={stopDrawing}
+                    onTouchStart={startTouchDrawing}
+                    onTouchMove={touchDraw}
+                    onTouchEnd={stopDrawing}
                     className="block touch-none absolute inset-0"
                     style={{ cursor: getCursorStyle() }}
                 />
 
-                {/* Properties Toolbar (Left) */}
+                {/* Tools - Moved to bottom on mobile */}
+                <div className="absolute top-4 left-4 z-20 hidden md:flex flex-col gap-2 p-2 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-xl">
+                    {tools.map(tool => (
+                        <button
+                            key={tool.id}
+                            onClick={() => setActiveTool(tool.id)}
+                            className={`p-2 rounded-lg transition-all ${activeTool === tool.id
+                                ? 'bg-blue-100 text-blue-600 shadow-sm'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                                }`}
+                            title={tool.id.charAt(0).toUpperCase() + tool.id.slice(1)}
+                        >
+                            {tool.icon}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Mobile Tools FAB (Floating Action Button) */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 md:hidden">
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95"
+                    >
+                        <Menu className="w-6 h-6 text-black" />
+                    </button>
+                </div>
+
+                {/* Mobile Tools Overlay */}
+                {isMobileMenuOpen && (
+                    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 md:hidden animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm relative animate-in zoom-in-95 duration-200">
+                            <button
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+
+                            <h3 className="text-lg font-bold text-slate-800 mb-6 text-center">Select Tool</h3>
+
+                            <div className="grid grid-cols-4 gap-4">
+                                {tools.map(tool => (
+                                    <button
+                                        key={tool.id}
+                                        onClick={() => {
+                                            setActiveTool(tool.id)
+                                            setIsMobileMenuOpen(false)
+                                        }}
+                                        className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all aspect-square ${activeTool === tool.id
+                                            ? 'bg-blue-50 border-2 border-blue-500 text-blue-600'
+                                            : 'bg-slate-50 border border-slate-100 text-slate-500 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        {tool.icon}
+                                        <span className="text-[10px] font-medium capitalize">{tool.id}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Properties Toolbar */}
                 {(showProperties || showEraserProps || showTextProps) && (
-                    <div className="absolute top-4 left-4 flex flex-col gap-4 p-4 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-xl z-20 w-64">
+                    <div className="absolute top-20 md:top-4 md:right-4 left-4 md:left-auto flex flex-col gap-4 p-4 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-xl z-20 w-64">
                         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
                             {activeTool.charAt(0).toUpperCase() + activeTool.slice(1)} Properties
                         </h3>
@@ -846,22 +1049,7 @@ export default function CanvasBoard({ roomId, initialData }: { roomId: string, i
                     </>
                 )}
 
-                {/* Tools Toolbar (Bottom) */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-[#4285F4] rounded-lg shadow-xl z-20">
-                    {tools.map((tool) => (
-                        <button
-                            key={tool.id}
-                            onClick={() => setActiveTool(tool.id)}
-                            className={`p-2 rounded-md text-white transition-all ${activeTool === tool.id
-                                ? 'bg-white/30 shadow-sm ring-1 ring-white/40'
-                                : 'hover:bg-white/20'
-                                }`}
-                            title={tool.id.charAt(0).toUpperCase() + tool.id.slice(1)}
-                        >
-                            {tool.icon}
-                        </button>
-                    ))}
-                </div>
+
             </div>
         </div>
     )
