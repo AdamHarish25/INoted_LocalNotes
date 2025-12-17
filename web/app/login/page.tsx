@@ -9,7 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { OAuthSignIn } from "./oauth-signin"
 
-export default function LoginPage() {
+export default async function LoginPage(props: {
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+    const searchParams = await props.searchParams;
+    const errorMessage = searchParams?.error;
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px]">
             <div className="w-full max-w-md">
@@ -102,6 +107,13 @@ export default function LoginPage() {
                                             Forgot Password?
                                         </Link>
                                     </div>
+
+                                    {/* Error Message Display */}
+                                    {errorMessage && (
+                                        <div className="text-red-500 text-xs mt-2 text-center bg-red-50 p-2 rounded-md border border-red-100">
+                                            {typeof errorMessage === 'string' ? errorMessage : "An error occurred"}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-2">
