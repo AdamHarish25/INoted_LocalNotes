@@ -382,4 +382,21 @@ export async function deleteWhiteboard(id: string) {
     return { success: true }
 }
 
+export async function updateProfile(displayName: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase.auth.updateUser({
+        data: { display_name: displayName }
+    })
+
+    if (error) {
+        console.error("Error updating profile:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
 

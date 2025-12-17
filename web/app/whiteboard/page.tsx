@@ -22,6 +22,7 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
     let whiteboardsQuery = supabase
         .from("whiteboards")
         .select("*")
+        .eq("owner_id", user.id) // SECURITY FIX
         .order("created_at", { ascending: false })
 
     if (query) {
@@ -34,10 +35,11 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
     const { data: workspaces } = await supabase
         .from("workspaces")
         .select("*")
+        .eq("owner_id", user.id) // SECURITY FIX
         .order("created_at", { ascending: false })
 
     return (
-        <div className="p-8 space-y-8 bg-gray-50/30 min-h-screen">
+        <div className="p-8 space-y-8 bg-muted/30 dark:bg-background min-h-screen">
             {/* Search Bar */}
             <div className="flex justify-center mb-8">
                 <SearchInput />

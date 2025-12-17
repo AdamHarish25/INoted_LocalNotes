@@ -94,13 +94,13 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
   // Layout handles visibility now
 
   return (
-    <div className={cn("pb-12 w-64 border-r min-h-screen bg-gray-50/40 hidden md:block", className)}>
+    <div className={cn("pb-12 w-64 border-r border-sidebar-border min-h-screen bg-sidebar hidden md:block shadow-md dark:shadow-white", className)}>
       <div className="space-y-4 py-4">
         <div className={cn("py-2 flex items-center", isCollapsed ? "justify-center px-2" : "justify-between px-4")}>
           {!isCollapsed && (
             <div className="flex items-center gap-2 mb-0">
               {/* Logo could be an image or text */}
-              <div className="w-6 h-6 bg-slate-900 text-white flex items-center justify-center rounded-sm font-bold text-xs">
+              {/* <div className="w-6 h-6 bg-slate-900 text-white flex items-center justify-center rounded-sm font-bold text-xs">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
@@ -118,7 +118,9 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
               </div>
               <h2 className="text-xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Inoted
-              </h2>
+              </h2> */}
+
+              <img src="/logo.png" alt="Logo" className="h-5" />
             </div>
           )}
 
@@ -142,7 +144,7 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
             <Link href="/">
               <Button
                 variant={pathname === "/" ? "secondary" : "ghost"}
-                className={cn("w-full text-slate-600", isCollapsed ? "justify-center px-0" : "justify-start")}
+                className={cn("w-full text-sidebar-foreground/70 hover:text-sidebar-foreground", isCollapsed ? "justify-center px-0" : "justify-start")}
                 title={isCollapsed ? "Dashboard" : undefined}
               >
                 <LayoutGrid className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
@@ -152,7 +154,7 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
             <Link href="/notes">
               <Button
                 variant={pathname?.startsWith("/notes") ? "secondary" : "ghost"}
-                className={cn("w-full text-slate-600", isCollapsed ? "justify-center px-0" : "justify-start")}
+                className={cn("w-full text-sidebar-foreground/70 hover:text-sidebar-foreground", isCollapsed ? "justify-center px-0" : "justify-start")}
                 title={isCollapsed ? "My Notes" : undefined}
               >
                 <FileText className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
@@ -162,11 +164,21 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
             <Link href="/whiteboard">
               <Button
                 variant={pathname?.startsWith("/whiteboard") ? "secondary" : "ghost"}
-                className={cn("w-full text-slate-600", isCollapsed ? "justify-center px-0" : "justify-start")}
+                className={cn("w-full text-sidebar-foreground/70 hover:text-sidebar-foreground", isCollapsed ? "justify-center px-0" : "justify-start")}
                 title={isCollapsed ? "My Whiteboard" : undefined}
               >
                 <PenTool className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
                 {!isCollapsed && "My Whiteboard"}
+              </Button>
+            </Link>
+            <Link href="/settings">
+              <Button
+                variant={pathname?.startsWith("/settings") ? "secondary" : "ghost"}
+                className={cn("w-full text-sidebar-foreground/70 hover:text-sidebar-foreground", isCollapsed ? "justify-center px-0" : "justify-start")}
+                title={isCollapsed ? "Settings" : undefined}
+              >
+                <Settings className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                {!isCollapsed && "Settings"}
               </Button>
             </Link>
           </div>
@@ -238,7 +250,7 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
                   <Link key={ws.id} href={`/workspace/${ws.id}`}>
                     <Button variant={pathname?.startsWith(`/workspace/${ws.id}`) ? "secondary" : "ghost"} className="w-full justify-start text-slate-600">
                       <Folder className="mr-2 h-4 w-4 text-yellow-500 fill-yellow-500" />
-                      <span className="truncate">{ws.name}</span>
+                      <span className="truncate dark:text-white">{ws.name}</span>
                     </Button>
                   </Link>
                 ))}
@@ -258,15 +270,15 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
       </div>
 
       <div className={cn("mt-auto absolute bottom-4", isCollapsed ? "w-full flex justify-center px-0" : "w-64 px-4")}>
-        <div className={cn("flex items-center gap-3 p-3 bg-blue-100/50 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer", isCollapsed && "p-2 justify-center aspect-square rounded-full")}>
-          <Avatar className="h-9 w-9 border border-white shadow-sm">
+        <div className={cn("flex items-center dark:bg-black gap-3 p-3 bg-blue-100/50 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer", isCollapsed && "p-2 justify-center aspect-square rounded-full")}>
+          <Avatar className="h-9 w-9 border border-white shadow-sm dark:shadow-white">
             <AvatarImage src="/avatar-placeholder.png" alt={user?.user_metadata?.display_name || "User"} />
             <AvatarFallback>{(user?.user_metadata?.display_name?.[0] || user?.email?.[0] || "U").toUpperCase()}</AvatarFallback>
           </Avatar>
           {!isCollapsed && (
             <>
               <div className="flex flex-col flex-1 pl-1">
-                <span className="text-sm font-medium text-slate-900 truncate max-w-[120px]">
+                <span className="text-sm font-medium text-slate-900  dark:text-white truncate max-w-[120px]">
                   {user?.user_metadata?.display_name || "User"}
                 </span>
               </div>

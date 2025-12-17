@@ -206,18 +206,18 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-background">
             {/* Integrated Header */}
-            <div className="flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-100 mb-4 sticky top-0 bg-white z-40">
+            <div className="flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-100 dark:border-b-gray-500 mb-4 sticky top-0 bg-white dark:bg-card z-40 transition-colors">
                 <div className="flex items-center gap-2 md:gap-4">
-                    <div className="flex items-center gap-2 text-slate-400 text-sm">
-                        <button onClick={() => router.back()} className="p-1 border rounded bg-slate-50 hover:bg-slate-100 transition-colors">
+                    <div className="flex items-center gap-2 text-slate-400 dark:text-muted-foreground text-sm">
+                        <button onClick={() => router.back()} className="p-1 border dark:border-border rounded bg-slate-50 dark:bg-muted hover:bg-slate-100 dark:hover:bg-muted/80 transition-colors">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
                         </button>
-                        <span className="font-medium text-slate-700 truncate max-w-[100px] md:max-w-[200px]">{title}</span>
+                        <span className="font-medium text-slate-700 dark:text-foreground truncate max-w-[100px] md:max-w-[200px]">{title}</span>
                     </div>
 
-                    <div className={`flex items-center gap-1 text-slate-700 text-xs`}>
+                    <div className={`flex items-center gap-1 text-slate-700 dark:text-muted-foreground text-xs`}>
                         {saveStatus === "Saved" ? <Cloud className="w-3 h-3 " /> : <CircleDashed className={`w-3 h-3 animate-spin`} />}
                         <span className="hidden md:inline">{saveStatus === 'Saved' ? 'Saved to Cloud' : saveStatus}</span>
                     </div>
@@ -228,7 +228,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent">
+                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10">
                                 <span className="mr-2 hidden md:inline">Share</span>
                                 <Share className="w-4 h-4" />
                             </Button>
@@ -243,7 +243,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                             <div className="flex flex-col gap-4 py-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <Globe className="w-5 h-5 text-slate-500" />
+                                        <Globe className="w-5 h-5 text-slate-500 dark:text-muted-foreground" />
                                         <span className="font-medium">Publish to web</span>
                                     </div>
                                     <Button
@@ -257,7 +257,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                                 {isPublic && (
                                     <div className="flex items-center gap-2">
                                         <input
-                                            className="flex-1 text-sm border p-2 rounded bg-slate-50 text-slate-600 outline-none"
+                                            className="flex-1 text-sm border p-2 rounded bg-slate-50 dark:bg-muted text-slate-600 dark:text-foreground outline-none"
                                             readOnly
                                             value={`${typeof window !== 'undefined' ? window.location.origin : ''}/notes/${noteId}`}
                                         />
@@ -272,16 +272,16 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 </div>
             </div>
 
-            <div className="relative w-full max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-500 bg-white p-4 md:p-16 text-black rounded-lg min-h-screen flex flex-col gap-4">
+            <div className="relative w-full max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-200 dark:border-gray-500 bg-white dark:bg-background dark:text-foreground p-4 md:p-16 rounded-lg min-h-screen flex flex-col gap-4 shadow-sm transition-colors">
                 <input
                     type="text"
                     value={title}
                     onChange={handleTitleChange}
                     placeholder="Note Title"
-                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 w-full bg-transparent pt-8"
+                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 dark:placeholder:text-muted-foreground w-full bg-transparent pt-8 text-black dark:text-white"
                 />
 
-                <EditorContent editor={editor} />
+                <EditorContent editor={editor} className="dark:text-zinc-100" />
             </div>
         </div>
     )

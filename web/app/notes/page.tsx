@@ -25,6 +25,7 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
     let notesQuery = supabase
         .from("notes")
         .select("*, workspaces(name)")
+        .eq("owner_id", user.id) // SECURITY FIX
         .order("created_at", { ascending: false })
 
     if (query) {
@@ -32,6 +33,15 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
     }
 
     const { data: notes } = await notesQuery
+
+    // ... (helper function remains implicitly here if I don't touch it, but since I am replacing a block, I should be careful)
+    // Wait, replacing a huge block might be risky if I miss the helper.
+    // Let's do targeted replacements.
+
+    // Actually, I'll just replace the query definition blocks.
+
+    // This tool call is for notes query
+
 
     // Helper to extract text from TipTap JSON
     const getPreviewText = (content: any): string => {
@@ -70,10 +80,11 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
     const { data: workspaces } = await supabase
         .from("workspaces")
         .select("*")
+        .eq("owner_id", user.id) // SECURITY FIX
         .order("created_at", { ascending: false })
 
     return (
-        <div className="p-8 space-y-8 bg-gray-50/30 min-h-screen">
+        <div className="p-8 space-y-8 bg-muted/30 dark:bg-background min-h-screen">
             {/* Search Bar */}
             <div className="flex justify-center mb-8">
                 <SearchInput />

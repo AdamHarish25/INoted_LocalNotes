@@ -32,12 +32,13 @@ import {
     X,
     Palette,
     MenuIcon,
-    Menu
+    Menu,
+    Image as ImageIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
-type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser'
+type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser' | 'image'
 
 interface CanvasElement {
     id: string
@@ -52,10 +53,51 @@ interface CanvasElement {
     text?: string
     fontFamily?: string
     textAlign?: string
+    data?: string // For image base64
 }
+
+const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800; // Limit width for storage
+                const MAX_HEIGHT = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                // Compress to JPEG with 0.6 quality
+                resolve(canvas.toDataURL('image/jpeg', 0.6));
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+};
 
 const COLORS = [
     { name: 'Black', value: 'black' },
+    { name: 'White', value: 'white' }, // Add White for dark mode
     { name: 'Red', value: '#ef4444' }, // red-500
     { name: 'Blue', value: '#3b82f6' }, // blue-500
     { name: 'Green', value: '#22c55e' }, // green-500
@@ -110,6 +152,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const [isDraggingTextRef, setIsDraggingTextRef] = useState(false)
     const dragOffsetRef = useRef({ x: 0, y: 0 }) // Track visual delta without re-rendering
     const textDragStartRef = useRef<{ startX: number, startY: number, initialX: number, initialY: number } | null>(null)
+    const imageCache = useRef<Map<string, HTMLImageElement>>(new Map())
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Supabase Client
     const supabase = createClient()
@@ -226,6 +270,21 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         }
     }, [roomId])
 
+    // Preload Images
+    useEffect(() => {
+        elements.forEach(el => {
+            if (el.type === 'image' && el.data && !imageCache.current.has(el.id)) {
+                const img = new Image()
+                img.src = el.data
+                img.onload = () => {
+                    imageCache.current.set(el.id, img)
+                    // Set size if 0 (first load) - optional but good practice if not set perfectly initially
+                    renderCanvas()
+                }
+            }
+        })
+    }, [elements])
+
     // Focus text input when it appears
     useEffect(() => {
         if (writingText && textAreaRef.current) {
@@ -264,6 +323,12 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         // 2. Draw Saved Elements
         elements.forEach(el => {
+            // Draw image from cache if it exists, otherwise it might be loading
+            if (el.type === 'image' && !imageCache.current.has(el.id) && el.data) {
+                // If not in cache, we rely on the useEffect to load it. 
+                // We can't draw it yet.
+            }
+
             if (draggingElement && el.id === draggingElement.id) {
                 // Apply temporary drag offset
                 drawElement(context, {
@@ -293,13 +358,23 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const drawElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
         const { type, x, y, width, height, strokeColor, points, text, strokeWidth } = element
 
-        ctx.strokeStyle = strokeColor
-        ctx.lineWidth = strokeWidth || 2
-        ctx.fillStyle = strokeColor // For text
+        // Don't apply styles for image (except maybe selection border later)
+        if (type !== 'image') {
+            ctx.strokeStyle = strokeColor
+            ctx.lineWidth = strokeWidth || 2
+            ctx.fillStyle = strokeColor // For text
+        }
 
         ctx.beginPath()
 
         switch (type) {
+            case 'image':
+                const img = imageCache.current.get(element.id)
+                if (img) {
+                    ctx.drawImage(img, x, y, width, height)
+                    // Optional: Draw border if selected?
+                }
+                break
             case 'text':
                 if (text) {
                     ctx.font = `20px ${element.fontFamily || 'sans-serif'}`
@@ -714,25 +789,74 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         { id: 'line', icon: <Minus className="w-5 h-5" /> },
         { id: 'pencil', icon: <Pencil className="w-5 h-5" /> },
         { id: 'text', icon: <Type className="w-5 h-5" /> },
+        { id: 'image', icon: <ImageIcon className="w-5 h-5" /> },
         { id: 'eraser', icon: <Eraser className="w-5 h-5" /> },
     ]
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        try {
+            const compressedBase64 = await compressImage(file)
+
+            // Calculate center of view or some default position
+            // Since we don't have viewport center easily without calculation, let's put it at panOffset + 100,100
+            // Actually panOffset shifts the world. World coordinates for screen (100,100) are (100 - panOffset.x, 100 - panOffset.y)
+
+            const startX = 100 - panOffset.x
+            const startY = 100 - panOffset.y
+
+            const id = crypto.randomUUID()
+
+            // Get dimensions from the loaded image to maintain aspect ratio
+            const tempImg = new Image()
+            tempImg.src = compressedBase64
+            tempImg.onload = () => {
+                const newElement: CanvasElement = {
+                    id,
+                    type: 'image',
+                    x: startX,
+                    y: startY,
+                    width: tempImg.width / 2, // Default to half size of the compressed image for better UX
+                    height: tempImg.height / 2,
+                    strokeColor: 'transparent',
+                    strokeWidth: 0,
+                    data: compressedBase64
+                }
+
+                if (yElementsRef.current) {
+                    yElementsRef.current.push([newElement])
+                }
+
+                setElements(prev => [...prev, newElement])
+                setActiveTool('selection') // Switch to selection tool to move/resize
+            }
+
+        } catch (error) {
+            console.error("Image upload failed", error)
+        }
+
+        // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+
     // ... (Render UI)
-    const showProperties = !['hand', 'selection', 'eraser'].includes(activeTool)
+    const showProperties = !['hand', 'selection', 'eraser', 'image'].includes(activeTool)
     const showEraserProps = activeTool === 'eraser'
     const showTextProps = activeTool === 'text'
 
     return (
-        <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">
+        <div className="flex flex-col h-screen w-full bg-slate-50 dark:bg-background overflow-hidden relative">
             {/* Header */}
-            <div className="flex items-center p-4 bg-white border-b border-gray-200 shrink-0 h-[73px] z-10 relative">
-                <Link href="/dashboard" className="flex items-center text-slate-500 hover:text-slate-800 transition-colors">
+            <div className="flex items-center p-4 bg-white dark:bg-card border-b border-gray-200 dark:border-border shrink-0 h-[73px] z-10 relative transition-colors">
+                <Link href="../" className="flex items-center text-slate-500 dark:text-muted-foreground hover:text-slate-800 dark:hover:text-primary transition-colors">
                     <ArrowLeft className="w-5 h-5 mr-2" />
                     <span className="font-medium">Back to Dashboard</span>
                 </Link>
 
                 {/* Save Status Indicator & Share Button */}
-                <div className="ml-auto flex items-center gap-2 md:gap-4 text-sm text-slate-400">
+                <div className="ml-auto flex items-center gap-2 md:gap-4 text-sm text-slate-400 dark:text-muted-foreground">
                     {saveStatus === 'saving' ? (
                         <div className="flex items-center">
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -747,44 +871,71 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent">
+                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10">
                                 <span className="mr-2 hidden md:inline">Share</span>
                                 <Share className="w-4 h-4" />
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Share Whiteboard</DialogTitle>
+                                <DialogTitle>Share</DialogTitle>
                                 <DialogDescription>
-                                    Publish this whiteboard to the web.
+                                    Share this whiteboard with others.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="flex flex-col gap-4 py-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Globe className="w-5 h-5 text-slate-500" />
-                                        <span className="font-medium">Publish to web</span>
-                                    </div>
-                                    <Button
-                                        variant={isPublic ? "default" : "outline"}
-                                        onClick={handleShareToggle}
-                                    >
-                                        {isPublic ? "Published" : "Private"}
-                                    </Button>
-                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex gap-3">
+                                            <div className="mt-1 bg-slate-100 dark:bg-muted p-2 rounded-full">
+                                                <Globe className="w-4 h-4 text-slate-500 dark:text-muted-foreground" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h4 className="text-sm font-medium leading-none">General Access</h4>
+                                                <p className="text-xs text-slate-500 dark:text-muted-foreground max-w-[200px]">
+                                                    {isPublic
+                                                        ? "Anyone on the internet with the link can view"
+                                                        : "Only you can access this whiteboard"}
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                {isPublic && (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            className="flex-1 text-sm border p-2 rounded bg-slate-50 text-slate-600 outline-none"
-                                            readOnly
-                                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/whiteboard/${roomId}`}
-                                        />
-                                        <Button onClick={copyLink} size="icon" variant="outline">
-                                            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleShareToggle}
+                                            className="shrink-0"
+                                        >
+                                            {isPublic ? "Anyone with the link" : "Restricted"}
+                                            {/* Chevron could go here */}
                                         </Button>
                                     </div>
-                                )}
+
+                                    {isPublic && (
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-muted border rounded-md overflow-hidden">
+                                                <Globe className="w-3 h-3 text-slate-400 dark:text-muted-foreground shrink-0" />
+                                                <input
+                                                    className="flex-1 text-xs bg-transparent text-slate-600 dark:text-foreground outline-none truncate"
+                                                    readOnly
+                                                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/whiteboard/${roomId}`}
+                                                />
+                                            </div>
+                                            <Button onClick={copyLink} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
+                                                <Copy className="w-3 h-3 mr-2" />
+                                                Copy Link
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-muted/50 -mx-6 -mb-6 px-6 py-4 flex justify-between items-center border-t dark:border-border">
+                                <span className="text-xs text-slate-400 dark:text-muted-foreground">
+                                    Update permissions to allow others to edit (Coming Soon)
+                                </span>
+                                <Button variant="default" size="sm" onClick={() => document.querySelector('[data-state="open"]')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))}>
+                                    Done
+                                </Button>
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -792,7 +943,17 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
             </div>
 
             {/* Canvas Container */}
-            <div ref={containerRef} className="flex-1 relative w-full bg-white overflow-hidden">
+            <div ref={containerRef} className="flex-1 relative w-full bg-white dark:bg-background overflow-hidden">
+                {/* Dot Grid Background for Dark Mode */}
+                <div
+                    className="absolute inset-0 pointer-events-none opacity-0 dark:opacity-20 transition-opacity duration-300"
+                    style={{
+                        backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)',
+                        backgroundSize: '20px 20px',
+                        transform: `translate(${panOffset.x % 20}px, ${panOffset.y % 20}px)`
+                    }}
+                />
+
                 <canvas
                     ref={canvasRef}
                     onMouseDown={startDrawing}
@@ -806,20 +967,34 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                     style={{ cursor: getCursorStyle() }}
                 />
 
-                {/* Tools - Moved to bottom on mobile */}
-                <div className="absolute top-4 left-4 z-20 hidden md:flex flex-col gap-2 p-2 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 shadow-xl">
+                {/* Hidden File Input */}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                />
+
+                {/* Toolbar */}
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 p-1 flex gap-1 z-10 overflow-x-auto max-w-[95vw] hide-scrollbar">
                     {tools.map(tool => (
-                        <button
+                        <Button
                             key={tool.id}
-                            onClick={() => setActiveTool(tool.id)}
-                            className={`p-2 rounded-lg transition-all ${activeTool === tool.id
-                                ? 'bg-blue-100 text-blue-600 shadow-sm'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                                }`}
+                            variant={activeTool === tool.id ? "default" : "ghost"}
+                            size="icon"
+                            className="h-9 w-9 shrink-0"
+                            onClick={() => {
+                                if (tool.id === 'image') {
+                                    fileInputRef.current?.click()
+                                } else {
+                                    setActiveTool(tool.id)
+                                }
+                            }}
                             title={tool.id.charAt(0).toUpperCase() + tool.id.slice(1)}
                         >
                             {tool.icon}
-                        </button>
+                        </Button>
                     ))}
                 </div>
 
@@ -851,7 +1026,11 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                                     <button
                                         key={tool.id}
                                         onClick={() => {
-                                            setActiveTool(tool.id)
+                                            if (tool.id === 'image') {
+                                                fileInputRef.current?.click()
+                                            } else {
+                                                setActiveTool(tool.id)
+                                            }
                                             setIsMobileMenuOpen(false)
                                         }}
                                         className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all aspect-square ${activeTool === tool.id
