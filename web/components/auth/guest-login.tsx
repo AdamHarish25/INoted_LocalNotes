@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-
+import { createClient } from "@/utils/supabase/client"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -11,8 +11,10 @@ export function GuestLogin() {
     const handleLogin = async () => {
         setIsLoading(true)
         try {
-            const { continueAsGuest } = await import("@/app/login/actions")
-            await continueAsGuest()
+            const supabase = createClient()
+            const { error } = await supabase.auth.signInAnonymously()
+
+            if (error) throw error
 
             // Force a hard navigation to ensure cookies are recognized by the server
             // and to clear any client-side router cache that might think we are still unauthenticated.
