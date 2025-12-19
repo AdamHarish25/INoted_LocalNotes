@@ -11,11 +11,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '../.env.local') })
 
 // Initialize Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY
 
 if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase credentials in .env.local')
+    console.error('CRITICAL ERROR: Supabase credentials are missing.')
+    console.error('Please set the following environment variables in your deployment (Railway/Vercel/etc):')
+    console.error(' - NEXT_PUBLIC_SUPABASE_URL')
+    console.error(' - NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    process.exit(1)
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey)
