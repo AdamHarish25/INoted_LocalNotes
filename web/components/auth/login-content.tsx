@@ -91,15 +91,7 @@ export function LoginContent() {
         }
     }
 
-    // Determine valid Site Key:
-    // 1. If on localhost or a Netlify Preview (contains '--'), use the CLOUDFLARE TEST KEY (Always passes)
-    // 2. Otherwise use the Production Key from env
-    const isTestParam = typeof window !== 'undefined' &&
-        (window.location.hostname.includes('localhost') || window.location.hostname.includes('--'));
-
-    const SITE_KEY = isTestParam
-        ? "1x0000000000000000000000000000000AA"
-        : (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x0000000000000000000000000000000AA");
+    const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x0000000000000000000000000000000AA";
 
     return (
         <>
