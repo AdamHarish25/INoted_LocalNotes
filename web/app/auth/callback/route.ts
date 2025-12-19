@@ -15,6 +15,8 @@ export async function GET(request: Request) {
         if (!error) {
             return NextResponse.redirect(`${origin}${next}`);
         }
+        // Redirect with actual error
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
     }
 
     // return the user to an error page with instructions
