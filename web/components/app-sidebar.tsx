@@ -215,28 +215,38 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Create Workspace</DialogTitle>
+                    <DialogTitle>{user?.is_anonymous ? "Account Required" : "Create Workspace"}</DialogTitle>
                     <DialogDescription>
-                      Create a new workspace to organize your notes and whiteboards.
+                      {user?.is_anonymous ? "You need to log in to create new workspaces." : "Create a new workspace to organize your notes and whiteboards."}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="py-4">
-                    <Input
-                      placeholder="Workspace Name"
-                      value={newWorkspaceName}
-                      onChange={(e) => setNewWorkspaceName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleCreateWorkspace()
-                      }}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateWorkspaceOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCreateWorkspace} disabled={isCreatingWorkspace}>
-                      {isCreatingWorkspace && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Create
-                    </Button>
-                  </DialogFooter>
+                  {user?.is_anonymous ? (
+                    <div className="flex justify-center py-4">
+                      <Link href="/login">
+                        <Button>Log In / Sign Up</Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="py-4">
+                        <Input
+                          placeholder="Workspace Name"
+                          value={newWorkspaceName}
+                          onChange={(e) => setNewWorkspaceName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleCreateWorkspace()
+                          }}
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsCreateWorkspaceOpen(false)}>Cancel</Button>
+                        <Button onClick={handleCreateWorkspace} disabled={isCreatingWorkspace}>
+                          {isCreatingWorkspace && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Create
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  )}
                 </DialogContent>
               </Dialog>
             ) : (
