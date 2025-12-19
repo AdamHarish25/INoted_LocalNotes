@@ -62,7 +62,15 @@ export function LoginContent() {
 
         setIsLoading(true)
         const supabase = createClient()
-        const redirectTo = `${location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`
+
+        // Dynamically determine the redirect URL
+        // If on localhost or preview, use the current origin.
+        // Otherwise, you can default to the production URL or let Supabase handle it based on your settings.
+        const origin = typeof window !== 'undefined' && (window.location.hostname.includes('localhost') || window.location.hostname.includes('--'))
+            ? window.location.origin
+            : location.origin;
+
+        const redirectTo = `${origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`
 
         try {
             const { error } = await supabase.auth.signInWithOAuth({
