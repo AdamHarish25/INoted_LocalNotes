@@ -50,6 +50,7 @@ export async function updateSession(request: NextRequest) {
         // allow public assets if missed by matcher, but generally redirect to login
         const url = request.nextUrl.clone()
         url.pathname = '/login'
+        url.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search)
         return NextResponse.redirect(url)
     }
 

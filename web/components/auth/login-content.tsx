@@ -40,7 +40,7 @@ export function LoginContent() {
 
             if (error) throw error
 
-            window.location.href = "/"
+            window.location.href = next || "/"
         } catch (error) {
             console.error("Guest login failed", error)
             setIsLoading(false)
@@ -97,6 +97,7 @@ export function LoginContent() {
 
             <form className="space-y-6">
                 <input type="hidden" name="captchaToken" value={captchaToken || ""} />
+                <input type="hidden" name="next" value={next || "/"} />
 
                 <div className="space-y-6">
                     <div className="space-y-2 relative">
