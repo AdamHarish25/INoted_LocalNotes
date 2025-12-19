@@ -287,6 +287,8 @@ ul[data-type="taskList"] li>div {
   .print-area,
   .print-area * {
     visibility: visible;
+    color: black !important;
+    color-scheme: light !important;
   }
 
   /* Reset positioning to allow flow and pagination */
