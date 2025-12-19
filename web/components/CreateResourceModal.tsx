@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { createWhiteboard, createNote } from "@/app/actions"
+import { createClient } from "@/utils/supabase/client"
 
 interface Workspace {
     id: string
@@ -63,15 +64,15 @@ export function CreateResourceModal({ type, workspaces, children, defaultWorkspa
                         {isGuest ? "You need to log in to create new content." : `Enter a name for your new ${type}.`}
                     </DialogDescription>
                 </DialogHeader>
+
                 {isGuest ? (
                     <div className="flex justify-center py-4">
-                        <Link href="/login">
-                            <Button onClick={async (e) => {
-                                e.stopPropagation()
-                                const { signOut } = await import("@/app/actions")
-                                await signOut()
-                            }}>Log In / Sign Up</Button>
-                        </Link>
+                        <Button onClick={async () => {
+                            const supabase = createClient()
+                            await supabase.auth.signOut()
+                            const next = encodeURIComponent(window.location.pathname + window.location.search)
+                            window.location.href = `/login?next=${next}`
+                        }}>Log In / Sign Up</Button>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="grid gap-4 py-4">

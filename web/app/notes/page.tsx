@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/server"
 import { CreateResourceModal } from "@/components/CreateResourceModal"
 import { SearchInput } from "@/components/search-input"
 import { ResourceOptions } from "@/components/resource-options"
+import { GuestBanner } from "@/components/guest-banner"
 
 export default async function NoteDashboardPage(props: { searchParams?: Promise<{ q?: string }> }) {
     const searchParams = await props.searchParams
@@ -91,23 +92,7 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
     return (
         <div className="p-8 space-y-8 bg-muted/30 dark:bg-background min-h-screen">
             {/* Guest Banner */}
-            {isGuest && (
-                <div className="bg-blue-600 dark:bg-blue-900 text-white px-6 py-4 rounded-lg shadow-md flex items-center justify-between mb-8">
-                    <div>
-                        <h3 className="font-bold text-lg">Browsing as Guest</h3>
-                        <p className="text-sm opacity-90">You are in read-only mode. Create an account to save your work.</p>
-                    </div>
-                    <Link href="/login" >
-                        <Button onClick={async (e) => {
-                            e.stopPropagation()
-                            const { signOut } = await import("@/app/actions")
-                            await signOut()
-                        }} variant="secondary" className="whitespace-nowrap">
-                            Log In / Sign Up
-                        </Button>
-                    </Link>
-                </div>
-            )}
+            {isGuest && <GuestBanner />}
 
             {/* Search Bar */}
             <div className="flex justify-center mb-8">
