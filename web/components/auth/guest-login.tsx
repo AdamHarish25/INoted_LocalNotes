@@ -56,9 +56,16 @@ export function GuestLogin() {
                 </Button>
             )}
 
+            {status === "success" && (
+                <Button disabled className="w-full rounded-full h-11 bg-green-500 text-white">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Success! Redirecting...
+                </Button>
+            )}
+
             {status === "error" && (
                 <div className="text-center">
-                    <p className="text-red-500 text-xs mb-2">Verification failed. Please try again.</p>
+                    <p className="text-red-500 text-xs mb-2">Verification failed. Please check your credentials or connection.</p>
                     <Button
                         variant="secondary"
                         onClick={() => setStatus("initial")}

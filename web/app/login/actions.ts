@@ -67,8 +67,8 @@ export async function continueAsGuest(token: string) {
         const outcome = await result.json()
 
         if (!outcome.success) {
-            console.error("Turnstile verification failed", outcome)
-            throw new Error("Captcha validation failed")
+            console.error("Turnstile verification failed. Outcome:", JSON.stringify(outcome))
+            throw new Error(`Captcha validation failed: ${JSON.stringify(outcome['error-codes'])}`)
         }
 
         const cookieStore = await cookies()
