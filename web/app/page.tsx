@@ -16,39 +16,33 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Check if user is anonymous (guest)
+  const isGuest = user?.is_anonymous ?? false;
+
   // Ideally this should be handled by middleware, but safe check here
-  // Note: Middleware already redirects unauthenticated users, so user should exist here if middleware is on.
-  // But for robustness in case middleware matcher misses:
   if (!user) {
     redirect("/login")
-  }
-
-  // Check if user is anonymous (guest)
-  if (user.is_anonymous) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-muted/30 dark:bg-background p-8 text-center">
-        <h1 className="text-3xl font-bold mb-4 text-slate-800 dark:text-white">Welcome, Guest!</h1>
-        <p className="text-slate-600 dark:text-slate-300 max-w-md mb-8">
-          You are currently browsing as a guest. You can view Notes and Whiteboards shared with you via public links.
-          <br /><br />
-          To create and save your own content, please Log In.
-        </p>
-        <div className="flex gap-4">
-          <Link href="/login">
-            <Button>Log In / Sign Up</Button>
-          </Link>
-        </div>
-        {/* Optional: Input to paste a link? */}
-      </div>
-    )
   }
 
   // Fetch Notes
   let notesQuery = supabase
     .from("notes")
     .select("*, workspaces(name)")
-    .eq("owner_id", user.id) // SECURITY FIX: Only fetch current user's notes
     .order("created_at", { ascending: false })
+
+  // If not guest, only show own notes. If guest, perhaps show nothing or public demo notes?
+  // Since guest users are real users in Supabase, they have an ID. 
+  // Initially, their list will be empty.
+  if (!isGuest) {
+    notesQuery = notesQuery.eq("owner_id", user.id)
+  } else {
+    // For guests, we might want to show their own 'temp' notes if they created any?
+    // Since RLS policies might allow insert for anon, they can technically be own_id = user.id (anon id)
+    // But user requested "forbidden to make a new notes".
+    // So assuming they can't create anything, this list is effectively empty or shows nothing.
+    // But to be safe and consistent with strict RLS:
+    notesQuery = notesQuery.eq("owner_id", user.id)
+  }
 
   if (query) {
     notesQuery = notesQuery.ilike("title", `%${query}%`)
@@ -99,6 +93,21 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
 
   return (
     <div className="p-8 space-y-8 bg-muted/30 dark:bg-background min-h-screen">
+      {/* Guest Banner */}
+      {isGuest && (
+        <div className="bg-blue-600 dark:bg-blue-900 text-white px-6 py-4 rounded-lg shadow-md flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg">Browsing as Guest</h3>
+            <p className="text-sm opacity-90">You are in read-only mode. Create an account to save your work.</p>
+          </div>
+          <Link href="/login">
+            <Button variant="secondary" className="whitespace-nowrap">
+              Log In / Sign Up
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* Search Bar */}
       <div className="flex justify-center mb-8">
         <SearchInput />
@@ -156,7 +165,7 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
           })}
 
           {/* New Note Button */}
-          <CreateResourceModal type="note" workspaces={workspaces || []}>
+          <CreateResourceModal type="note" workspaces={workspaces || []} isGuest={isGuest}>
             <button className="w-full h-full">
               <Card className="h-48 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 group transition-all duration-200 flex items-center justify-center hover:shadow-md cursor-pointer group border-dashed">
                 <div className="flex flex-col items-center">
@@ -226,7 +235,7 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
           ))}
 
           {/* New Whiteboard Button */}
-          <CreateResourceModal type="whiteboard" workspaces={workspaces || []}>
+          <CreateResourceModal type="whiteboard" workspaces={workspaces || []} isGuest={isGuest}>
             <button className="w-full h-full group">
               <Card className="h-40 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black group hover:bg-zinc-50 dark:hover:bg-zinc-900 flex items-center justify-center hover:shadow-md transition-colors duration-200 cursor-pointer mb-2 border-dashed">
                 <div className="flex flex-col items-center">

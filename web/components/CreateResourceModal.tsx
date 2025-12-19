@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import * as React from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -17,9 +18,10 @@ interface CreateResourceModalProps {
     workspaces: Workspace[]
     children: React.ReactNode
     defaultWorkspaceId?: string
+    isGuest?: boolean
 }
 
-export function CreateResourceModal({ type, workspaces, children, defaultWorkspaceId }: CreateResourceModalProps) {
+export function CreateResourceModal({ type, workspaces, children, defaultWorkspaceId, isGuest }: CreateResourceModalProps) {
     const [open, setOpen] = React.useState(false)
     const [title, setTitle] = React.useState("")
     const [workspaceId, setWorkspaceId] = React.useState(defaultWorkspaceId || "")
@@ -56,47 +58,55 @@ export function CreateResourceModal({ type, workspaces, children, defaultWorkspa
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Create {type === "note" ? "Note" : "Whiteboard"}</DialogTitle>
+                    <DialogTitle>{isGuest ? "Account Required" : `Create ${type === "note" ? "Note" : "Whiteboard"}`}</DialogTitle>
                     <DialogDescription>
-                        Enter a name for your new {type}.
+                        {isGuest ? "You need to log in to create new content." : `Enter a name for your new ${type}.`}
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="title" className="text-right">
-                            Name
-                        </Label>
-                        <Input
-                            id="title"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="col-span-3"
-                            placeholder={`Untitled ${type === "note" ? "Note" : "Whiteboard"}`}
-                            required
-                        />
+                {isGuest ? (
+                    <div className="flex justify-center py-4">
+                        <Link href="/login">
+                            <Button>Log In / Sign Up</Button>
+                        </Link>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="workspace" className="text-right">
-                            Workspace
-                        </Label>
-                        <select
-                            id="workspace"
-                            className="col-span-3 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            value={workspaceId}
-                            onChange={(e) => setWorkspaceId(e.target.value)}
-                        >
-                            <option value="">None</option>
-                            {workspaces.map(ws => (
-                                <option key={ws.id} value={ws.id}>{ws.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? "Creating..." : "Create"}
-                        </Button>
-                    </DialogFooter>
-                </form>
+                ) : (
+                    <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="title" className="text-right">
+                                Name
+                            </Label>
+                            <Input
+                                id="title"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="col-span-3"
+                                placeholder={`Untitled ${type === "note" ? "Note" : "Whiteboard"}`}
+                                required
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="workspace" className="text-right">
+                                Workspace
+                            </Label>
+                            <select
+                                id="workspace"
+                                className="col-span-3 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={workspaceId}
+                                onChange={(e) => setWorkspaceId(e.target.value)}
+                            >
+                                <option value="">None</option>
+                                {workspaces.map(ws => (
+                                    <option key={ws.id} value={ws.id}>{ws.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit" disabled={isLoading}>
+                                {isLoading ? "Creating..." : "Create"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                )}
             </DialogContent>
         </Dialog>
     )
