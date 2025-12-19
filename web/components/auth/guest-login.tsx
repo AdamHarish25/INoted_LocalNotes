@@ -8,15 +8,20 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
 export function GuestLogin() {
-    const [status, setStatus] = useState<"initial" | "verifying" | "success" | "error">("initial")
+    const [status, setStatus] = useState<"initial" | "captcha_verified" | "verifying" | "success" | "error">("initial")
     const [token, setToken] = useState<string | null>(null)
     const router = useRouter()
 
     // You should add this to your .env.local
     const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA" // Test Site Key
 
-    const handleSuccess = async (token: string) => {
+    const handleCaptchaSuccess = (token: string) => {
         setToken(token)
+        setStatus("captcha_verified")
+    }
+
+    const handleLogin = async () => {
+        if (!token) return
         setStatus("verifying")
         try {
             const supabase = createClient()
@@ -45,7 +50,7 @@ export function GuestLogin() {
                     <div className="flex justify-center">
                         <Turnstile
                             siteKey={SITE_KEY}
-                            onSuccess={handleSuccess}
+                            onSuccess={handleCaptchaSuccess}
                             options={{
                                 theme: 'auto',
                                 size: 'flexible'
@@ -56,6 +61,12 @@ export function GuestLogin() {
                         Complete the captcha to continue as guest
                     </p>
                 </div>
+            )}
+
+            {status === "captcha_verified" && (
+                <Button onClick={handleLogin} className="w-full rounded-full h-11 bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all animate-in fade-in zoom-in duration-300">
+                    Continue to Dashboard
+                </Button>
             )}
 
             {status === "verifying" && (
