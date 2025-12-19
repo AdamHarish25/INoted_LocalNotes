@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/utils/supabase/server"
@@ -18,8 +19,11 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
     // Ideally this should be handled by middleware, but safe check here
     // Note: Middleware already redirects unauthenticated users, so user should exist here if middleware is on.
     // But for robustness in case middleware matcher misses:
+    // Check if user is anonymous (guest)
+    const isGuest = user?.is_anonymous ?? false;
+
     if (!user) {
-        return <div>Please log in</div>
+        redirect("/login")
     }
 
     // Fetch Notes
@@ -86,6 +90,21 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
 
     return (
         <div className="p-8 space-y-8 bg-muted/30 dark:bg-background min-h-screen">
+            {/* Guest Banner */}
+            {isGuest && (
+                <div className="bg-blue-600 dark:bg-blue-900 text-white px-6 py-4 rounded-lg shadow-md flex items-center justify-between mb-8">
+                    <div>
+                        <h3 className="font-bold text-lg">Browsing as Guest</h3>
+                        <p className="text-sm opacity-90">You are in read-only mode. Create an account to save your work.</p>
+                    </div>
+                    <Link href="/login">
+                        <Button variant="secondary" className="whitespace-nowrap">
+                            Log In / Sign Up
+                        </Button>
+                    </Link>
+                </div>
+            )}
+
             {/* Search Bar */}
             <div className="flex justify-center mb-8">
                 <SearchInput />
@@ -143,7 +162,7 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
                     })}
 
                     {/* New Note Button */}
-                    <CreateResourceModal type="note" workspaces={workspaces || []}>
+                    <CreateResourceModal type="note" workspaces={workspaces || []} isGuest={isGuest}>
                         <button className="w-full h-full">
                             <Card className="h-48 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 group transition-all duration-200 flex items-center justify-center hover:shadow-md cursor-pointer group border-dashed">
                                 <div className="flex flex-col items-center">

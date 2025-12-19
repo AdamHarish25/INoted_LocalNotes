@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/utils/supabase/server"
@@ -15,8 +16,11 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Check if user is anonymous (guest)
+    const isGuest = user?.is_anonymous ?? false;
+
     if (!user) {
-        return <div>Please log in</div>
+        redirect("/login")
     }
 
     // Fetch Whiteboards
@@ -41,6 +45,21 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
 
     return (
         <div className="p-8 space-y-8 bg-muted/30 dark:bg-background min-h-screen">
+            {/* Guest Banner */}
+            {isGuest && (
+                <div className="bg-blue-600 dark:bg-blue-900 text-white px-6 py-4 rounded-lg shadow-md flex items-center justify-between mb-8">
+                    <div>
+                        <h3 className="font-bold text-lg">Browsing as Guest</h3>
+                        <p className="text-sm opacity-90">You are in read-only mode. Create an account to save your work.</p>
+                    </div>
+                    <Link href="/login">
+                        <Button variant="secondary" className="whitespace-nowrap">
+                            Log In / Sign Up
+                        </Button>
+                    </Link>
+                </div>
+            )}
+
             {/* Search Bar */}
             <div className="flex justify-center mb-8">
                 <SearchInput />
@@ -101,7 +120,7 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
                     ))}
 
                     {/* New Whiteboard Button */}
-                    <CreateResourceModal type="whiteboard" workspaces={workspaces || []}>
+                    <CreateResourceModal type="whiteboard" workspaces={workspaces || []} isGuest={isGuest}>
                         <button className="w-full h-full group">
                             <Card className="h-40 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black group hover:bg-zinc-50 dark:hover:bg-zinc-900 flex items-center justify-center hover:shadow-md transition-colors duration-200 cursor-pointer mb-2 border-dashed">
                                 <div className="flex flex-col items-center">
