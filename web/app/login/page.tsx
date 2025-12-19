@@ -3,6 +3,7 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { login, signup } from "./actions"
+import { GuestLogin } from "@/components/auth/guest-login"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -127,6 +128,10 @@ export default async function LoginPage(props: {
                             <div className="relative flex justify-center text-[10px] uppercase">
                                 <span className="bg-white dark:bg-black px-2 text-slate-300 dark:text-zinc-500">Or</span>
                             </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <GuestLogin />
                         </div>
 
                         <Suspense fallback={<div>Loading...</div>}>

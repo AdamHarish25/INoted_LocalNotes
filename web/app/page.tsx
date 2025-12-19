@@ -3,6 +3,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/utils/supabase/server"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 // createNote and createWhiteboard actions are now used within the modal component
 import { CreateResourceModal } from "@/components/CreateResourceModal"
 import { SearchInput } from "@/components/search-input"
@@ -19,7 +21,29 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
   // Note: Middleware already redirects unauthenticated users, so user should exist here if middleware is on.
   // But for robustness in case middleware matcher misses:
   if (!user) {
-    return <div>Please log in</div>
+    const cookieStore = await cookies()
+    const isGuest = cookieStore.get("is_guest")?.value === "true"
+
+    if (isGuest) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-muted/30 dark:bg-background p-8 text-center">
+          <h1 className="text-3xl font-bold mb-4 text-slate-800 dark:text-white">Welcome, Guest!</h1>
+          <p className="text-slate-600 dark:text-slate-300 max-w-md mb-8">
+            You are currently browsing as a guest. You can view Notes and Whiteboards shared with you via public links.
+            <br /><br />
+            To create and save your own content, please Log In.
+          </p>
+          <div className="flex gap-4">
+            <Link href="/login">
+              <Button>Log In / Sign Up</Button>
+            </Link>
+          </div>
+          {/* Optional: Input to paste a link? */}
+        </div>
+      )
+    }
+
+    redirect("/login")
   }
 
   // Fetch Notes

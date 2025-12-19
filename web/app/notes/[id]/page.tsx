@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Share, Cloud } from "lucide-react"
 
 import { createClient } from "@/utils/supabase/server"
+import { notFound } from "next/navigation"
 
 export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -19,6 +20,10 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
         `)
         .eq("id", id)
         .single()
+
+    if (!note) {
+        notFound()
+    }
 
     const { data: { user } } = await supabase.auth.getUser()
     const isOwner = user?.id === note?.owner_id
