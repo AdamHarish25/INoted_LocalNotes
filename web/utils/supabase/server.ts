@@ -18,12 +18,9 @@ export async function createClient() {
                             // Helper to remove domain so cookies work on localhost and deploy previews
                             const { domain, ...validOptions } = options
 
-                            // In development, especially when accessing via IP (mobile testing), 
-                            // we must allow non-secure cookies or the browser might reject them,
-                            // causing the "code verifier" error on callback.
-                            if (process.env.NODE_ENV === 'development') {
-                                validOptions.secure = false
-                            }
+                            // Force secure to false to ensure cookies work on mobile/LAN (HTTP) environments.
+                            // This resolves the "code verifier" error and redirect loops on non-HTTPS connections.
+                            validOptions.secure = false;
 
                             cookieStore.set(name, value, validOptions)
                         })

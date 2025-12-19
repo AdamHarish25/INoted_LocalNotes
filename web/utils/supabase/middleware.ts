@@ -23,9 +23,8 @@ export async function updateSession(request: NextRequest) {
                     })
                     cookiesToSet.forEach(({ name, value, options }) => {
                         const { domain, ...validOptions } = options
-                        if (process.env.NODE_ENV === 'development') {
-                            validOptions.secure = false;
-                        }
+                        // Force secure to false for mobile/LAN support
+                        validOptions.secure = false;
                         supabaseResponse.cookies.set(name, value, validOptions)
                     })
                 },
