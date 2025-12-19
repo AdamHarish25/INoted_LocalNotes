@@ -5,10 +5,12 @@ import { Turnstile } from "@marsidev/react-turnstile"
 import { Button } from "@/components/ui/button"
 import { continueAsGuest } from "@/app/login/actions"
 import { Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function GuestLogin() {
     const [status, setStatus] = useState<"initial" | "verifying" | "success" | "error">("initial")
     const [token, setToken] = useState<string | null>(null)
+    const router = useRouter()
 
     // You should add this to your .env.local
     const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA" // Test Site Key
@@ -19,6 +21,8 @@ export function GuestLogin() {
         try {
             await continueAsGuest(token)
             setStatus("success")
+            router.refresh()
+            router.push("/")
         } catch (error) {
             console.error("Guest login failed", error)
             setStatus("error")

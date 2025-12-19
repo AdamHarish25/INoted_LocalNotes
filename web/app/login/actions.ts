@@ -79,5 +79,5 @@ export async function continueAsGuest(token: string) {
         throw err
     }
 
-    redirect("/")
+    return { success: true }
 }
