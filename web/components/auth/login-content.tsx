@@ -22,6 +22,8 @@ export function LoginContent() {
     const [captchaToken, setCaptchaToken] = useState<string | null>(null)
     const turnstileRef = useRef<TurnstileInstance>(null)
 
+    const [isSignup, setIsSignup] = useState(false);
+
     // Guest Login Handler
     const handleGuestLogin = async () => {
         if (!captchaToken) {
@@ -107,6 +109,7 @@ export function LoginContent() {
                             type="text"
                             placeholder="(Required for Sign Up)"
                             className="peer rounded-full border-slate-200 dark:border-zinc-700 focus:border-blue-500 focus-visible:ring-blue-500 h-11 placeholder:text-transparent focus:placeholder:text-slate-300 dark:focus:placeholder:text-zinc-500 focus:placeholder:text-[10px] transition-colors text-slate-900 dark:text-white bg-white dark:bg-black"
+                            required={isSignup}
                         />
                         <Label
                             htmlFor="username"
@@ -191,6 +194,7 @@ export function LoginContent() {
                             Login
                         </Button>
                         <Button
+                            onClick={() => setIsSignup(true)}
                             formAction={signup}
                             variant="outline"
                             disabled={!captchaToken || isLoading}
