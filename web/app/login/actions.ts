@@ -71,9 +71,14 @@ export async function continueAsGuest(token: string) {
             throw new Error(`Captcha validation failed: ${JSON.stringify(outcome['error-codes'])}`)
         }
 
-        const cookieStore = await cookies()
-        // 24 hours expiry for guest session
-        cookieStore.set("is_guest", "true", { path: "/", maxAge: 60 * 60 * 24 })
+        const supabase = await createClient()
+        const { error } = await supabase.auth.signInAnonymously()
+
+        if (error) {
+            console.error("Supabase anonymous sign-in failed:", error)
+            throw error
+        }
+
     } catch (err) {
         console.error("Guest login error:", err)
         throw err
