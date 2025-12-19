@@ -2,7 +2,7 @@
 
 import { useState, useRef, Suspense } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
 
@@ -15,6 +15,7 @@ import { login, signup } from "@/app/login/actions"
 
 export function LoginContent() {
     const searchParams = useSearchParams()
+    const router = useRouter()
     const errorMessage = searchParams.get("error")
     const next = searchParams.get("next")
 
@@ -42,7 +43,8 @@ export function LoginContent() {
 
             if (error) throw error
 
-            window.location.href = next || "/"
+            router.push(next || "/")
+            router.refresh()
         } catch (error) {
             console.error("Guest login failed", error)
             setIsLoading(false)
