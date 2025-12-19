@@ -187,6 +187,7 @@ export function LoginContent() {
 
                     <div className="flex gap-2">
                         <Button
+                            onClick={() => setIsSignup(false)}
                             formAction={login}
                             disabled={!captchaToken || isLoading}
                             className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white disabled:opacity-50"
