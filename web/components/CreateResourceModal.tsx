@@ -65,12 +65,12 @@ export function CreateResourceModal({ type, workspaces, children, defaultWorkspa
                 </DialogHeader>
                 {isGuest ? (
                     <div className="flex justify-center py-4">
-                        <Link href="/login" onClick={async (e) => {
-                            e.stopPropagation()
-                            const { signOut } = await import("@/app/actions")
-                            await signOut()
-                        }}>
-                            <Button>Log In / Sign Up</Button>
+                        <Link href="/login">
+                            <Button onClick={async (e) => {
+                                e.stopPropagation()
+                                const { signOut } = await import("@/app/actions")
+                                await signOut()
+                            }}>Log In / Sign Up</Button>
                         </Link>
                     </div>
                 ) : (

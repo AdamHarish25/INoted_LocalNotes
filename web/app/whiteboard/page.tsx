@@ -52,12 +52,12 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
                         <h3 className="font-bold text-lg">Browsing as Guest</h3>
                         <p className="text-sm opacity-90">You are in read-only mode. Create an account to save your work.</p>
                     </div>
-                    <Link href="/login" onClick={async (e) => {
-                        e.stopPropagation()
-                        const { signOut } = await import("@/app/actions")
-                        await signOut()
-                    }}>
-                        <Button variant="secondary" className="whitespace-nowrap">
+                    <Link href="/login">
+                        <Button onClick={async (e) => {
+                            e.stopPropagation()
+                            const { signOut } = await import("@/app/actions")
+                            await signOut()
+                        }} variant="secondary" className="whitespace-nowrap">
                             Log In / Sign Up
                         </Button>
                     </Link>
