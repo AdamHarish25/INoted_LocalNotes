@@ -274,10 +274,13 @@ ul[data-type="taskList"] li>div {
 @media print {
   @page {
     margin: 20mm;
+    size: auto;
   }
 
-  body * {
+  body {
     visibility: hidden;
+    height: auto;
+    overflow: visible;
   }
 
   /* Only show the print-area element and its children */
@@ -286,17 +289,30 @@ ul[data-type="taskList"] li>div {
     visibility: visible;
   }
 
-  /* Position the print area at the top left to ensure it's captured */
+  /* Reset positioning to allow flow and pagination */
   .print-area {
-    position: fixed;
+    position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    height: auto !important;
+    overflow: visible !important;
     margin: 0;
     padding: 0;
-    /* Optional: Ensure text is black for printing */
+    /* Ensure text is black for printing */
     color: black !important;
     background: white !important;
+
+    /* Reset any max-width or layout constraints */
+    max-width: none !important;
+    min-height: auto !important;
+    display: block !important;
+  }
+
+  /* Ensure no scrollbars on print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Force hide specific elements if needed */
