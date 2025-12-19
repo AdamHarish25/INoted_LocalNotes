@@ -99,6 +99,17 @@ export function LoginContent() {
         }
     }, []);
 
+    // Handle case where Supabase redirects back to Login with the code (fallback)
+    useEffect(() => {
+        const code = searchParams.get("code")
+        if (code) {
+            setIsLoading(true)
+            // Forward to the actual callback handler
+            const callbackUrl = `/auth/callback${window.location.search}`
+            router.push(callbackUrl)
+        }
+    }, [searchParams, router])
+
     return (
         <>
             <div className="text-center mb-8">
