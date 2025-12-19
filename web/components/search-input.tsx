@@ -29,7 +29,7 @@ export function SearchInput() {
         <div className="relative w-full max-w-xl">
             <Input
                 placeholder={pathname === "/whiteboard" ? "Search Whiteboards..." : (pathname === "/notes" ? "Search Notes..." : "Search Notes & Whiteboards...")}
-                className="pl-4 pr-10 py-6 rounded-2xl border-slate-200 shadow-sm bg-white text-slate-800"
+                className="pl-4 pr-10 py-6 rounded-2xl border-slate-200 shadow-sm bg-white text-slate-800 dark:bg-black dark:text-white"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
             />

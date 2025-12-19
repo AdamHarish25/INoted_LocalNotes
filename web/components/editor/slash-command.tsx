@@ -12,7 +12,10 @@ import {
     ListOrdered,
     CheckSquare,
     Text,
-    Code
+    Code,
+    Table,
+    Bold,
+    Italic
 } from 'lucide-react'
 
 // 1. Definition of commands
@@ -71,6 +74,30 @@ const getSuggestionItems = ({ query }: { query: string }) => {
             icon: CheckSquare,
             command: ({ editor, range }: { editor: Editor; range: Range }) => {
                 editor.chain().focus().deleteRange(range).toggleTaskList().run()
+            },
+        },
+        {
+            title: 'Bold',
+            description: 'Make text bold',
+            icon: Bold,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range).toggleBold().run()
+            },
+        },
+        {
+            title: 'Italic',
+            description: 'Make text italic',
+            icon: Italic,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range).toggleItalic().run()
+            },
+        },
+        {
+            title: 'Table',
+            description: 'Insert a simple 3x3 table',
+            icon: Table,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
             },
         },
     ].filter((item) => {
@@ -140,27 +167,27 @@ const CommandList = React.forwardRef((props: any, ref) => {
     }))
 
     return (
-        <div className="z-50 min-w-[300px] h-auto rounded-md border bg-popover p-1 shadow-md animate-in fade-in zoom-in duration-200">
-            <div className="flex flex-col overflow-hidden rounded-sm bg-white p-1">
+        <div className="z-50 min-w-[300px] h-auto rounded-md border bg-popover dark:bg-zinc-950 dark:border-zinc-800 p-1 shadow-md animate-in fade-in zoom-in duration-200">
+            <div className="flex flex-col overflow-hidden rounded-sm bg-white dark:bg-zinc-950 p-1">
                 {props.items.length ? (
                     props.items.map((item: CommandItemProps, index: number) => (
                         <button
                             key={index}
-                            className={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none w-full text-left transition-colors ${index === selectedIndex ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-100/50'
+                            className={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none w-full text-left transition-colors ${index === selectedIndex ? 'bg-slate-100 dark:bg-zinc-900 text-slate-900 dark:text-zinc-100' : 'text-slate-500 dark:text-zinc-400 hover:bg-slate-100/50 dark:hover:bg-zinc-900/50'
                                 }`}
                             onClick={() => selectItem(index)}
                         >
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
                                 <item.icon className="h-4 w-4" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="font-medium text-slate-900">{item.title}</span>
-                                <span className="text-xs text-slate-400">{item.description}</span>
+                                <span className="font-medium text-slate-900 dark:text-zinc-200">{item.title}</span>
+                                <span className="text-xs text-slate-400 dark:text-zinc-500">{item.description}</span>
                             </div>
                         </button>
                     ))
                 ) : (
-                    <div className="px-2 py-4 text-center text-sm text-slate-500">
+                    <div className="px-2 py-4 text-center text-sm text-slate-500 dark:text-zinc-500">
                         No results
                     </div>
                 )}

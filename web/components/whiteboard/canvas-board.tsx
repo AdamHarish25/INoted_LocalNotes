@@ -977,7 +977,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                 />
 
                 {/* Toolbar */}
-                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 p-1 flex gap-1 z-10 overflow-x-auto max-w-[95vw] hide-scrollbar">
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 p-1 hidden md:flex gap-1 z-10 overflow-x-auto max-w-[95vw] hide-scrollbar">
                     {tools.map(tool => (
                         <Button
                             key={tool.id}

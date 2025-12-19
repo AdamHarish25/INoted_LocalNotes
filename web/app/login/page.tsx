@@ -23,18 +23,11 @@ export default async function LoginPage(props: {
                     <img src="/logo.png" alt="Logo" className="h-6" />
                 </div>
 
-                {/* Force light mode styles on the card by NOT using dark: variants that invert colors, or explicitly setting them to light counterparts if parent dark mode leaks in. Since we are inside a dark mode parent, we might need to override 'dark:' styles if shadcn components use them automatically. 
-                   Actually, usually shadcn components adapt to 'class="dark"'.
-                   To FORCE light mode inside a dark mode app, we can wrap this part in a `light` class or manually override.
-                   However, `globals.css` defines root variables. 
-                   Simplest way: Explicitly set bg-white and text-slate-900 etc which usually overrides variable based theming if specificity is high enough,
-                   OR we can just let it be if we don't use 'bg-card' but 'bg-white'.
-                   Let's stick to explicit colors for the card to ensure it looks 'light'.
-                */}
-                <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm dark:bg-white/90">
+                {/* Login Card - Dark Mode Update */}
+                <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm dark:bg-black dark:border dark:border-zinc-800">
                     <CardContent className="pt-10 pb-10 px-8">
                         <div className="text-center mb-8">
-                            <h2 className="text-xl font-medium tracking-wide text-slate-700">LOGIN</h2>
+                            <h2 className="text-xl font-medium tracking-wide text-slate-700 dark:text-white">LOGIN</h2>
                         </div>
 
                         <form className="space-y-6">
@@ -45,15 +38,15 @@ export default async function LoginPage(props: {
                                         name="username"
                                         type="text"
                                         placeholder="(Required for Sign Up)"
-                                        className="peer rounded-full border-slate-200 dark:border-gray-500 focus:border-blue-500 focus-visible:ring-blue-500 h-11 placeholder:text-transparent focus:placeholder:text-slate-300 focus:placeholder:text-[10px] transition-colors text-slate-900 bg-white"
+                                        className="peer rounded-full border-slate-200 dark:border-zinc-700 focus:border-blue-500 focus-visible:ring-blue-500 h-11 placeholder:text-transparent focus:placeholder:text-slate-300 dark:focus:placeholder:text-zinc-500 focus:placeholder:text-[10px] transition-colors text-slate-900 dark:text-white bg-white dark:bg-black"
                                     />
                                     <Label
                                         htmlFor="username"
-                                        className="absolute left-4 top-3.5 text-slate-100 text-xs transition-all bg-white dark:bg-white/0 px-1 
-                                        peer-focus:-top-2 peer-focus:left-3 peer-focus:text-blue-500 dark:rounded-full dark:peer-focus:bg-white peer-focus:text-[10px]
+                                        className="absolute left-4 top-3.5 text-slate-400 dark:text-zinc-500 text-xs transition-all bg-white dark:bg-black px-1 
+                                        peer-focus:-top-2 peer-focus:left-3 peer-focus:text-blue-500 dark:peer-focus:text-blue-400 peer-focus:text-[10px]
                                         peer-[:not(:placeholder-shown)]:-top-2 peer-[:not(:placeholder-shown)]:left-3 peer-[:not(:placeholder-shown)]:text-[10px]
-                                        peer-[:not(:placeholder-shown)]:text-slate-400
-                                        peer-focus:peer-[:not(:placeholder-shown)]:text-blue-500
+                                        peer-[:not(:placeholder-shown)]:text-slate-400 dark:peer-[:not(:placeholder-shown)]:text-zinc-500
+                                        peer-focus:peer-[:not(:placeholder-shown)]:text-blue-500 dark:peer-focus:peer-[:not(:placeholder-shown)]:text-blue-400
                                         pointer-events-none"
                                     >
                                         Username
@@ -67,15 +60,15 @@ export default async function LoginPage(props: {
                                         type="email"
                                         placeholder="Email"
                                         required
-                                        className="peer rounded-full border-slate-200 dark:border-gray-500 focus:border-blue-500 focus-visible:ring-blue-500 h-11 placeholder:text-transparent focus:placeholder:text-slate-300 focus:placeholder:text-[10px] transition-colors text-slate-900 bg-white"
+                                        className="peer rounded-full border-slate-200 dark:border-zinc-700 focus:border-blue-500 focus-visible:ring-blue-500 h-11 placeholder:text-transparent transition-colors text-slate-900 dark:text-white bg-white dark:bg-black"
                                     />
                                     <Label
                                         htmlFor="email"
-                                        className="absolute left-4 top-3.5 text-slate-100 text-xs transition-all bg-white dark:bg-white/0 px-1 
-                                        peer-focus:-top-2 peer-focus:left-3 peer-focus:text-blue-500 dark:rounded-full dark:peer-focus:bg-white peer-focus:text-[10px]
+                                        className="absolute left-4 top-3.5 text-slate-400 dark:text-zinc-500 text-xs transition-all bg-white dark:bg-black px-1 
+                                        peer-focus:-top-2 peer-focus:left-3 peer-focus:text-blue-500 dark:peer-focus:text-blue-400 peer-focus:text-[10px]
                                         peer-[:not(:placeholder-shown)]:-top-2 peer-[:not(:placeholder-shown)]:left-3 peer-[:not(:placeholder-shown)]:text-[10px]
-                                        peer-[:not(:placeholder-shown)]:text-slate-400
-                                        peer-focus:peer-[:not(:placeholder-shown)]:text-blue-500
+                                        peer-[:not(:placeholder-shown)]:text-slate-400 dark:peer-[:not(:placeholder-shown)]:text-zinc-500
+                                        peer-focus:peer-[:not(:placeholder-shown)]:text-blue-500 dark:peer-focus:peer-[:not(:placeholder-shown)]:text-blue-400
                                         pointer-events-none"
                                     >
                                         Email
@@ -89,15 +82,15 @@ export default async function LoginPage(props: {
                                         type="password"
                                         required
                                         placeholder="Password"
-                                        className="peer rounded-full border-slate-200 dark:border-gray-500 focus:border-blue-500 focus-visible:ring-blue-500 h-11 placeholder:text-transparent focus:placeholder:text-slate-300 focus:placeholder:text-[10px] transition-colors text-slate-900 bg-white"
+                                        className="peer rounded-full border-slate-200 dark:border-zinc-700 focus:border-blue-500 focus-visible:ring-blue-500 h-11 placeholder:text-transparent transition-colors text-slate-900 dark:text-white bg-white dark:bg-black"
                                     />
                                     <Label
                                         htmlFor="password"
-                                        className="absolute left-4 top-3.5 text-slate-100 text-xs transition-all bg-white dark:bg-white/0 px-1 
-                                        peer-focus:-top-2 peer-focus:left-3 peer-focus:text-blue-500 dark:rounded-full dark:peer-focus:bg-white peer-focus:text-[10px]
+                                        className="absolute left-4 top-3.5 text-slate-400 dark:text-zinc-500 text-xs transition-all bg-white dark:bg-black px-1 
+                                        peer-focus:-top-2 peer-focus:left-3 peer-focus:text-blue-500 dark:peer-focus:text-blue-400 peer-focus:text-[10px]
                                         peer-[:not(:placeholder-shown)]:-top-2 peer-[:not(:placeholder-shown)]:left-3 peer-[:not(:placeholder-shown)]:text-[10px]
-                                        peer-[:not(:placeholder-shown)]:text-slate-400
-                                        peer-focus:peer-[:not(:placeholder-shown)]:text-blue-500
+                                        peer-[:not(:placeholder-shown)]:text-slate-400 dark:peer-[:not(:placeholder-shown)]:text-zinc-500
+                                        peer-focus:peer-[:not(:placeholder-shown)]:text-blue-500 dark:peer-focus:peer-[:not(:placeholder-shown)]:text-blue-400
                                         pointer-events-none"
                                     >
                                         Password
@@ -110,17 +103,17 @@ export default async function LoginPage(props: {
 
                                     {/* Error Message Display */}
                                     {errorMessage && (
-                                        <div className="text-red-500 text-xs mt-2 text-center bg-red-50 p-2 rounded-md border border-red-100">
+                                        <div className="text-red-500 text-xs mt-2 text-center bg-red-50 dark:bg-red-950/30 p-2 rounded-md border border-red-100 dark:border-red-900">
                                             {typeof errorMessage === 'string' ? errorMessage : "An error occurred"}
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="flex gap-2">
-                                    <Button formAction={login} className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 text-white">
+                                    <Button formAction={login} className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white">
                                         Login
                                     </Button>
-                                    <Button formAction={signup} variant="outline" className="flex-1 rounded-full h-11 border-blue-200 dark:text-white text-blue-500 hover:bg-blue-50 bg-white">
+                                    <Button formAction={signup} variant="outline" className="flex-1 rounded-full h-11 border-blue-200 dark:border-zinc-700 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-900 bg-white dark:bg-black">
                                         Sign Up
                                     </Button>
                                 </div>
@@ -129,10 +122,10 @@ export default async function LoginPage(props: {
 
                         <div className="relative my-8">
                             <div className="absolute inset-0 flex items-center">
-                                <Separator className="bg-slate-200 dark:bg-gray-500" />
+                                <Separator className="bg-slate-200 dark:bg-zinc-800" />
                             </div>
                             <div className="relative flex justify-center text-[10px] uppercase">
-                                <span className="bg-white dark:bg-slate-700 px-2 text-slate-300 dark:text-white">Or</span>
+                                <span className="bg-white dark:bg-black px-2 text-slate-300 dark:text-zinc-500">Or</span>
                             </div>
                         </div>
 

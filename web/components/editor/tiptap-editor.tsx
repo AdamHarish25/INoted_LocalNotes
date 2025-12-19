@@ -1,12 +1,13 @@
 "use client"
 
 import { useEditor, EditorContent } from "@tiptap/react"
+
 import StarterKit from "@tiptap/starter-kit"
 import Collaboration from "@tiptap/extension-collaboration"
 // import CollaborationCursor from "@tiptap/extension-collaboration-cursor"
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import { EditorToolbar } from "./toolbar"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import * as Y from "yjs"
 
@@ -24,6 +25,11 @@ import Placeholder from "@tiptap/extension-placeholder"
 
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
+
+import { Table } from '@tiptap/extension-table'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { TableRow } from '@tiptap/extension-table-row'
 
 export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialWorkspace }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string }) {
     const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
@@ -47,7 +53,14 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
     }, [noteId, ydoc])
 
     if (!provider) {
-        return <div className="p-8 text-gray-400">Connecting to collaboration server...</div>
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-black">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-4 border-slate-200 dark:border-zinc-800 border-t-blue-500 rounded-full animate-spin" />
+                    <div className="text-slate-400 dark:text-zinc-500 text-sm font-medium">Connecting to secure server...</div>
+                </div>
+            </div>
+        )
     }
 
     // Pass ydoc ke komponen editor juga
@@ -115,6 +128,12 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             TaskItem.configure({
                 nested: true,
             }),
+            Table.configure({
+                resizable: true,
+            }),
+            TableRow,
+            TableHeader,
+            TableCell,
         ],
         editorProps: {
             attributes: {
@@ -197,6 +216,44 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
 
     const router = useRouter()
+
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, isOpen: boolean } | null>(null)
+    const contextMenuRef = useRef<HTMLDivElement>(null)
+
+    // Close menu on click outside
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+                setContextMenu(null)
+            }
+        }
+        document.addEventListener('click', handleClick)
+        return () => document.removeEventListener('click', handleClick)
+    }, [])
+
+    // Context Menu Listener
+    useEffect(() => {
+        if (!editor) return
+
+        const handleContextMenu = (e: MouseEvent) => {
+            // Check if inside table
+            if (editor.isActive('table')) {
+                e.preventDefault()
+                setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    isOpen: true
+                })
+            }
+        }
+
+        const viewDom = editor.view.dom
+        viewDom.addEventListener('contextmenu', handleContextMenu)
+        return () => {
+            viewDom.removeEventListener('contextmenu', handleContextMenu)
+        }
+    }, [editor])
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value
@@ -282,6 +339,49 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 />
 
                 <EditorContent editor={editor} className="dark:text-zinc-100" />
+
+                {/* Custom Context Menu */}
+                {contextMenu && contextMenu.isOpen && (
+                    <div
+                        ref={contextMenuRef}
+                        className="fixed z-50 bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+                        style={{ top: contextMenu.y, left: contextMenu.x }}
+                    >
+                        <div className="p-1 flex flex-col gap-0.5">
+                            <button
+                                onClick={() => {
+                                    editor?.chain().focus().addRowAfter().run()
+                                    setContextMenu(null)
+                                }}
+                                className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-700 rounded text-slate-700 dark:text-zinc-200 flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 13l-7 7-7-7m14-8l-7 7-7-7" /></svg>
+                                Add Row Below
+                            </button>
+                            <button
+                                onClick={() => {
+                                    editor?.chain().focus().deleteRow().run()
+                                    setContextMenu(null)
+                                }}
+                                className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-700 rounded text-slate-700 dark:text-zinc-200 flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Delete Row
+                            </button>
+                            <div className="h-px bg-slate-200 dark:bg-zinc-700 my-1" />
+                            <button
+                                onClick={() => {
+                                    editor?.chain().focus().deleteTable().run()
+                                    setContextMenu(null)
+                                }}
+                                className="w-full text-left px-2 py-1.5 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Delete Table
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )
