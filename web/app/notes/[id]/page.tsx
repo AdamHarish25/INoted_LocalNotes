@@ -14,10 +14,15 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
             title,
             content,
             is_public,
-            workspace:workspaces(name)
+            workspace:workspaces(name),
+            user_id
         `)
         .eq("id", id)
         .single()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    const isOwner = user?.id === note?.user_id
+    const isReadOnly = !isOwner
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
@@ -29,6 +34,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                     initialTitle={note?.title || "Untitled Note"}
                     initialIsPublic={note?.is_public}
                     initialWorkspace={(note as any)?.workspace?.name}
+                    isReadOnly={isReadOnly}
                 />
             </div>
         </div>

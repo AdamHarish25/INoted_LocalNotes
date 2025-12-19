@@ -31,7 +31,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableRow } from '@tiptap/extension-table-row'
 
-export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialWorkspace }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string }) {
+export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly = false }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
     const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
 
     // 1. Buat dokumen Yjs secara eksplisit dan stabil menggunakan useMemo
@@ -64,20 +64,21 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
     }
 
     // Pass ydoc ke komponen editor juga
-    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialWorkspace={initialWorkspace} />
+    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialWorkspace={initialWorkspace} isReadOnly={isReadOnly} />
 }
 
-function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialWorkspace }: { provider: HocuspocusProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string }) {
-    const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Error">("Saved")
+function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly }: { provider: HocuspocusProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
+    const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Error" | "View Only">(isReadOnly ? "View Only" : "Saved")
     const [title, setTitle] = useState(initialTitle || "Untitled Note")
     const [isPublic, setIsPublic] = useState(initialIsPublic || false)
     const [isCopied, setIsCopied] = useState(false)
 
     const handleShareToggle = async () => {
+        if (isReadOnly) return
         const newStatus = !isPublic
         setIsPublic(newStatus)
         const { updateNoteSharing } = await import("@/app/actions")
-        await updateNoteSharing(noteId, newStatus)
+        const result = await updateNoteSharing(noteId, newStatus)
     }
 
     const copyLink = () => {
@@ -91,6 +92,9 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     const debouncedSave = useMemo(() => {
         let timeoutId: NodeJS.Timeout
         return (data: { content?: any, title?: string }) => {
+            // Prevent saving if read-only
+            if (isReadOnly) return
+
             clearTimeout(timeoutId)
             timeoutId = setTimeout(async () => {
                 // Sanitize payload to remove any Proxy/Client References causing Server Action errors
@@ -107,10 +111,11 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 }
             }, 500)
         }
-    }, [noteId])
+    }, [noteId, isReadOnly])
 
     const editor = useEditor({
         immediatelyRender: false,
+        editable: !isReadOnly, // Disable editing if read-only
         extensions: [
             StarterKit.configure({
                 history: false,
@@ -142,10 +147,12 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         },
         onUpdate: ({ editor }) => {
             const json = editor.getJSON()
-            setSaveStatus("Saving...")
-            debouncedSave({ content: json })
+            if (!isReadOnly) {
+                setSaveStatus("Saving...")
+                debouncedSave({ content: json })
+            }
         },
-    }, [provider]) // Re-run if provider changes
+    }, [provider, isReadOnly]) // Re-run if provider or readOnly changes
 
     // HYDRATION LOGIC:
     // If the Yjs document is empty (because server has no data),
@@ -275,57 +282,59 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     </div>
 
                     <div className={`flex items-center gap-1 text-slate-700 dark:text-muted-foreground text-xs`}>
-                        {saveStatus === "Saved" ? <Cloud className="w-3 h-3 " /> : <CircleDashed className={`w-3 h-3 animate-spin`} />}
+                        {saveStatus === "Saved" ? <Cloud className="w-3 h-3 " /> : (saveStatus === "View Only" ? <Globe className="w-3 h-3" /> : <CircleDashed className={`w-3 h-3 animate-spin`} />)}
                         <span className="hidden md:inline">{saveStatus === 'Saved' ? 'Saved to Cloud' : saveStatus}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
-                    <WorkspaceSelector noteId={noteId} initialWorkspaceName={initialWorkspace} />
+                    {!isReadOnly && <WorkspaceSelector noteId={noteId} initialWorkspaceName={initialWorkspace} />}
 
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10">
-                                <span className="mr-2 hidden md:inline">Share</span>
-                                <Share className="w-4 h-4" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Share Note</DialogTitle>
-                                <DialogDescription>
-                                    Publish this note to the web to share it with others.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="flex flex-col gap-4 py-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Globe className="w-5 h-5 text-slate-500 dark:text-muted-foreground" />
-                                        <span className="font-medium">Publish to web</span>
-                                    </div>
-                                    <Button
-                                        variant={isPublic ? "default" : "outline"}
-                                        onClick={handleShareToggle}
-                                    >
-                                        {isPublic ? "Published" : "Private"}
-                                    </Button>
-                                </div>
-
-                                {isPublic && (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            className="flex-1 text-sm border p-2 rounded bg-slate-50 dark:bg-muted text-slate-600 dark:text-foreground outline-none"
-                                            readOnly
-                                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/notes/${noteId}`}
-                                        />
-                                        <Button onClick={copyLink} size="icon" variant="outline">
-                                            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {!isReadOnly && (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10">
+                                    <span className="mr-2 hidden md:inline">Share</span>
+                                    <Share className="w-4 h-4" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Share Note</DialogTitle>
+                                    <DialogDescription>
+                                        Publish this note to the web to share it with others.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="flex flex-col gap-4 py-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Globe className="w-5 h-5 text-slate-500 dark:text-muted-foreground" />
+                                            <span className="font-medium">Publish to web</span>
+                                        </div>
+                                        <Button
+                                            variant={isPublic ? "default" : "outline"}
+                                            onClick={handleShareToggle}
+                                        >
+                                            {isPublic ? "Published" : "Private"}
                                         </Button>
                                     </div>
-                                )}
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+
+                                    {isPublic && (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                className="flex-1 text-sm border p-2 rounded bg-slate-50 dark:bg-muted text-slate-600 dark:text-foreground outline-none"
+                                                readOnly
+                                                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/notes/${noteId}`}
+                                            />
+                                            <Button onClick={copyLink} size="icon" variant="outline">
+                                                {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    )}
                 </div>
             </div>
 
@@ -334,8 +343,9 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     type="text"
                     value={title}
                     onChange={handleTitleChange}
+                    readOnly={isReadOnly}
                     placeholder="Note Title"
-                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 dark:placeholder:text-muted-foreground w-full bg-transparent pt-8 text-black dark:text-white"
+                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 dark:placeholder:text-muted-foreground w-full bg-transparent pt-8 text-black dark:text-white disabled:cursor-not-allowed disabled:opacity-80"
                 />
 
                 <EditorContent editor={editor} className="dark:text-zinc-100" />
