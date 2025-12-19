@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, Suspense } from "react"
+import { useState, useRef, Suspense, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
@@ -27,18 +27,17 @@ export function LoginContent() {
 
     // Guest Login Handler
     const handleGuestLogin = async () => {
-        if (!captchaToken) {
-            turnstileRef.current?.reset()
-            return
-        }
-
         setIsLoading(true)
         try {
             const supabase = createClient()
+
+            const options: any = {}
+            if (captchaToken) {
+                options.captchaToken = captchaToken
+            }
+
             const { error } = await supabase.auth.signInAnonymously({
-                options: {
-                    captchaToken
-                }
+                options
             })
 
             if (error) throw error
@@ -55,11 +54,6 @@ export function LoginContent() {
 
     // Google Login Handler
     const handleGoogleLogin = async () => {
-        if (!captchaToken) {
-            turnstileRef.current?.reset()
-            return
-        }
-
         setIsLoading(true)
         const supabase = createClient()
 
@@ -72,15 +66,20 @@ export function LoginContent() {
 
         const redirectTo = `${origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`
 
+        const options: any = {
+            redirectTo,
+        }
+
+        if (captchaToken) {
+            options.queryParams = {
+                captcha_token: captchaToken
+            }
+        }
+
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: {
-                    redirectTo,
-                    queryParams: {
-                        captcha_token: captchaToken
-                    }
-                },
+                options,
             })
             if (error) throw error
         } catch (error) {
@@ -91,7 +90,14 @@ export function LoginContent() {
         }
     }
 
-    const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x0000000000000000000000000000000AA";
+    const [siteKey, setSiteKey] = useState(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x0000000000000000000000000000000AA");
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            // Force dummy key on localhost to avoid "Invalid Domain" errors if prod key is set
+            setSiteKey("1x0000000000000000000000000000000AA");
+        }
+    }, []);
 
     return (
         <>
@@ -101,7 +107,7 @@ export function LoginContent() {
 
             <div className="flex justify-center mb-6">
                 <Turnstile
-                    siteKey={SITE_KEY}
+                    siteKey={siteKey}
                     ref={turnstileRef}
                     onSuccess={(token) => setCaptchaToken(token)}
                     onError={() => setCaptchaToken(null)}
@@ -231,7 +237,7 @@ export function LoginContent() {
             <div className="mb-6 w-full">
                 <Button
                     onClick={handleGuestLogin}
-                    disabled={isLoading || !captchaToken}
+                    disabled={isLoading}
                     variant="outline"
                     className="w-full rounded-full h-11 border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-900 bg-white dark:bg-black disabled:opacity-50"
                 >
@@ -252,7 +258,7 @@ export function LoginContent() {
                     size="icon"
                     className="rounded-full h-10 w-10 border-slate-100 shadow-sm disabled:opacity-50"
                     onClick={handleGoogleLogin}
-                    disabled={isLoading || !captchaToken}
+                    disabled={isLoading}
                 >
                     <img src="https://authjs.dev/img/providers/google.svg" className="w-5 h-5" alt="Google" />
                 </Button>

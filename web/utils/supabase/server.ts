@@ -17,6 +17,14 @@ export async function createClient() {
                         cookiesToSet.forEach(({ name, value, options }) => {
                             // Helper to remove domain so cookies work on localhost and deploy previews
                             const { domain, ...validOptions } = options
+
+                            // In development, especially when accessing via IP (mobile testing), 
+                            // we must allow non-secure cookies or the browser might reject them,
+                            // causing the "code verifier" error on callback.
+                            if (process.env.NODE_ENV === 'development') {
+                                validOptions.secure = false
+                            }
+
                             cookieStore.set(name, value, validOptions)
                         })
                     } catch {
