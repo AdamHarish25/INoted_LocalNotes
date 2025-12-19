@@ -21,8 +21,9 @@ export function GuestLogin() {
         try {
             await continueAsGuest(token)
             setStatus("success")
-            router.refresh()
-            router.push("/")
+            // Force a hard navigation to ensure cookies are recognized by the server
+            // and to clear any client-side router cache that might think we are still unauthenticated.
+            window.location.href = "/"
         } catch (error) {
             console.error("Guest login failed", error)
             setStatus("error")
