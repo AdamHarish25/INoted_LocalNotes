@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { Turnstile } from "@marsidev/react-turnstile"
-import { Button } from "@/components/ui/button"
-import { continueAsGuest } from "@/app/login/actions"
+import { createClient } from "@/utils/supabase/client"
 import { Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
 export function GuestLogin() {
@@ -19,7 +19,15 @@ export function GuestLogin() {
         setToken(token)
         setStatus("verifying")
         try {
-            await continueAsGuest(token)
+            const supabase = createClient()
+            const { error } = await supabase.auth.signInAnonymously({
+                options: {
+                    captchaToken: token
+                }
+            })
+
+            if (error) throw error
+
             setStatus("success")
             // Force a hard navigation to ensure cookies are recognized by the server
             // and to clear any client-side router cache that might think we are still unauthenticated.
