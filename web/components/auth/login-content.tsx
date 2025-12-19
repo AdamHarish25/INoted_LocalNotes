@@ -93,8 +93,11 @@ export function LoginContent() {
     const [siteKey, setSiteKey] = useState(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x0000000000000000000000000000000AA");
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-            // Force dummy key on localhost to avoid "Invalid Domain" errors if prod key is set
+        const hostname = window.location.hostname;
+        const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+
+        if (typeof window !== 'undefined' && (hostname === 'localhost' || hostname === '127.0.0.1' || isIpAddress)) {
+            // Force dummy key on localhost AND LAN IP addresses (mobile testing) to avoid "Invalid Domain" errors
             setSiteKey("1x0000000000000000000000000000000AA");
         }
     }, []);
@@ -218,7 +221,7 @@ export function LoginContent() {
                         <Button
                             onClick={() => setIsSignup(false)}
                             formAction={login}
-                            disabled={!captchaToken || isLoading}
+                            disabled={isLoading}
                             className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white disabled:opacity-50"
                         >
                             Login
@@ -227,7 +230,7 @@ export function LoginContent() {
                             onClick={() => setIsSignup(true)}
                             formAction={signup}
                             variant="outline"
-                            disabled={!captchaToken || isLoading}
+                            disabled={isLoading}
                             className="flex-1 rounded-full h-11 border-blue-200 dark:border-zinc-700 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-900 bg-white dark:bg-black disabled:opacity-50"
                         >
                             Sign Up
