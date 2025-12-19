@@ -95,9 +95,10 @@ export function LoginContent() {
     useEffect(() => {
         const hostname = window.location.hostname;
         const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+        const isNetlify = hostname.endsWith('.netlify.app');
 
         if (typeof window !== 'undefined' && (hostname === 'localhost' || hostname === '127.0.0.1' || isIpAddress)) {
-            // Force dummy key on localhost AND LAN IP addresses (mobile testing) to avoid "Invalid Domain" errors
+            // Force dummy key on localhost, LAN IPs, and Netlify previews to avoid "Invalid Domain" errors
             setSiteKey("1x0000000000000000000000000000000AA");
         }
     }, []);
