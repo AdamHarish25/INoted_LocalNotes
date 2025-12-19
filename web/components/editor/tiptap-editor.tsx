@@ -142,7 +142,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         ],
         editorProps: {
             attributes: {
-                className: 'prose prose-lg prose-slate max-w-none focus:outline-none min-h-[500px]',
+                className: 'prose prose-lg prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px]',
             },
         },
         onUpdate: ({ editor }) => {
@@ -269,10 +269,14 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         debouncedSave({ title: newTitle })
     }
 
+    const handleExportPDF = () => {
+        window.print()
+    }
+
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-background">
             {/* Integrated Header */}
-            <div className="flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-100 dark:border-b-gray-500 mb-4 sticky top-0 bg-white dark:bg-card z-40 transition-colors">
+            <div className="flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-100 dark:border-b-gray-500 mb-4 sticky top-0 bg-white dark:bg-card z-40 transition-colors print-hidden">
                 <div className="flex items-center gap-2 md:gap-4">
                     <div className="flex items-center gap-2 text-slate-400 dark:text-muted-foreground text-sm">
                         <button onClick={() => router.back()} className="p-1 border dark:border-border rounded bg-slate-50 dark:bg-muted hover:bg-slate-100 dark:hover:bg-muted/80 transition-colors">
@@ -288,6 +292,16 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleExportPDF}
+                        title="Export to PDF"
+                        className="text-slate-500 hover:text-slate-700 dark:text-muted-foreground dark:hover:text-primary"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    </Button>
+
                     {!isReadOnly && <WorkspaceSelector noteId={noteId} initialWorkspaceName={initialWorkspace} />}
 
                     {!isReadOnly && (
@@ -338,7 +352,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 </div>
             </div>
 
-            <div className="relative w-full max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-200 dark:border-gray-500 bg-white dark:bg-background dark:text-foreground p-4 md:p-16 rounded-lg min-h-screen flex flex-col gap-4 shadow-sm transition-colors">
+            <div className="print-area relative w-full max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-200 dark:border-gray-500 bg-white dark:bg-background dark:text-foreground p-4 md:p-16 rounded-lg min-h-screen flex flex-col gap-4 shadow-sm transition-colors">
                 <input
                     type="text"
                     value={title}

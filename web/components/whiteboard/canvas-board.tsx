@@ -182,6 +182,21 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         setTimeout(() => setIsCopied(false), 2000)
     }
 
+    const handleExportImage = () => {
+        if (!canvasRef.current) return
+
+        // Ensure everything is rendered cleanly
+        renderCanvas()
+
+        // Create a temporary link
+        const link = document.createElement('a')
+        link.download = `whiteboard-${roomId}.png`
+        link.href = canvasRef.current.toDataURL('image/png')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
     // Debounced Save to Supabase
     useEffect(() => {
         if (elements.length === 0) return
@@ -939,6 +954,17 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                             </div>
                         </DialogContent>
                     </Dialog>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10 ml-2"
+                        onClick={handleExportImage}
+                        title="Export as Image"
+                    >
+                        <svg className="w-4 h-4 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <span className="hidden md:inline">Export</span>
+                    </Button>
                 </div>
             </div>
 

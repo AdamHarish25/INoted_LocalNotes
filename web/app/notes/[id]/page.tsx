@@ -15,13 +15,13 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
             content,
             is_public,
             workspace:workspaces(name),
-            user_id
+            owner_id
         `)
         .eq("id", id)
         .single()
 
     const { data: { user } } = await supabase.auth.getUser()
-    const isOwner = user?.id === note?.user_id
+    const isOwner = user?.id === note?.owner_id
     const isReadOnly = !isOwner
 
     return (

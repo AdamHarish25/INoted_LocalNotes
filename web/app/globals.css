@@ -270,3 +270,37 @@ ul[data-type="taskList"] li>div {
   top: 0;
   width: 4px;
 }
+
+@media print {
+  @page {
+    margin: 20mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  /* Only show the print-area element and its children */
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  /* Position the print area at the top left to ensure it's captured */
+  .print-area {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    /* Optional: Ensure text is black for printing */
+    color: black !important;
+    background: white !important;
+  }
+
+  /* Force hide specific elements if needed */
+  .print-hidden {
+    display: none !important;
+  }
+}
