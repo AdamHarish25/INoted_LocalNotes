@@ -18,9 +18,11 @@ export async function createClient() {
                             // Helper to remove domain so cookies work on localhost and deploy previews
                             const { domain, ...validOptions } = options
 
-                            // Force secure to false to ensure cookies work on mobile/LAN (HTTP) environments.
-                            // This resolves the "code verifier" error and redirect loops on non-HTTPS connections.
-                            validOptions.secure = false;
+                            // In development (localhost/IP), allow non-secure cookies.
+                            // In production (Netlify HTTPS), the browser requires Secure cookies for SameSite policies.
+                            if (process.env.NODE_ENV === 'development') {
+                                validOptions.secure = false
+                            }
 
                             cookieStore.set(name, value, validOptions)
                         })
