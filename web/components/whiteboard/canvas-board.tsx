@@ -484,11 +484,28 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                 if (points && points.length > 0) {
                     ctx.beginPath()
                     ctx.moveTo(points[0].x, points[0].y)
-                    points.forEach(p => ctx.lineTo(p.x, p.y))
+
+                    // Smooth path using quadratic curves
+                    if (points.length > 2) {
+                        for (let i = 1; i < points.length - 2; i++) {
+                            const p1 = points[i]
+                            const p2 = points[i + 1]
+                            const midX = (p1.x + p2.x) / 2
+                            const midY = (p1.y + p2.y) / 2
+                            ctx.quadraticCurveTo(p1.x, p1.y, midX, midY)
+                        }
+                        // Connect the last few points
+                        const last = points[points.length - 1]
+                        const secondLast = points[points.length - 2]
+                        ctx.quadraticCurveTo(secondLast.x, secondLast.y, last.x, last.y)
+                    } else {
+                        points.forEach(p => ctx.lineTo(p.x, p.y))
+                    }
+
                     if (type === 'eraser') {
                         ctx.save()
                         ctx.globalCompositeOperation = 'destination-out'
-                        ctx.lineWidth = strokeWidth ? strokeWidth * 5 : 20 // Eraser is wider
+                        ctx.lineWidth = strokeWidth ? strokeWidth * 2.5 : 20 // Reduced multiplier for better precision
                         ctx.stroke()
                         ctx.restore()
                     } else {
