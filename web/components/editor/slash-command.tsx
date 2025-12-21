@@ -98,8 +98,10 @@ const getSuggestionItems = ({ query }: { query: string }) => {
             description: 'Insert a table',
             icon: Table,
             command: ({ editor, range }: { editor: Editor; range: Range }) => {
-                // Dispatch event to open dialog
-                const event = new CustomEvent('open-table-dialog', { detail: { range } })
+                // Delete the command text to close popup
+                editor.chain().focus().deleteRange(range).run()
+                // Dispatch event with insertion position
+                const event = new CustomEvent('open-table-dialog', { detail: { pos: range.from } })
                 window.dispatchEvent(event)
             },
         },
@@ -108,7 +110,8 @@ const getSuggestionItems = ({ query }: { query: string }) => {
             description: 'Insert an interactive whiteboard',
             icon: LayoutDashboard,
             command: ({ editor, range }: { editor: Editor; range: Range }) => {
-                const event = new CustomEvent('insert-whiteboard', { detail: { range } })
+                editor.chain().focus().deleteRange(range).run()
+                const event = new CustomEvent('insert-whiteboard', { detail: { pos: range.from } })
                 window.dispatchEvent(event)
             },
         },

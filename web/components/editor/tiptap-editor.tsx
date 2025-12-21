@@ -20,6 +20,7 @@ import { WorkspaceSelector } from "@/components/workspace-selector"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { WhiteboardExtension } from "./whiteboard-extension"
 
 import { SlashCommand, suggestion } from "./slash-command"
@@ -277,25 +278,69 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     const [isTableDialogOpen, setIsTableDialogOpen] = useState(false)
     const [tableRows, setTableRows] = useState(3)
     const [tableCols, setTableCols] = useState(3)
-    const [pendingRange, setPendingRange] = useState<any>(null) // Store range
+    const [pendingPos, setPendingPos] = useState<number | null>(null) // Store position
+
+    // Whiteboard Dialog State
+    const [isWhiteboardDialogOpen, setIsWhiteboardDialogOpen] = useState(false)
+    const [wbTab, setWbTab] = useState<'list' | 'link'>('list')
+    const [whiteboards, setWhiteboards] = useState<any[]>([])
+    const [selectedWhiteboardId, setSelectedWhiteboardId] = useState<string | null>(null)
+    const [linkInput, setLinkInput] = useState('')
+    const [isLoadingWhiteboards, setIsLoadingWhiteboards] = useState(false)
+
+    // Fetch Whiteboards
+    useEffect(() => {
+        if (isWhiteboardDialogOpen && wbTab === 'list') {
+            setIsLoadingWhiteboards(true)
+            import("@/app/actions").then(({ getWhiteboards }) => {
+                getWhiteboards().then(res => {
+                    if (res.success && res.data) setWhiteboards(res.data)
+                    setIsLoadingWhiteboards(false)
+                })
+            })
+        }
+    }, [isWhiteboardDialogOpen, wbTab])
+
+    const handleConfirmInsertWhiteboard = () => {
+        let finalId = null
+        if (wbTab === 'list') {
+            finalId = selectedWhiteboardId
+        } else {
+            if (linkInput.includes('/whiteboard/')) {
+                finalId = linkInput.split('/whiteboard/')[1].split('?')[0]
+            } else {
+                finalId = linkInput
+            }
+        }
+
+        if (finalId && finalId.trim() !== '' && editor && !isReadOnly) {
+            const chain = editor.chain().focus()
+            if (pendingPos !== null) {
+                chain.setTextSelection(pendingPos)
+            }
+            chain.insertContent({
+                type: 'whiteboard',
+                attrs: { id: finalId }
+            }).run()
+        }
+        setIsWhiteboardDialogOpen(false)
+        // Reset
+        setSelectedWhiteboardId(null)
+        setLinkInput('')
+    }
 
     // Event Listeners for Slash Commands
     useEffect(() => {
         const handleOpenTableDialog = (e: Event) => {
             const detail = (e as CustomEvent).detail
-            setPendingRange(detail.range)
+            setPendingPos(detail.pos)
             setIsTableDialogOpen(true)
         }
 
         const handleInsertWhiteboard = (e: Event) => {
             const detail = (e as CustomEvent).detail
-            if (editor && !isReadOnly) {
-                const id = crypto.randomUUID()
-                editor.chain().focus().deleteRange(detail.range).insertContent({
-                    type: 'whiteboard',
-                    attrs: { id }
-                }).run()
-            }
+            setPendingPos(detail.pos)
+            setIsWhiteboardDialogOpen(true)
         }
 
         window.addEventListener('open-table-dialog', handleOpenTableDialog)
@@ -309,9 +354,9 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
     const handleConfirmInsertTable = () => {
         if (editor && !isReadOnly) {
-            const chain = editor.chain().focus()
-            if (pendingRange) {
-                chain.deleteRange(pendingRange)
+            let chain = editor.chain().focus()
+            if (pendingPos !== null) {
+                chain = chain.setTextSelection(pendingPos)
             }
             chain.insertTable({ rows: tableRows, cols: tableCols, withHeaderRow: true }).run()
         }
@@ -366,6 +411,69 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsTableDialogOpen(false)}>Cancel</Button>
                         <Button onClick={handleConfirmInsertTable}>Insert Table</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Whiteboard Insertion Dialog */}
+            <Dialog open={isWhiteboardDialogOpen} onOpenChange={setIsWhiteboardDialogOpen}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Insert Whiteboard</DialogTitle>
+                        <DialogDescription>Select an existing whiteboard or paste a link.</DialogDescription>
+                        <div className="flex gap-4 mt-4 border-b border-gray-200 dark:border-gray-700">
+                            <button onClick={() => setWbTab('list')} className={`pb-2 px-2 text-sm transition-colors ${wbTab === 'list' ? 'border-b-2 border-blue-500 font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}>My Whiteboards</button>
+                            <button onClick={() => setWbTab('link')} className={`pb-2 px-2 text-sm transition-colors ${wbTab === 'link' ? 'border-b-2 border-blue-500 font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}>Link</button>
+                        </div>
+                    </DialogHeader>
+
+                    {wbTab === 'list' && (
+                        <div className="min-h-[200px] border rounded-md p-0 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                            <ScrollArea className="h-[250px] p-2">
+                                {isLoadingWhiteboards ? (
+                                    <div className="flex items-center justify-center h-full py-10 text-gray-400">Loading your whiteboards...</div>
+                                ) : whiteboards.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-10 text-gray-500 gap-2">
+                                        <CircleDashed className="w-8 h-8 opacity-50" />
+                                        <p>No whiteboards found.</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        {whiteboards.map(wb => (
+                                            <button
+                                                key={wb.id}
+                                                className={`flex flex-col items-start w-full text-left p-3 rounded-md border transition-all ${selectedWhiteboardId === wb.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500/50' : 'border-transparent bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700'}`}
+                                                onClick={() => setSelectedWhiteboardId(wb.id)}
+                                            >
+                                                <span className="font-medium text-sm text-slate-800 dark:text-slate-200">{wb.title || "Untitled Whiteboard"}</span>
+                                                <span className="text-xs text-gray-400">Last updated: {new Date(wb.updated_at).toLocaleDateString()}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        </div>
+                    )}
+
+                    {wbTab === 'link' && (
+                        <div className="py-8 space-y-4">
+                            <div className="space-y-2">
+                                <Label>Whiteboard Link</Label>
+                                <Input
+                                    placeholder="Paste whiteboard URL here..."
+                                    value={linkInput}
+                                    onChange={e => setLinkInput(e.target.value)}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                You can create a new whiteboard, copy its link, and paste it here to embed it.
+                            </p>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsWhiteboardDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirmInsertWhiteboard} disabled={(wbTab === 'list' && !selectedWhiteboardId) || (wbTab === 'link' && !linkInput.trim())}>Insert Whiteboard</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -400,3 +400,22 @@ export async function updateProfile(displayName: string) {
 }
 
 
+
+export async function getWhiteboards() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { data, error } = await supabase
+        .from("whiteboards")
+        .select("id, title, updated_at")
+        .eq("owner_id", user.id)
+        .order("updated_at", { ascending: false })
+
+    if (error) {
+        console.error("Error fetching whiteboards:", error)
+        return { error: error.message }
+    }
+
+    return { success: true, data }
+}
