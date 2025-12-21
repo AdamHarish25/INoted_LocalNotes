@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
+import { useTheme } from "next-themes"
 import { createClient } from "@/utils/supabase/client"
 import {
     ArrowLeft,
@@ -148,6 +149,15 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
     // Zoom State
     const [zoom, setZoom] = useState(1)
+
+    // Theme logic
+    const { theme } = useTheme() // 'light' | 'dark' | 'system'
+    // To ensure hydration match, we might need a mounted state or just rely on client-side render
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => { setMounted(true) }, [])
+
+    const isDark = mounted && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+
 
     // Interaction State
     const [isDrawing, setIsDrawing] = useState(false)
@@ -383,20 +393,35 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         context.restore()
     }
 
-    // Trigger render when elements, transform, or zoom change
+    // Trigger render when elements, transform, zoom or theme change
     useEffect(() => {
         renderCanvas()
-    }, [elements, currentElement, context, panOffset, zoom])
+    }, [elements, currentElement, context, panOffset, zoom, isDark])
 
     // Helper to draw a single element
     const drawElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
         const { type, x, y, width, height, strokeColor, points, text, strokeWidth } = element
 
+        // Invert colors for Dark Mode
+        let finalColor = strokeColor
+        if (isDark) {
+            if (strokeColor === 'black' || strokeColor === '#000000') finalColor = 'white'
+            else if (strokeColor === 'white' || strokeColor === '#ffffff') finalColor = 'black'
+        } else {
+            // In light mode, if something was saved as 'white' (from dark mode creation maybe?), it should be black?
+            // The prompt implies content created in light mode (black) should become white in dark mode.
+            // Implies we store 'black' and render 'white'.
+            // Conversely, if we create in Dark Mode, do we store 'white'?
+            // If we store 'white', then in Light Mode it should be 'black'.
+            // So: Black <-> White inversion.
+            if (strokeColor === 'white' || strokeColor === '#ffffff') finalColor = 'black'
+        }
+
         // Don't apply styles for image (except maybe selection border later)
         if (type !== 'image') {
-            ctx.strokeStyle = strokeColor
+            ctx.strokeStyle = finalColor
             ctx.lineWidth = strokeWidth || 2
-            ctx.fillStyle = strokeColor // For text
+            ctx.fillStyle = finalColor // For text
         }
 
         ctx.beginPath()
@@ -411,6 +436,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                 break
             case 'text':
                 if (text) {
+                    // Re-apply fillStyle to be sure
+                    ctx.fillStyle = finalColor
                     ctx.font = `20px ${element.fontFamily || 'sans-serif'}`
                     ctx.textAlign = (element.textAlign as CanvasTextAlign) || 'left'
                     ctx.fillText(text, x, y + 20)
@@ -1283,10 +1310,22 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                             style={{
                                 top: writingText.y * zoom + panOffset.y,
                                 left: writingText.x * zoom + panOffset.x,
-                                width: '200px',
-                                height: '100px', // Explicit default size
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                                color: toolOptions.strokeColor, // Use Tool Color
+                                width: `${200 * zoom}px`,
+                                height: `${100 * zoom}px`, // Explicit default size
+                                fontSize: `${20 * zoom}px`,
+                                // Adaptive Background
+                                backgroundColor: isDark ? 'rgba(30, 30, 30, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                                // Adaptive Text Color
+                                color: (() => {
+                                    let c = toolOptions.strokeColor
+                                    if (isDark) {
+                                        if (c === 'black' || c === '#000000') return 'white'
+                                        if (c === 'white' || c === '#ffffff') return 'black'
+                                    } else {
+                                        if (c === 'white' || c === '#ffffff') return 'black'
+                                    }
+                                    return c
+                                })(),
                                 fontFamily: toolOptions.fontFamily,
                                 textAlign: toolOptions.textAlign as any
                             }}
