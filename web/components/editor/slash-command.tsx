@@ -15,7 +15,8 @@ import {
     Code,
     Table,
     Bold,
-    Italic
+    Italic,
+    LayoutDashboard
 } from 'lucide-react'
 
 // 1. Definition of commands
@@ -94,10 +95,21 @@ const getSuggestionItems = ({ query }: { query: string }) => {
         },
         {
             title: 'Table',
-            description: 'Insert a simple 3x3 table',
+            description: 'Insert a table',
             icon: Table,
             command: ({ editor, range }: { editor: Editor; range: Range }) => {
-                editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+                // Dispatch event to open dialog
+                const event = new CustomEvent('open-table-dialog', { detail: { range } })
+                window.dispatchEvent(event)
+            },
+        },
+        {
+            title: 'Whiteboard',
+            description: 'Insert an interactive whiteboard',
+            icon: LayoutDashboard,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                const event = new CustomEvent('insert-whiteboard', { detail: { range } })
+                window.dispatchEvent(event)
             },
         },
     ].filter((item) => {

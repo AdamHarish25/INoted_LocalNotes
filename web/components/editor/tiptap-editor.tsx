@@ -17,7 +17,10 @@ import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
 import { Share, Cloud, Globe, Copy, Check, CircleDashed } from "lucide-react"
 import { WorkspaceSelector } from "@/components/workspace-selector"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { WhiteboardExtension } from "./whiteboard-extension"
 
 import { SlashCommand, suggestion } from "./slash-command"
 
@@ -139,6 +142,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             TableRow,
             TableHeader,
             TableCell,
+            WhiteboardExtension,
         ],
         editorProps: {
             attributes: {
@@ -269,12 +273,103 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         debouncedSave({ title: newTitle })
     }
 
+    // Table Dialog State
+    const [isTableDialogOpen, setIsTableDialogOpen] = useState(false)
+    const [tableRows, setTableRows] = useState(3)
+    const [tableCols, setTableCols] = useState(3)
+    const [pendingRange, setPendingRange] = useState<any>(null) // Store range
+
+    // Event Listeners for Slash Commands
+    useEffect(() => {
+        const handleOpenTableDialog = (e: Event) => {
+            const detail = (e as CustomEvent).detail
+            setPendingRange(detail.range)
+            setIsTableDialogOpen(true)
+        }
+
+        const handleInsertWhiteboard = (e: Event) => {
+            const detail = (e as CustomEvent).detail
+            if (editor && !isReadOnly) {
+                const id = crypto.randomUUID()
+                editor.chain().focus().deleteRange(detail.range).insertContent({
+                    type: 'whiteboard',
+                    attrs: { id }
+                }).run()
+            }
+        }
+
+        window.addEventListener('open-table-dialog', handleOpenTableDialog)
+        window.addEventListener('insert-whiteboard', handleInsertWhiteboard)
+
+        return () => {
+            window.removeEventListener('open-table-dialog', handleOpenTableDialog)
+            window.removeEventListener('insert-whiteboard', handleInsertWhiteboard)
+        }
+    }, [editor, isReadOnly])
+
+    const handleConfirmInsertTable = () => {
+        if (editor && !isReadOnly) {
+            const chain = editor.chain().focus()
+            if (pendingRange) {
+                chain.deleteRange(pendingRange)
+            }
+            chain.insertTable({ rows: tableRows, cols: tableCols, withHeaderRow: true }).run()
+        }
+        setIsTableDialogOpen(false)
+    }
+
     const handleExportPDF = () => {
         window.print()
     }
 
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-background">
+            {/* Table Configuration Dialog */}
+            <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Insert Table</DialogTitle>
+                        <DialogDescription>
+                            Configure the table dimensions.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="rows" className="text-right">
+                                Rows
+                            </Label>
+                            <Input
+                                id="rows"
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={tableRows}
+                                onChange={(e) => setTableRows(parseInt(e.target.value) || 1)}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="cols" className="text-right">
+                                Columns
+                            </Label>
+                            <Input
+                                id="cols"
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={tableCols}
+                                onChange={(e) => setTableCols(parseInt(e.target.value) || 1)}
+                                className="col-span-3"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsTableDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirmInsertTable}>Insert Table</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Integrated Header */}
             <div className="flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-100 dark:border-b-gray-500 mb-4 sticky top-0 bg-white dark:bg-card z-40 transition-colors print-hidden">
                 <div className="flex items-center gap-2 md:gap-4">

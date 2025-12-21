@@ -33,7 +33,11 @@ import {
     Palette,
     MenuIcon,
     Menu,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Undo,
+    Redo,
+    ZoomIn,
+    ZoomOut
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -140,6 +144,10 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
     // Yjs Reference
     const yElementsRef = useRef<Y.Array<CanvasElement> | null>(null)
+    const undoManagerRef = useRef<Y.UndoManager | null>(null)
+
+    // Zoom State
+    const [zoom, setZoom] = useState(1)
 
     // Interaction State
     const [isDrawing, setIsDrawing] = useState(false)
@@ -152,6 +160,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const [isDraggingTextRef, setIsDraggingTextRef] = useState(false)
     const dragOffsetRef = useRef({ x: 0, y: 0 }) // Track visual delta without re-rendering
     const textDragStartRef = useRef<{ startX: number, startY: number, initialX: number, initialY: number } | null>(null)
+    const pinchRef = useRef<{ distance: number } | null>(null)
     const imageCache = useRef<Map<string, HTMLImageElement>>(new Map())
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -277,6 +286,14 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
             setElements(yArray.toArray())
         }
 
+        if (yArray.length > 0) {
+            setElements(yArray.toArray())
+        }
+
+        // Initialize UndoManager
+        const undoManager = new Y.UndoManager(yArray)
+        undoManagerRef.current = undoManager
+
         yArray.observe(handleSync)
 
         return () => {
@@ -334,7 +351,9 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
 
         context.save()
-        context.translate(panOffset.x, panOffset.y)
+        // Apply Pan and Zoom
+        // transform(a, b, c, d, e, f) -> a:scaleX, d:scaleY, e:translateX, f:translateY
+        context.setTransform(zoom, 0, 0, zoom, panOffset.x, panOffset.y)
 
         // 2. Draw Saved Elements
         elements.forEach(el => {
@@ -364,10 +383,10 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         context.restore()
     }
 
-    // Trigger render when elements or transform change
+    // Trigger render when elements, transform, or zoom change
     useEffect(() => {
         renderCanvas()
-    }, [elements, currentElement, context, panOffset])
+    }, [elements, currentElement, context, panOffset, zoom])
 
     // Helper to draw a single element
     const drawElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
@@ -497,12 +516,13 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
         if (!context) return
 
-        // 2-Finger Pan Support
+        // 2-Finger Pan & Zoom Support
         if (e.touches.length === 2) {
             const p1 = getTouchPos(e, 0)
             const p2 = getTouchPos(e, 1)
             const cx = (p1.x + p2.x) / 2
             const cy = (p1.y + p2.y) / 2
+            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
 
             // Cancel any current drawing if switching from 1 to 2 fingers quickly
             setIsDrawing(false)
@@ -510,6 +530,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
             setIsPanning(true)
             setStartPanMousePosition({ x: cx, y: cy })
+            pinchRef.current = { distance: dist }
             return
         }
 
@@ -518,22 +539,41 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     }
 
     const touchDraw = (e: React.TouchEvent<HTMLCanvasElement>) => {
-        // Handle 2-Finger Panning
+        // Handle 2-Finger Pan & Zoom
         if (isPanning && e.touches.length === 2) {
             const p1 = getTouchPos(e, 0)
             const p2 = getTouchPos(e, 1)
             const cx = (p1.x + p2.x) / 2
             const cy = (p1.y + p2.y) / 2
+            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
 
-            const deltaX = cx - startPanMousePosition.x
-            const deltaY = cy - startPanMousePosition.y
+            // Calculate Scale
+            const prevDist = pinchRef.current?.distance || dist
+            const scale = prevDist > 0 ? dist / prevDist : 1
+            const newZoom = Math.min(Math.max(zoom * scale, 0.5), 3)
 
-            setPanOffset(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }))
+            // Calculate Pan to keep the world point under the center stationary relative to the fingers
+            // World point under previous center:
+            const prevCx = startPanMousePosition.x
+            const prevCy = startPanMousePosition.y
+            const worldX = (prevCx - panOffset.x) / zoom
+            const worldY = (prevCy - panOffset.y) / zoom
+
+            // New pan position: cx = worldX * newZoom + newPanX
+            const newPanX = cx - worldX * newZoom
+            const newPanY = cy - worldY * newZoom
+
+            setZoom(newZoom)
+            setPanOffset({ x: newPanX, y: newPanY })
             setStartPanMousePosition({ x: cx, y: cy })
+            pinchRef.current = { distance: dist }
             return
         }
 
         const { x: offsetX, y: offsetY } = getTouchPos(e)
+        // Adjust for zoom in input coordinates passed to processDraw?
+        // No, processDraw handles its own coordinate mapping (screen -> world).
+        // BUT processDraw expects raw offset from event (screen coords).
         processDraw(offsetX, offsetY)
     }
 
@@ -555,15 +595,15 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         if (activeTool === 'text') {
             if (writingText) return
 
-            const worldX = offsetX - panOffset.x
-            const worldY = offsetY - panOffset.y
+            const worldX = (offsetX - panOffset.x) / zoom
+            const worldY = (offsetY - panOffset.y) / zoom
             setWritingText({ x: worldX, y: worldY, text: '' })
             return
         }
 
         if (activeTool === 'selection') {
-            const worldX = offsetX - panOffset.x
-            const worldY = offsetY - panOffset.y
+            const worldX = (offsetX - panOffset.x) / zoom
+            const worldY = (offsetY - panOffset.y) / zoom
 
             // Find clicked element (reverse order to find top-most first)
             for (let i = elements.length - 1; i >= 0; i--) {
@@ -591,8 +631,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         setIsDrawing(true)
 
-        const x = offsetX - panOffset.x
-        const y = offsetY - panOffset.y
+        const x = (offsetX - panOffset.x) / zoom
+        const y = (offsetY - panOffset.y) / zoom
         const id = crypto.randomUUID()
 
         const baseElement = {
@@ -636,8 +676,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         // Handle Moving the Text Input Box (Direct DOM manipulation for performance)
         if (isDraggingTextRef && writingText && textAreaRef.current) {
-            const worldX = offsetX - panOffset.x
-            const worldY = offsetY - panOffset.y
+            const worldX = (offsetX - panOffset.x) / zoom
+            const worldY = (offsetY - panOffset.y) / zoom
 
             // Initialize textDragStartRef if it's null (first move after drag start)
             if (!textDragStartRef.current) {
@@ -662,8 +702,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         // Handle Moving an Element (Selection Tool)
         if (draggingElement) {
-            const worldX = offsetX - panOffset.x
-            const worldY = offsetY - panOffset.y
+            const worldX = (offsetX - panOffset.x) / zoom
+            const worldY = (offsetY - panOffset.y) / zoom
             const deltaX = worldX - draggingElement.startX
             const deltaY = worldY - draggingElement.startY
 
@@ -677,8 +717,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         if (!isDrawing || !currentElement) return
 
-        const worldX = offsetX - panOffset.x
-        const worldY = offsetY - panOffset.y
+        const worldX = (offsetX - panOffset.x) / zoom
+        const worldY = (offsetY - panOffset.y) / zoom
 
         if (activeTool === 'pencil' || activeTool === 'eraser') {
             // Append point
@@ -700,6 +740,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         if (isPanning) {
             console.log("Finished Panning")
             setIsPanning(false)
+            pinchRef.current = null
             return
         }
 
@@ -807,6 +848,23 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         { id: 'image', icon: <ImageIcon className="w-5 h-5" /> },
         { id: 'eraser', icon: <Eraser className="w-5 h-5" /> },
     ]
+
+    // Action Handlers
+    const handleUndo = () => {
+        undoManagerRef.current?.undo()
+    }
+
+    const handleRedo = () => {
+        undoManagerRef.current?.redo()
+    }
+
+    const handleZoomIn = () => {
+        setZoom(z => Math.min(z + 0.1, 3))
+    }
+
+    const handleZoomOut = () => {
+        setZoom(z => Math.max(z - 0.1, 0.5))
+    }
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -1004,6 +1062,16 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
                 {/* Toolbar */}
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 p-1 hidden md:flex gap-1 z-10 overflow-x-auto max-w-[95vw] hide-scrollbar">
+                    {/* Undo/Redo Group */}
+                    <div className="flex gap-1 pr-2 border-r border-gray-200 mr-1">
+                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleUndo} title="Undo">
+                            <Undo className="w-5 h-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleRedo} title="Redo">
+                            <Redo className="w-5 h-5" />
+                        </Button>
+                    </div>
+
                     {tools.map(tool => (
                         <Button
                             key={tool.id}
@@ -1022,6 +1090,19 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                             {tool.icon}
                         </Button>
                     ))}
+                </div>
+
+                {/* Zoom Controls */}
+                <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-30">
+                    <div className="flex flex-col bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100" onClick={handleZoomIn} title="Zoom In">
+                            <ZoomIn className="w-4 h-4" />
+                        </Button>
+                        <div className="h-px bg-gray-200 w-full" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100" onClick={handleZoomOut} title="Zoom Out">
+                            <ZoomOut className="w-4 h-4" />
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Mobile Tools FAB (Floating Action Button) */}
@@ -1200,8 +1281,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                             ref={textAreaRef}
                             className="absolute border border-blue-500 p-1 outline-none resize-none font-sans text-[20px] leading-none z-30 shadow-md rounded-md"
                             style={{
-                                top: writingText.y + panOffset.y,
-                                left: writingText.x + panOffset.x,
+                                top: writingText.y * zoom + panOffset.y,
+                                left: writingText.x * zoom + panOffset.x,
                                 width: '200px',
                                 height: '100px', // Explicit default size
                                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -1235,8 +1316,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                         <div
                             className="absolute bg-blue-500 text-white p-1 rounded-t-md cursor-move flex items-center justify-center shadow-md hover:bg-blue-600 z-40"
                             style={{
-                                top: writingText.y + panOffset.y - 24, // Above the input
-                                left: writingText.x + panOffset.x,
+                                top: writingText.y * zoom + panOffset.y - 24, // Above the input
+                                left: writingText.x * zoom + panOffset.x,
                                 width: '30px',
                                 height: '24px'
                             }}
