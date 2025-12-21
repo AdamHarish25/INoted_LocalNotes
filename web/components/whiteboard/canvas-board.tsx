@@ -1138,12 +1138,20 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
                 {/* Zoom Controls */}
                 <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-30">
-                    <div className="flex flex-col bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100" onClick={handleZoomIn} title="Zoom In">
+                    <div className="flex flex-col bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden items-center">
+                        <Button variant="ghost" size="icon" className="h-8 w-9 rounded-none hover:bg-slate-100" onClick={handleZoomIn} title="Zoom In">
                             <ZoomIn className="w-4 h-4" />
                         </Button>
                         <div className="h-px bg-gray-200 w-full" />
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100" onClick={handleZoomOut} title="Zoom Out">
+                        <button
+                            className="h-6 w-9 flex items-center justify-center text-[10px] font-medium text-slate-600 hover:bg-slate-50 transition-colors bg-white select-none"
+                            onClick={() => setZoom(1)}
+                            title="Reset Zoom"
+                        >
+                            {Math.round(zoom * 100)}%
+                        </button>
+                        <div className="h-px bg-gray-200 w-full" />
+                        <Button variant="ghost" size="icon" className="h-8 w-9 rounded-none hover:bg-slate-100" onClick={handleZoomOut} title="Zoom Out">
                             <ZoomOut className="w-4 h-4" />
                         </Button>
                     </div>

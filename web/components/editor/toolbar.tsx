@@ -9,7 +9,9 @@ import {
     List,
     Heading1,
     Heading2,
-    Heading3
+    Heading3,
+    Undo,
+    Redo
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -27,6 +29,27 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
     return (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
             <div className="flex items-center gap-1 bg-blue-500 p-2 rounded-full shadow-lg text-white">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => editor.chain().focus().undo().run()}
+                    disabled={!editor.can().undo()}
+                    className="h-8 w-8 text-white hover:bg-blue-600 hover:text-white rounded-full disabled:opacity-50"
+                >
+                    <Undo className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => editor.chain().focus().redo().run()}
+                    disabled={!editor.can().redo()}
+                    className="h-8 w-8 text-white hover:bg-blue-600 hover:text-white rounded-full disabled:opacity-50"
+                >
+                    <Redo className="h-4 w-4" />
+                </Button>
+
+                <div className="w-px h-4 bg-blue-400 mx-1" />
+
                 <Button
                     variant="ghost"
                     size="icon"
