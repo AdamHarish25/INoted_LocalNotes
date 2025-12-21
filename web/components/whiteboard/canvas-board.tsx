@@ -43,7 +43,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
-type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser' | 'image'
+type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser' | 'image' | 'undo' | 'redo'
 
 interface CanvasElement {
     id: string
@@ -879,7 +879,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         }
     }
 
-    const tools: { id: Tool, icon: React.ReactNode }[] = [
+    const tools: { id: Tool | 'undo' | 'redo', icon: React.ReactNode }[] = [
         { id: 'hand', icon: <Hand className="w-5 h-5" /> },
         { id: 'selection', icon: <MousePointer2 className="w-5 h-5" /> },
         { id: 'rectangle', icon: <Square className="w-5 h-5" /> },
@@ -891,6 +891,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         { id: 'text', icon: <Type className="w-5 h-5" /> },
         { id: 'image', icon: <ImageIcon className="w-5 h-5" /> },
         { id: 'eraser', icon: <Eraser className="w-5 h-5" /> },
+        { id: 'undo', icon: <Undo className="w-5 h-5" /> },
+        { id: 'redo', icon: <Redo className="w-5 h-5" /> },
     ]
 
     // Action Handlers
@@ -1116,7 +1118,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                         </Button>
                     </div>
 
-                    {tools.map(tool => (
+                    {tools.filter(t => !['undo', 'redo', 'zoomIn', 'zoomOut'].includes(t.id)).map(tool => (
                         <Button
                             key={tool.id}
                             variant={activeTool === tool.id ? "default" : "ghost"}
@@ -1126,7 +1128,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                                 if (tool.id === 'image') {
                                     fileInputRef.current?.click()
                                 } else {
-                                    setActiveTool(tool.id)
+                                    setActiveTool(tool.id as Tool)
                                 }
                             }}
                             title={tool.id.charAt(0).toUpperCase() + tool.id.slice(1)}
@@ -1187,8 +1189,12 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                                         onClick={() => {
                                             if (tool.id === 'image') {
                                                 fileInputRef.current?.click()
+                                            } else if (tool.id === 'undo') {
+                                                handleUndo()
+                                            } else if (tool.id === 'redo') {
+                                                handleRedo()
                                             } else {
-                                                setActiveTool(tool.id)
+                                                setActiveTool(tool.id as Tool)
                                             }
                                             setIsMobileMenuOpen(false)
                                         }}
