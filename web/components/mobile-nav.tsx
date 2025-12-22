@@ -65,25 +65,25 @@ export function MobileNav() {
                         {/* Main Links */}
                         <div className="w-full max-w-xs space-y-2">
                             <Link onClick={() => setIsNavMenuOpen(false)} href="/" className="w-full">
-                                <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600 bg-blue-50/50">
+                                <Button variant="ghost" className={`w-full justify-start text-lg h-12 text-slate-600 ${pathname === '/' ? 'bg-blue-50/50' : ''}`}>
                                     <LayoutGrid className={`w-5 h-5 mr-3 ${pathname === '/' ? 'text-blue-600' : 'text-slate-400'}`} />
                                     Dashboard
                                 </Button>
                             </Link>
                             <Link onClick={() => setIsNavMenuOpen(false)} href="/notes" className="w-full">
-                                <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600">
+                                <Button variant="ghost" className={`w-full justify-start text-lg h-12 text-slate-600 ${pathname === '/notes' ? 'bg-blue-50/50' : ''}`}>
                                     <FileText className={`w-5 h-5 mr-3 ${pathname === '/notes' ? 'text-blue-600' : 'text-slate-400'}`} />
                                     My Notes
                                 </Button>
                             </Link>
                             <Link onClick={() => setIsNavMenuOpen(false)} href="/whiteboard" className="w-full">
-                                <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600">
+                                <Button variant="ghost" className={`w-full justify-start text-lg h-12 text-slate-600 ${pathname === '/whiteboard' ? 'bg-blue-50/50' : ''}`}>
                                     <PenTool className={`w-5 h-5 mr-3 ${pathname === '/whiteboard' ? 'text-blue-600' : 'text-slate-400'}`} />
                                     My Whiteboard
                                 </Button>
                             </Link>
                             <Link onClick={() => setIsNavMenuOpen(false)} href="/settings" className="w-full">
-                                <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600">
+                                <Button variant="ghost" className={`w-full justify-start text-lg h-12 text-slate-600 ${pathname === '/settings' ? 'bg-blue-50/50' : ''}`}>
                                     <Settings className={`w-5 h-5 mr-3 ${pathname === '/settings' ? 'text-blue-600' : 'text-slate-400'}`} />
                                     Settings
                                 </Button>
@@ -99,7 +99,7 @@ export function MobileNav() {
                             <div className="space-y-1">
                                 {workspaces.map((ws) => (
                                     <Link key={ws.id} onClick={() => setIsNavMenuOpen(false)} href={`/workspace/${ws.id}`} className="w-full block">
-                                        <Button variant="ghost" className="w-full justify-start text-slate-600">
+                                        <Button variant="ghost" className={`w-full justify-start text-slate-600 ${pathname === `/workspace/${ws.id}` ? 'bg-blue-50/50' : ''}`}>
                                             <Folder className="mr-3 h-4 w-4 text-yellow-500 fill-yellow-500" />
                                             <span className="truncate">{ws.name}</span>
                                         </Button>
