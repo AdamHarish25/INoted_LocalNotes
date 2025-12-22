@@ -64,25 +64,25 @@ export function MobileNav() {
 
                         {/* Main Links */}
                         <div className="w-full max-w-xs space-y-2">
-                            <Link href="/" className="w-full">
+                            <Link onClick={() => setIsNavMenuOpen(false)} href="/" className="w-full">
                                 <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600 bg-blue-50/50">
                                     <LayoutGrid className="w-5 h-5 mr-3 text-blue-600" />
                                     Dashboard
                                 </Button>
                             </Link>
-                            <Link href="/notes" className="w-full">
+                            <Link onClick={() => setIsNavMenuOpen(false)} href="/notes" className="w-full">
                                 <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600">
                                     <FileText className="w-5 h-5 mr-3 text-slate-400" />
                                     My Notes
                                 </Button>
                             </Link>
-                            <Link href="/whiteboard" className="w-full">
+                            <Link onClick={() => setIsNavMenuOpen(false)} href="/whiteboard" className="w-full">
                                 <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600">
                                     <PenTool className="w-5 h-5 mr-3 text-slate-400" />
                                     My Whiteboard
                                 </Button>
                             </Link>
-                            <Link href="/settings" className="w-full">
+                            <Link onClick={() => setIsNavMenuOpen(false)} href="/settings" className="w-full">
                                 <Button variant="ghost" className="w-full justify-start text-lg h-12 text-slate-600">
                                     <Settings className="w-5 h-5 mr-3 text-slate-400" />
                                     Settings
@@ -98,7 +98,7 @@ export function MobileNav() {
                             <h3 className="text-sm font-medium text-slate-400 text-center uppercase tracking-wider">Workspace</h3>
                             <div className="space-y-1">
                                 {workspaces.map((ws) => (
-                                    <Link key={ws.id} href={`/workspace/${ws.id}`} className="w-full block">
+                                    <Link key={ws.id} onClick={() => setIsNavMenuOpen(false)} href={`/workspace/${ws.id}`} className="w-full block">
                                         <Button variant="ghost" className="w-full justify-start text-slate-600">
                                             <Folder className="mr-3 h-4 w-4 text-yellow-500 fill-yellow-500" />
                                             <span className="truncate">{ws.name}</span>
@@ -117,7 +117,10 @@ export function MobileNav() {
                         <Button
                             variant="destructive"
                             className="rounded-full w-12 h-12 p-0 shadow-lg shadow-red-200"
-                            onClick={async () => await signOut()}
+                            onClick={async () => {
+                                await signOut()
+                                setIsNavMenuOpen(false)
+                            }}
                         >
                             <LogOut className="w-5 h-5" />
                         </Button>
