@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { cn } from "@/lib/utils"
 // import { CookieBanner } from "@/components/cookie-banner" // Waiting to see if I need to move it to a barrel file or distinct file. Done.
 import { CookieBanner } from "@/components/cookie-banner"
+import { MobileNav } from "@/components/mobile-nav"
 
 import { useState, useEffect } from "react"
 
@@ -37,6 +38,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             <main className={cn("flex-1 w-full transition-all duration-300", !isLoginPage && (isSidebarCollapsed ? "md:pl-16" : "md:pl-64"))}>
                 {children}
             </main>
+            {!isLoginPage && <MobileNav />}
             <CookieBanner />
         </div>
     )

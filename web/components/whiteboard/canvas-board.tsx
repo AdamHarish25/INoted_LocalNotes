@@ -41,6 +41,7 @@ import {
     ZoomOut
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser' | 'image' | 'undo' | 'redo'
@@ -130,6 +131,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const containerRef = useRef<HTMLDivElement>(null)
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null)
     const [activeTool, setActiveTool] = useState<Tool>('hand')
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
 
     // Tool Options State
     const [toolOptions, setToolOptions] = useState({
@@ -184,8 +187,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const [isPublic, setIsPublic] = useState(initialIsPublic)
     const [isCopied, setIsCopied] = useState(false)
 
-    // Mobile Menu State
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
 
     const handleShareToggle = async () => {
         const newStatus = !isPublic
@@ -1160,14 +1162,18 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                 </div>
 
                 {/* Mobile Tools FAB (Floating Action Button) */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 md:hidden">
+                {/* Mobile Bottom Bar (Tools & Nav) */}
+                <div className="absolute bottom-6 left-0 right-0 z-30 md:hidden flex items-center justify-center gap-6 pointer-events-none">
+                    {/* Tools Button */}
                     <button
                         onClick={() => setIsMobileMenuOpen(true)}
-                        className="flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95"
+                        className="pointer-events-auto flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95"
                     >
-                        <Menu className="w-6 h-6 text-black" />
+                        <Menu className="w-6 h-6" />
                     </button>
                 </div>
+
+
 
                 {/* Mobile Tools Overlay */}
                 {isMobileMenuOpen && (
