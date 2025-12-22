@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { getWorkspaces, signOut } from "@/app/actions"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 export function MobileNav() {
     const [isNavMenuOpen, setIsNavMenuOpen] = useState(false)
@@ -42,7 +43,7 @@ export function MobileNav() {
     return (
         <>
             {/* Mobile Bottom Bar (Tools & Nav) */}
-            <div className="absolute bottom-6 left-6 z-30 md:hidden flex items-center justify-center pointer-events-none">
+            <div className="fixed bottom-6 left-6 z-30 md:hidden flex items-center justify-center pointer-events-none">
                 {/* Navigation Button */}
                 <button
                     onClick={() => setIsNavMenuOpen(true)}
@@ -58,9 +59,7 @@ export function MobileNav() {
                     <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 overflow-y-auto">
                         {/* Logo/Brand */}
                         <div className="flex items-center gap-2 mb-4">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                Inoted
-                            </h2>
+                            <Image src="/logo.png" alt="logo" className="h-6" />
                         </div>
 
                         {/* Main Links */}
