@@ -206,16 +206,24 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             return
         }
 
-        const clickedOnEmpty = e.target === e.target.getStage()
+        const stage = e.target.getStage()
+        const clickedOnEmpty = e.target === stage
+
+        // Robustly find the clicked element's ID (Group ID)
+        let clickedId = e.target.id()
+        if (!clickedId) {
+            const group = e.target.findAncestor('Group')
+            if (group) {
+                clickedId = group.id()
+            }
+        }
 
         // Handle Tool Creation
         if (activeTool !== 'select') {
-            const pos = e.target.getStage().getPointerPosition()
+            const pos = stage.getPointerPosition()
 
             // Special handling for Arrow (Connection)
             if (activeTool === 'arrow') {
-                const clickedId = e.target.id() || e.target.parent?.id()
-
                 if (clickedId && !clickedOnEmpty) {
                     // Clicked on a shape
                     if (!connectionStartId) {
@@ -287,9 +295,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         if (clickedOnEmpty) {
             setSelectedId(null)
         } else {
-            // Find clicked group/shape
-            const id = e.target.id() || e.target.parent?.id()
-            if (id) setSelectedId(id)
+            if (clickedId) setSelectedId(clickedId)
         }
     }
 
@@ -334,6 +340,14 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             yElementsRef.current.delete(idx, 1)
             yElementsRef.current.insert(idx, [newAttrs])
         }
+    }
+
+    // Helper for active tool styling
+    const getToolClass = (tool: string) => {
+        const isActive = activeTool === tool
+        return `shrink-0 transition-all ${isActive
+            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-100 ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-zinc-900'
+            : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`
     }
 
     const handleContextMenu = (e: any, id: string) => {
@@ -389,20 +403,20 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 dark:bg-black/90 relative transition-colors duration-200">
+        <div className="flex flex-col h-screen bg-slate-50 dark:bg-zinc-950 relative transition-colors duration-200">
             {/* Toolbar */}
-            <div className="flex items-center p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 gap-2 overflow-x-auto shadow-sm">
-                <Button variant={activeTool === 'select' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('select')} title="Select" className="shrink-0 dark:text-zinc-100"><MousePointer2 className="w-4 h-4" /></Button>
+            <div className="flex items-center p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 gap-2 overflow-x-auto shadow-sm z-10">
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('select')} title="Select" className={getToolClass('select')}><MousePointer2 className="w-4 h-4" /></Button>
                 <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant={activeTool === 'rectangle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className="shrink-0 dark:text-zinc-100"><Square className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'rounded_rect' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className="shrink-0 dark:text-zinc-100"><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
-                <Button variant={activeTool === 'circle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('circle')} title="Ellipse" className="shrink-0 dark:text-zinc-100"><CircleIcon className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'diamond' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className="shrink-0 dark:text-zinc-100"><Diamond className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'parallelogram' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className="shrink-0 dark:text-zinc-100"><Component className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'cylinder' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className="shrink-0 dark:text-zinc-100"><Database className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'arrow' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('arrow')} title="Arrow" className="shrink-0 dark:text-zinc-100"><ArrowRight className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className={getToolClass('rectangle')}><Square className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className={getToolClass('rounded_rect')}><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('circle')} title="Ellipse" className={getToolClass('circle')}><CircleIcon className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className={getToolClass('diamond')}><Diamond className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className={getToolClass('parallelogram')}><Component className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className={getToolClass('cylinder')}><Database className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('arrow')} title="Arrow" className={getToolClass('arrow')}><ArrowRight className="w-4 h-4" /></Button>
                 <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant={activeTool === 'text' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('text')} title="Text" className="shrink-0 dark:text-zinc-100"><Type className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('text')} title="Text" className={getToolClass('text')}><Type className="w-4 h-4" /></Button>
 
                 <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400 ml-4">
                     {connectionStartId && (
@@ -429,7 +443,17 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 </div>
             </div>
 
-            <div className="flex-1 bg-gray-100 dark:bg-black overflow-hidden relative">
+            <div className="flex-1 relative w-full bg-white dark:bg-zinc-950 overflow-hidden">
+                {/* Dot Grid Background */}
+                <div
+                    className="absolute inset-0 pointer-events-none opacity-30 dark:opacity-20"
+                    style={{
+                        backgroundImage: theme === 'dark'
+                            ? 'radial-gradient(circle, #ffffff 1.5px, transparent 1.5px)'
+                            : 'radial-gradient(circle, #000000 1.5px, transparent 1.5px)',
+                        backgroundSize: '20px 20px',
+                    }}
+                />
                 <Stage
                     width={windowSize.width}
                     height={windowSize.height}
@@ -437,7 +461,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     onContextMenu={(e) => { e.evt.preventDefault(); }}
                     ref={stageRef}
                     className="cursor-crosshair active:cursor-grabbing"
-                    style={{ background: theme === 'dark' ? '#09090b' : '#f3f4f6' }} // Match zinc-950 or gray-100
+                    style={{ background: 'transparent' }}
                 >
                     <Layer>
                         {elements.map((el) => {
@@ -619,6 +643,6 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }
