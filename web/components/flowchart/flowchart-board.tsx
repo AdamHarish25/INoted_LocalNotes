@@ -530,24 +530,28 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 >
                     <Layer>
                         {elements.map((el) => {
+                            if (!el.type) return null
+
+                            // Common props for interactivity
+                            const isSelected = selectedId === el.id
                             const commonProps = {
-                                key: el.id,
                                 id: el.id,
                                 draggable: activeTool === 'select',
-                                onClick: () => setSelectedId(el.id),
+                                onClick: (e: any) => { e.cancelBubble = true; setSelectedId(el.id); },
                                 onDragEnd: (e: any) => handleElementDragEnd(e, el.id),
                                 onTransformEnd: handleTransformEnd,
                                 onContextMenu: (e: any) => handleContextMenu(e, el.id),
+                                strokeWidth: 2,
+                                shadowColor: 'cyan',
+                                shadowBlur: (isSelected && theme === 'dark') ? 0 : (isSelected ? 10 : 0),
+                                shadowOpacity: 0.6,
+                                strokeScaleEnabled: false
                             }
-
-                            // Dynamic colors
+                            // Theme-aware colors
                             const stroke = getRenderColor(el.stroke)
-                            const fill = el.fill || (theme === 'dark' ? 'transparent' : '#ffffff')
+                            const fill = el.fill ? getRenderFill(el.fill) : (theme === 'dark' ? 'transparent' : '#ffffff')
+                            const textColor = getRenderColor(el.type === 'text' && el.fill ? el.fill : '#000000')
 
-                            // Text Color: If element type is text, use its fill property (color), adjusted for theme
-                            const textColor = el.type === 'text' ? getRenderColor(el.fill) : getRenderColor('#000000')
-
-                            // Render Text centered if exists
                             const renderText = () => (
                                 el.text ? <KonvaText
                                     text={el.text}
@@ -557,85 +561,114 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                     height={el.height}
                                     align="center"
                                     verticalAlign="middle"
-                                    fontSize={14}
-                                    padding={5}
                                     fill={textColor}
-                                    listening={false} // pass clicks to shape
+                                    listening={false}
                                 /> : null
                             )
 
                             if (el.type === 'rectangle') {
                                 return (
-                                    <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} shadowBlur={theme === 'dark' ? 0 : 2} />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'rounded_rect') {
-                                return (
-                                    <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={20} shadowBlur={theme === 'dark' ? 0 : 2} />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={2} />
                                         {renderText()}
                                     </Group>
                                 )
                             } else if (el.type === 'circle') {
                                 return (
-                                    <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Circle width={el.width} height={el.height} fill={fill} stroke={stroke} offsetX={-(el.width || 0) / 2} offsetY={-(el.height || 0) / 2} shadowBlur={theme === 'dark' ? 0 : 2} />
-                                        <KonvaText
-                                            text={el.text}
-                                            x={0}
-                                            y={0} width={el.width} height={el.height} align="center" verticalAlign="middle" padding={5}
-                                            fill={textColor}
-                                            listening={false}
-                                        />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Circle radius={Math.min((el.width || 50) / 2, (el.height || 50) / 2)} offsetX={-((el.width || 0) / 2)} offsetY={-((el.height || 0) / 2)} fill={fill} stroke={stroke} />
+                                        {renderText()}
+                                    </Group>
+                                )
+                            } else if (el.type === 'rounded_rect') {
+                                return (
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={10} />
+                                        {renderText()}
                                     </Group>
                                 )
                             } else if (el.type === 'diamond') {
                                 return (
-                                    <Group {...commonProps} x={el.x} y={el.y}>
-                                        <RegularPolygon sides={4} radius={(el.width || 0) / 2} fill={fill} stroke={stroke}
-                                            x={(el.width || 0) / 2} y={(el.height || 0) / 2} // Center polygon in group box
-                                            shadowBlur={theme === 'dark' ? 0 : 2}
-                                        />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <RegularPolygon sides={4} radius={Math.min((el.width || 50) / 2, (el.height || 50) / 2)} offsetX={-((el.width || 0) / 2)} offsetY={-((el.height || 0) / 2)} fill={fill} stroke={stroke} />
                                         {renderText()}
                                     </Group>
                                 )
                             } else if (el.type === 'parallelogram') {
-                                // Draw manually with Line closed
-                                const w = el.width || 100
-                                const h = el.height || 60
-                                const skew = 20
                                 return (
-                                    <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Line
-                                            points={[skew, 0, w, 0, w - skew, h, 0, h]}
-                                            closed
-                                            fill={fill} stroke={stroke}
-                                            shadowBlur={theme === 'dark' ? 0 : 2}
-                                        />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Path data={`M 0 ${el.height || 50} L ${el.width || 100} ${el.height || 50} L ${(el.width || 100) * 0.8} 0 L ${(el.width || 100) * 0.2} 0 Z`} fill={fill} stroke={stroke} />
                                         {renderText()}
                                     </Group>
                                 )
                             } else if (el.type === 'cylinder') {
                                 const w = el.width || 60
                                 const h = el.height || 80
+                                const ry = w / 4
                                 return (
-                                    <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Path
-                                            data={`M 0 ${h * 0.15} V ${h * 0.85} Q ${w / 2} ${h} ${w} ${h * 0.85} V ${h * 0.15}`}
-                                            fill={fill} stroke={stroke}
-                                        />
-                                        <Line points={[0, h * 0.15, 0, h * 0.85]} stroke={stroke} />
-                                        <Line points={[w, h * 0.15, w, h * 0.85]} stroke={stroke} />
-                                        <Circle x={w / 2} y={h * 0.85} radiusX={w / 2} radiusY={h * 0.15} stroke={stroke} fill={fill} />
-                                        <Circle x={w / 2} y={h * 0.15} radiusX={w / 2} radiusY={h * 0.15} stroke={stroke} fill={fill} />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Path data={`M 0 ${ry} L 0 ${h - ry} A ${w / 2} ${ry} 0 0 0 ${w} ${h - ry} L ${w} ${ry} A ${w / 2} ${ry} 0 0 1 0 ${ry} Z`} fill={fill} stroke={stroke} />
+                                        <Circle x={w / 2} y={ry} radiusX={w / 2} radiusY={ry} fill={fill} stroke={stroke} />
                                         {renderText()}
                                     </Group>
                                 )
+                            } else if (el.type === 'connection' && el.startId && el.endId) {
+                                const startNode = elements.find(e => e.id === el.startId)
+                                const endNode = elements.find(e => e.id === el.endId)
+
+                                if (startNode && endNode) {
+                                    const { points, handlePos, isVerticalSegment } = getOrthogonalPoints(startNode, endNode, el.manualPosition)
+
+                                    return (
+                                        <Group key={el.id}>
+                                            <Arrow
+                                                points={points}
+                                                stroke={theme === 'dark' ? '#ffffff' : '#000000'}
+                                                fill={theme === 'dark' ? '#ffffff' : '#000000'}
+                                                strokeWidth={2}
+                                                pointerLength={10}
+                                                pointerWidth={10}
+                                                cornerRadius={5}
+                                                onClick={(e) => {
+                                                    e.cancelBubble = true;
+                                                    setSelectedId(el.id);
+                                                }}
+                                                onContextMenu={(e) => handleContextMenu(e, el.id)}
+                                                hitStrokeWidth={20}
+                                            />
+                                            {selectedId === el.id && (
+                                                <Circle
+                                                    x={handlePos.x}
+                                                    y={handlePos.y}
+                                                    radius={5}
+                                                    fill="#3b82f6"
+                                                    draggable
+                                                    dragBoundFunc={(pos) => {
+                                                        if (isVerticalSegment) {
+                                                            return { x: pos.x, y: handlePos.y }
+                                                        } else {
+                                                            return { x: handlePos.x, y: pos.y }
+                                                        }
+                                                    }}
+                                                    onDragEnd={(e) => {
+                                                        const node = e.target
+                                                        const newPos = isVerticalSegment ? node.x() : node.y()
+                                                        const idx = elements.findIndex(x => x.id === el.id)
+                                                        if (idx !== -1 && yElementsRef.current) {
+                                                            const newAttrs = { ...elements[idx], manualPosition: newPos }
+                                                            yElementsRef.current.delete(idx, 1)
+                                                            yElementsRef.current.insert(idx, [newAttrs])
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </Group>
+                                    )
+                                }
+                                return null
                             } else if (el.type === 'arrow') {
                                 return (
-                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
                                         <Arrow
                                             points={[0, (el.height || 20) / 2, el.width || 100, (el.height || 20) / 2]}
                                             pointerLength={10}
@@ -658,8 +691,10 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                         />
                                     </Group>
                                 )
-                            } else if (el.type === 'text') {
+                            }
+                            else if (el.type === 'text') {
                                 return <KonvaText
+                                    key={el.id}
                                     {...commonProps}
                                     x={el.x}
                                     y={el.y}
