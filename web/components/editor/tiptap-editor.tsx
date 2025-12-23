@@ -1,6 +1,6 @@
 "use client"
 
-import { useEditor, EditorContent } from "@tiptap/react"
+import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react"
 
 import StarterKit from "@tiptap/starter-kit"
 import Collaboration from "@tiptap/extension-collaboration"
@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import * as Y from "yjs"
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { all, createLowlight } from 'lowlight'
+import CodeBlockComponent from './code-block-component'
 
 const lowlight = createLowlight(all)
 
@@ -136,7 +137,11 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 provider: provider,
                 user: { name: 'User', color: '#' + Math.floor(Math.random() * 16777215).toString(16) }
             }),
-            CodeBlockLowlight.configure({
+            CodeBlockLowlight.extend({
+                addNodeView() {
+                    return ReactNodeViewRenderer(CodeBlockComponent)
+                }
+            }).configure({
                 lowlight,
             }),
             SlashCommand.configure({
