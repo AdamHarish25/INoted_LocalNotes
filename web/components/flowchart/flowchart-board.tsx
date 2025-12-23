@@ -30,87 +30,84 @@ interface FlowchartElement {
     manualPosition?: number // For orthogonal connector adjustment
 }
 
-const getEdgePoint = (node: FlowchartElement, target: { x: number, y: number }, padding = 0) => {
+// Helper to find the closest anchor point (N/S/E/W)
+const getAnchorPoint = (node: FlowchartElement, target: { x: number, y: number }) => {
     const w = node.width || 100
     const h = node.height || 60
     const x = node.x || 0
     const y = node.y || 0
 
-    const cx = x + w / 2
-    const cy = y + h / 2
+    // Define relative anchor points
+    const anchors = [
+        { x: x + w / 2, y: y, side: 'top' },        // Top
+        { x: x + w, y: y + h / 2, side: 'right' },  // Right
+        { x: x + w / 2, y: y + h, side: 'bottom' }, // Bottom
+        { x: x, y: y + h / 2, side: 'left' }        // Left
+    ]
 
-    const dx = target.x - cx
-    const dy = target.y - cy
+    // Find closest anchor to target
+    let closest = anchors[0]
+    let minDist = Infinity
 
-    if (dx === 0 && dy === 0) return { x: cx, y: cy }
-
-    // For Circle/Cylinder
-    if (node.type === 'circle' || node.type === 'cylinder') {
-        const angle = Math.atan2(dy, dx)
-        const rx = w / 2 + padding
-        const ry = h / 2 + padding
-        return {
-            x: cx + rx * Math.cos(angle),
-            y: cy + ry * Math.sin(angle)
+    anchors.forEach(a => {
+        const dist = Math.pow(a.x - target.x, 2) + Math.pow(a.y - target.y, 2)
+        if (dist < minDist) {
+            minDist = dist
+            closest = a
         }
-    }
+    })
 
-    // For Box shapes
-    // Calculate intersection with expanded box (padding)
-    const t = Math.min(
-        ((w / 2) + padding) / Math.abs(dx),
-        ((h / 2) + padding) / Math.abs(dy)
-    )
-
-    return {
-        x: cx + dx * t,
-        y: cy + dy * t
-    }
+    return closest
 }
 
-// Calculate orthogonal points
+// Calculate orthogonal points with Smart Anchors
 const getOrthogonalPoints = (startNode: FlowchartElement, endNode: FlowchartElement, manualPos?: number) => {
-    const start = { x: (startNode.x || 0) + (startNode.width || 0) / 2, y: (startNode.y || 0) + (startNode.height || 0) / 2 }
-    const end = { x: (endNode.x || 0) + (endNode.width || 0) / 2, y: (endNode.y || 0) + (endNode.height || 0) / 2 }
+    const startCenter = { x: (startNode.x || 0) + (startNode.width || 0) / 2, y: (startNode.y || 0) + (startNode.height || 0) / 2 }
+    const endCenter = { x: (endNode.x || 0) + (endNode.width || 0) / 2, y: (endNode.y || 0) + (endNode.height || 0) / 2 }
 
-    const isHorizontal = Math.abs(start.x - end.x) > Math.abs(start.y - end.y)
+    // 1. Determine best anchors based on relative positions
+    // We want the anchor on StartNode that is closest to EndNode center
+    const startAnchor = getAnchorPoint(startNode, endCenter)
+    // We want the anchor on EndNode that is closest to StartAnchor
+    const endAnchor = getAnchorPoint(endNode, startAnchor)
 
-    // Initial naive points based on centers
-    let p1 = getEdgePoint(startNode, end, 5) // 5px padding
-    let p2 = getEdgePoint(endNode, start, 5)
+    const p1 = startAnchor
+    const p2 = endAnchor
 
-    // Refine start/end to be strictly N/S/E/W of the nodes if possible for cleaner look
-    // (Skipping strict port logic for simplicity, sticking to center-directed edge points)
-
-    // Calculate middle segment
+    // 2. Logic for routing
     let points: number[] = []
     let handlePos = { x: 0, y: 0 }
     let isVerticalSegment = false
 
-    if (isHorizontal) {
-        // Horizontal separation -> Vertical middle segment? 
-        // No, if Horizontal separated, we usually want (x1, y1) -> (midX, y1) -> (midX, y2) -> (x2, y2)
-        // actually Z-shape.
+    // Simple heuristic: if exiting Vertical (Top/Bottom), try to go Vertical first.
+    // If exiting Horizontal (Left/Right), try to go Horizontal first.
 
+    const isStartVertical = p1.side === 'top' || p1.side === 'bottom'
+    const isEndVertical = p2.side === 'top' || p2.side === 'bottom'
+
+    // Case 1: Opposite sides (e.g. Right to Left) -> S-shape or straight
+    // Case 2: Perpendicular (e.g. Right to Top) -> L-shape
+
+    // We'll fallback to the "Mid-Segment" logic but refined by start/end direction
+
+    // If we just use the mid-point logic from before, but starting from anchors:
+    const isHorizontalSeparation = Math.abs(p1.x - p2.x) > Math.abs(p1.y - p2.y)
+
+    // Override generic horizontal/vertical decision based on exit side if needed
+    // Actually, sticking to the standard 3-segment orthogonal logic usually works well if points are aligned.
+
+    if (isHorizontalSeparation) {
+        // Mid-Vertical Segment
         let midX = manualPos !== undefined ? manualPos : (p1.x + p2.x) / 2
-
-        // Clamp midX? Maybe not, allow user freedom.
-
         points = [p1.x, p1.y, midX, p1.y, midX, p2.y, p2.x, p2.y]
         handlePos = { x: midX, y: (p1.y + p2.y) / 2 }
-        isVerticalSegment = true // users drags X actually... wait. Handle is on vertical segment?
-        // Segment 1: (p1.x, p1.y) -> (midX, p1.y)  [Horiz]
-        // Segment 2: (midX, p1.y) -> (midX, p2.y)  [Vert] <- Handle here
-        // Segment 3: (midX, p2.y) -> (p2.x, p2.y)  [Horiz]
-        // Dragging the vertical segment changes its X position.
+        isVerticalSegment = true
     } else {
-        // Vertical separation -> Horizontal middle segment
+        // Mid-Horizontal Segment
         let midY = manualPos !== undefined ? manualPos : (p1.y + p2.y) / 2
-
         points = [p1.x, p1.y, p1.x, midY, p2.x, midY, p2.x, p2.y]
         handlePos = { x: (p1.x + p2.x) / 2, y: midY }
         isVerticalSegment = false
-        // Segment 2 is Horiz, changing its Y position.
     }
 
     return { points, handlePos, isVerticalSegment }
@@ -122,7 +119,9 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const [elements, setElements] = useState<FlowchartElement[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
-    const [connectionStartId, setConnectionStartId] = useState<string | null>(null)
+
+    // Drag-to-connect state
+    const [drawingArrow, setDrawingArrow] = useState<{ startId: string, endPos: { x: number, y: number } } | null>(null)
 
     // Window Size State to prevent hydration mismatch
     const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 })
@@ -249,12 +248,69 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         }
     }, [selectedId, elements])
 
+    const handleStageMouseDown = (e: any) => {
+        const stage = e.target.getStage()
+        const pos = stage.getPointerPosition()
+
+        // Handle Arrow Creation (Drag start)
+        if (activeTool === 'arrow') {
+            const clickedId = e.target.id() || e.target.parent?.id()
+            const clickedElement = elements.find(el => el.id === clickedId)
+
+            if (clickedElement && clickedElement.type !== 'connection') {
+                setDrawingArrow({
+                    startId: clickedId,
+                    endPos: pos
+                })
+                return
+            }
+        }
+    }
+
+    const handleStageMouseMove = (e: any) => {
+        if (drawingArrow) {
+            const stage = e.target.getStage()
+            const pos = stage.getPointerPosition()
+            setDrawingArrow(prev => prev ? { ...prev, endPos: pos } : null)
+        }
+    }
+
+    const handleStageMouseUp = (e: any) => {
+        if (drawingArrow) {
+
+            // Check what we are dropping on
+            const targetId = e.target.id() || e.target.parent?.id()
+            const targetElement = elements.find(el => el.id === targetId)
+
+            if (targetElement && targetId !== drawingArrow.startId && targetElement.type !== 'connection') {
+                // Create Connection
+                const newConn: FlowchartElement = {
+                    id: crypto.randomUUID(),
+                    type: 'connection',
+                    startId: drawingArrow.startId,
+                    endId: targetId,
+                    stroke: '#000000',
+                    manualPosition: undefined
+                }
+                if (yElementsRef.current) {
+                    yElementsRef.current.push([newConn])
+                }
+                setActiveTool('select')
+            }
+
+            setDrawingArrow(null)
+        }
+    }
+
     const handleStageClick = (e: any) => {
         // Close context menu if visible
         if (contextMenu.visible) {
             setContextMenu({ ...contextMenu, visible: false })
             return
         }
+
+        // If drawing an arrow, click should not create a new shape or select
+        if (activeTool === 'arrow') return
 
         const stage = e.target.getStage()
         const clickedOnEmpty = e.target === stage
@@ -271,42 +327,6 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         // Handle Tool Creation
         if (activeTool !== 'select') {
             const pos = stage.getPointerPosition()
-
-            // Special handling for Arrow (Connection)
-            if (activeTool === 'arrow') {
-                if (clickedId && !clickedOnEmpty) {
-                    // Clicked on a shape
-                    if (!connectionStartId) {
-                        setConnectionStartId(clickedId)
-                        // TODO: Add visual feedback
-                    } else {
-                        // Create Connection
-                        if (clickedId !== connectionStartId) {
-                            const newConn: FlowchartElement = {
-                                id: crypto.randomUUID(),
-                                type: 'connection',
-                                startId: connectionStartId,
-                                endId: clickedId,
-                                stroke: getRenderColor('#000000') // Default stroke
-                            }
-                            if (yElementsRef.current) {
-                                yElementsRef.current.push([newConn])
-                            }
-                        }
-                        setConnectionStartId(null)
-                        setActiveTool('select') // Reset tool after connection
-                    }
-                    return
-                } else {
-                    // Clicked on empty space
-                    if (connectionStartId) {
-                        // Cancel connection
-                        setConnectionStartId(null)
-                        return
-                    }
-                    // Else fall through to create Free Arrow
-                }
-            }
 
             // Standard Shape Creation
             const id = crypto.randomUUID()
@@ -329,9 +349,6 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 newEl = { id, type: 'parallelogram', x: pos.x, y: pos.y, width: 120, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'cylinder') {
                 newEl = { id, type: 'cylinder', x: pos.x, y: pos.y, width: 60, height: 80, fill: defaultFill, stroke: defaultStroke }
-            } else if (activeTool === 'arrow') {
-                // Free arrow creation (if not connecting)
-                newEl = { id, type: 'arrow', x: pos.x, y: pos.y, width: 100, height: 40, fill: defaultStroke, stroke: defaultStroke }
             }
 
             if (newEl && yElementsRef.current) {
@@ -469,11 +486,6 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('text')} title="Text" className={getToolClass('text')}><Type className="w-4 h-4" /></Button>
 
                 <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400 ml-4">
-                    {connectionStartId && (
-                        <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 px-2 py-0.5 rounded-full text-xs font-medium animate-pulse">
-                            Select target
-                        </span>
-                    )}
                     {saveStatus === 'saving' ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -507,6 +519,9 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 <Stage
                     width={windowSize.width}
                     height={windowSize.height}
+                    onMouseDown={handleStageMouseDown}
+                    onMouseMove={handleStageMouseMove}
+                    onMouseUp={handleStageMouseUp}
                     onClick={handleStageClick}
                     onContextMenu={(e) => { e.evt.preventDefault(); }}
                     ref={stageRef}
@@ -655,6 +670,24 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             }
                             return null
                         })}
+
+                        {/* Temp Arrow Rendering during Drag */}
+                        {drawingArrow && (() => {
+                            const startNode = elements.find(e => e.id === drawingArrow.startId)
+                            if (!startNode) return null
+                            const startAnchor = getAnchorPoint(startNode, drawingArrow.endPos)
+                            return (
+                                <Arrow
+                                    points={[startAnchor.x, startAnchor.y, drawingArrow.endPos.x, drawingArrow.endPos.y]}
+                                    stroke={theme === 'dark' ? '#ffffff' : '#000000'}
+                                    strokeWidth={2}
+                                    dash={[5, 5]}
+                                    pointerLength={10}
+                                    pointerWidth={10}
+                                />
+                            )
+                        })()}
+
                         <Transformer ref={transformerRef} />
                     </Layer>
                 </Stage>
