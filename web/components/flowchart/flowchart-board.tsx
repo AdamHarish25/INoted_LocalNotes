@@ -27,9 +27,10 @@ interface FlowchartElement {
     rotation?: number
     startId?: string
     endId?: string
+    manualPosition?: number // For orthogonal connector adjustment
 }
 
-const getEdgePoint = (node: FlowchartElement, target: { x: number, y: number }) => {
+const getEdgePoint = (node: FlowchartElement, target: { x: number, y: number }, padding = 0) => {
     const w = node.width || 100
     const h = node.height || 60
     const x = node.x || 0
@@ -43,21 +44,22 @@ const getEdgePoint = (node: FlowchartElement, target: { x: number, y: number }) 
 
     if (dx === 0 && dy === 0) return { x: cx, y: cy }
 
-    // For Circle/Cylinder (approximate as circle)
+    // For Circle/Cylinder
     if (node.type === 'circle' || node.type === 'cylinder') {
         const angle = Math.atan2(dy, dx)
-        const rx = w / 2
-        const ry = h / 2
+        const rx = w / 2 + padding
+        const ry = h / 2 + padding
         return {
             x: cx + rx * Math.cos(angle),
             y: cy + ry * Math.sin(angle)
         }
     }
 
-    // For Rectangle/Diamond/Others (Box intersection)
+    // For Box shapes
+    // Calculate intersection with expanded box (padding)
     const t = Math.min(
-        (w / 2) / Math.abs(dx),
-        (h / 2) / Math.abs(dy)
+        ((w / 2) + padding) / Math.abs(dx),
+        ((h / 2) + padding) / Math.abs(dy)
     )
 
     return {
@@ -66,7 +68,55 @@ const getEdgePoint = (node: FlowchartElement, target: { x: number, y: number }) 
     }
 }
 
-const COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#000000', '#ffffff']
+// Calculate orthogonal points
+const getOrthogonalPoints = (startNode: FlowchartElement, endNode: FlowchartElement, manualPos?: number) => {
+    const start = { x: (startNode.x || 0) + (startNode.width || 0) / 2, y: (startNode.y || 0) + (startNode.height || 0) / 2 }
+    const end = { x: (endNode.x || 0) + (endNode.width || 0) / 2, y: (endNode.y || 0) + (endNode.height || 0) / 2 }
+
+    const isHorizontal = Math.abs(start.x - end.x) > Math.abs(start.y - end.y)
+
+    // Initial naive points based on centers
+    let p1 = getEdgePoint(startNode, end, 5) // 5px padding
+    let p2 = getEdgePoint(endNode, start, 5)
+
+    // Refine start/end to be strictly N/S/E/W of the nodes if possible for cleaner look
+    // (Skipping strict port logic for simplicity, sticking to center-directed edge points)
+
+    // Calculate middle segment
+    let points: number[] = []
+    let handlePos = { x: 0, y: 0 }
+    let isVerticalSegment = false
+
+    if (isHorizontal) {
+        // Horizontal separation -> Vertical middle segment? 
+        // No, if Horizontal separated, we usually want (x1, y1) -> (midX, y1) -> (midX, y2) -> (x2, y2)
+        // actually Z-shape.
+
+        let midX = manualPos !== undefined ? manualPos : (p1.x + p2.x) / 2
+
+        // Clamp midX? Maybe not, allow user freedom.
+
+        points = [p1.x, p1.y, midX, p1.y, midX, p2.y, p2.x, p2.y]
+        handlePos = { x: midX, y: (p1.y + p2.y) / 2 }
+        isVerticalSegment = true // users drags X actually... wait. Handle is on vertical segment?
+        // Segment 1: (p1.x, p1.y) -> (midX, p1.y)  [Horiz]
+        // Segment 2: (midX, p1.y) -> (midX, p2.y)  [Vert] <- Handle here
+        // Segment 3: (midX, p2.y) -> (p2.x, p2.y)  [Horiz]
+        // Dragging the vertical segment changes its X position.
+    } else {
+        // Vertical separation -> Horizontal middle segment
+        let midY = manualPos !== undefined ? manualPos : (p1.y + p2.y) / 2
+
+        points = [p1.x, p1.y, p1.x, midY, p2.x, midY, p2.x, p2.y]
+        handlePos = { x: (p1.x + p2.x) / 2, y: midY }
+        isVerticalSegment = false
+        // Segment 2 is Horiz, changing its Y position.
+    }
+
+    return { points, handlePos, isVerticalSegment }
+}
+
+const COLORS = ['#ef4444', '#3b82f6', '#22c5e', '#eab308', '#a855f7', '#000000', '#ffffff']
 
 export default function FlowchartBoard({ roomId, initialData }: { roomId: string, initialData?: any[] }) {
     const [elements, setElements] = useState<FlowchartElement[]>([])
