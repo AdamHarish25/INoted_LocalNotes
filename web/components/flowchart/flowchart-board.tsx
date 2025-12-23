@@ -30,21 +30,24 @@ interface FlowchartElement {
     manualPosition?: number // For orthogonal connector adjustment
 }
 
-// Helper to find the closest anchor point (N/S/E/W)
-const getAnchorPoint = (node: FlowchartElement, target: { x: number, y: number }) => {
+// Helper to get all anchor points
+const getAllAnchors = (node: FlowchartElement) => {
     const w = node.width || 100
     const h = node.height || 60
     const x = node.x || 0
     const y = node.y || 0
 
-    // Define relative anchor points
-    const anchors = [
+    return [
         { x: x + w / 2, y: y, side: 'top' },        // Top
         { x: x + w, y: y + h / 2, side: 'right' },  // Right
         { x: x + w / 2, y: y + h, side: 'bottom' }, // Bottom
         { x: x, y: y + h / 2, side: 'left' }        // Left
     ]
+}
 
+// Helper to find the closest anchor point (N/S/E/W)
+const getAnchorPoint = (node: FlowchartElement, target: { x: number, y: number }) => {
+    const anchors = getAllAnchors(node)
     // Find closest anchor to target
     let closest = anchors[0]
     let minDist = Infinity
@@ -121,7 +124,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
 
     // Drag-to-connect state
-    const [drawingArrow, setDrawingArrow] = useState<{ startId: string, endPos: { x: number, y: number } } | null>(null)
+    const [drawingArrow, setDrawingArrow] = useState<{ startId: string, endPos: { x: number, y: number }, snappedTo?: { nodeId: string, side: string } } | null>(null)
 
     // Window Size State to prevent hydration mismatch
     const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 })
@@ -169,11 +172,6 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     // Helper: Fill Color
     const getRenderFill = (color: string | undefined) => {
         if (!color) return 'transparent'
-        // If white fill in dark mode? Usually we keep fills as is, but white box in dark mode is bright.
-        // Let's invert white fill to dark fill? No, that changes the "paper" look.
-        // Excalidraw keeps backgrounds transparent often.
-        // Let's assume white fill is "default background" --> make it transparent or dark grey?
-        // For now, let's keep fills authentic to data, but default creation should be mindful.
         return color
     }
 
@@ -271,15 +269,44 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         if (drawingArrow) {
             const stage = e.target.getStage()
             const pos = stage.getPointerPosition()
-            setDrawingArrow(prev => prev ? { ...prev, endPos: pos } : null)
+
+            let snapPos = pos
+            let snappedTo = undefined
+
+            // Find closest anchor on other nodes
+            // Using a simple efficient loop
+            let closestDist = 400 // 20px squared
+
+            for (const el of elements) {
+                if (el.id === drawingArrow.startId || el.type === 'connection' || el.type === 'text') continue
+
+                const anchors = getAllAnchors(el)
+                for (const anchor of anchors) {
+                    const dist = Math.pow(anchor.x - pos.x, 2) + Math.pow(anchor.y - pos.y, 2)
+                    if (dist < closestDist) {
+                        closestDist = dist
+                        snapPos = { x: anchor.x, y: anchor.y }
+                        snappedTo = { nodeId: el.id, side: anchor.side }
+                    }
+                }
+            }
+
+            setDrawingArrow(prev => prev ? { ...prev, endPos: snapPos, snappedTo } : null)
         }
     }
 
     const handleStageMouseUp = (e: any) => {
         if (drawingArrow) {
+            let targetId = null
 
-            // Check what we are dropping on
-            const targetId = e.target.id() || e.target.parent?.id()
+            // Prefer snapped target
+            if (drawingArrow.snappedTo) {
+                targetId = drawingArrow.snappedTo.nodeId
+            } else {
+                // Fallback to what we are dropping on
+                targetId = e.target.id() || e.target.parent?.id()
+            }
+
             const targetElement = elements.find(el => el.id === targetId)
 
             if (targetElement && targetId !== drawingArrow.startId && targetElement.type !== 'connection') {
@@ -297,7 +324,6 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 }
                 setActiveTool('select')
             }
-
             setDrawingArrow(null)
         }
     }
@@ -704,6 +730,33 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 />
                             }
                             return null
+                        })}
+
+                        {/* Anchor Indicators during Drag */}
+                        {drawingArrow && elements.map((el) => {
+                            if (el.id === drawingArrow.startId || el.type === 'connection' || el.type === 'text') return null
+                            const anchors = getAllAnchors(el)
+                            return (
+                                <Group key={`anchors-${el.id}`}>
+                                    {anchors.map((a, i) => {
+                                        const isSnapped = drawingArrow.snappedTo?.nodeId === el.id && drawingArrow.snappedTo?.side === a.side
+                                        return (
+                                            <Circle
+                                                key={i}
+                                                x={a.x} y={a.y}
+                                                radius={isSnapped ? 6 : 4}
+                                                fill={isSnapped ? '#3b82f6' : theme === 'dark' ? '#000000' : '#ffffff'}
+                                                stroke={isSnapped ? '#3b82f6' : theme === 'dark' ? '#ffffff' : '#000000'}
+                                                strokeWidth={isSnapped ? 0 : 1}
+                                                opacity={isSnapped ? 1 : 0.5}
+                                                shadowBlur={isSnapped ? 10 : 0}
+                                                shadowColor="#3b82f6"
+                                                listening={false}
+                                            />
+                                        )
+                                    })}
+                                </Group>
+                            )
                         })}
 
                         {/* Temp Arrow Rendering during Drag */}
