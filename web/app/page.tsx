@@ -4,12 +4,48 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Check, Github, Twitter, Menu, X, Play, Code, Cloud, Share2, GitBranch, RefreshCw, PenTool } from "lucide-react"
-import { useState } from "react"
+import { ArrowRight, Check, Github, Twitter, Menu, X, Play, Code, Cloud, Share2, GitBranch, RefreshCw, PenTool, LayoutDashboard, FileText, Network, Settings, Folder, MousePointer2 } from "lucide-react"
+import { useState, useLayoutEffect, useRef } from "react"
 import { ModeToggle } from "@/components/mode-toggle"
+import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 
 export default function LandingPage() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const mainRef = useRef(null)
+
+    useLayoutEffect(() => {
+        gsap.registerPlugin(ScrollTrigger)
+        let ctx = gsap.context(() => {
+            // Hero
+            const tl = gsap.timeline()
+            tl.from(".hero-text", { y: 50, opacity: 0, duration: 1, ease: "power3.out", stagger: 0.2 })
+                .from(".hero-buttons", { y: 20, opacity: 0, duration: 0.8, ease: "power3.out" }, "-=0.6")
+                .from(".hero-image", { y: 60, opacity: 0, duration: 1, ease: "power3.out" }, "-=0.6")
+
+            // Features
+            gsap.from(".feature-card", {
+                scrollTrigger: { trigger: "#features", start: "top 80%" },
+                y: 50, opacity: 0, duration: 0.8, stagger: 0.2
+            })
+
+            // Demo
+            gsap.from(".demo-section", {
+                scrollTrigger: { trigger: "#demo", start: "top 75%" },
+                scale: 0.9, opacity: 0, duration: 0.8
+            })
+
+            // Pricing
+            gsap.from(".pricing-card", {
+                scrollTrigger: { trigger: "#pricing", start: "top 75%" },
+                y: 50, opacity: 0, duration: 0.8, stagger: 0.2
+            })
+
+
+
+        }, mainRef)
+        return () => ctx.revert()
+    }, [])
 
     // FAQ Data
     const faqs = [
@@ -32,7 +68,7 @@ export default function LandingPage() {
     ]
 
     return (
-        <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900 dark:selection:text-blue-100">
+        <div ref={mainRef} className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900 dark:selection:text-blue-100">
 
             {/* Navbar */}
             <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
@@ -40,7 +76,7 @@ export default function LandingPage() {
                     <div className="flex justify-between items-center h-16 relative">
                         {/* Logo */}
                         <div className="flex items-center gap-2">
-                            <Image src={"/logo.png"} alt="logo" className="h-6 w-auto" />
+                            <img src={"/logo.png"} alt="logo" className="h-6" />
                         </div>
 
                         {/* Desktop Links */}
@@ -98,16 +134,15 @@ export default function LandingPage() {
                 <div className="absolute top-20 left-10 w-20 h-20 bg-blue-100 rounded-full blur-3xl opacity-50 animate-pulse delay-700"></div>
                 <div className="absolute top-40 right-10 w-32 h-32 bg-indigo-100 rounded-full blur-3xl opacity-50 animate-pulse"></div>
 
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-6">
+                <h1 className="hero-text text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-6">
                     All-in-One Notes for <br className="hidden sm:block" />
                     <span className="text-blue-600 dark:text-blue-500">Developers</span>
                 </h1>
-                <p className="text-lg sm:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                    Tech blogs, coding ideas, and developer plans — all securely in one place.
-                    Built for speed, focused on code.
+                <p className="hero-text text-lg sm:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+                    Write, diagram, and collaborate—all in one place. No more switching between tools—ever.
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                <div className="hero-buttons flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
                     <Link href="/login">
                         <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 h-12 text-base shadow-lg shadow-blue-200">
                             Get Started Free
@@ -122,7 +157,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Hero Image / Screenshot */}
-                <div className="relative mx-auto max-w-5xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 overflow-hidden transform hover:scale-[1.01] transition-transform duration-500">
+                <div className="hero-image relative mx-auto max-w-5xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 overflow-hidden transform hover:scale-[1.01] transition-transform duration-500">
                     {/* Placeholder for the app screenshot - creating a mock UI with divs */}
                     <div className="w-full aspect-[16/9] bg-white dark:bg-slate-950 flex flex-col">
                         <div className="h-8 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 gap-2 bg-slate-50 dark:bg-slate-900">
@@ -132,21 +167,122 @@ export default function LandingPage() {
                             <div className="ml-4 w-64 h-4 bg-slate-200 dark:bg-slate-800 rounded-full opacity-50"></div>
                         </div>
                         <div className="flex-1 flex overflow-hidden">
-                            <div className="w-64 border-r border-slate-100 dark:border-slate-800 p-4 hidden md:block bg-white dark:bg-slate-950">
-                                <div className="w-full h-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-4"></div>
-                                <div className="space-y-2">
-                                    <div className="w-full h-4 bg-slate-50 dark:bg-slate-900 rounded"></div>
-                                    <div className="w-3/4 h-4 bg-slate-50 dark:bg-slate-900 rounded"></div>
-                                    <div className="w-5/6 h-4 bg-slate-50 dark:bg-slate-900 rounded"></div>
+                            <div className="w-64 border-r border-slate-100 dark:border-slate-800 p-4 hidden md:flex flex-col gap-6 bg-white dark:bg-slate-950">
+                                {/* Workspace Header */}
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                                        <span className="text-white font-bold text-xs">M</span>
+                                    </div>
+                                    <div className="overflow-hidden">
+                                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">My Workspace</div>
+                                        <div className="text-xs text-slate-400">Free Plan</div>
+                                    </div>
+                                </div>
+
+                                {/* Navigation */}
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md text-sm font-medium">
+                                        <LayoutDashboard className="w-4 h-4" />
+                                        Dashboard
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 text-slate-600 dark:text-slate-400 rounded-md text-sm">
+                                        <FileText className="w-4 h-4" />
+                                        My Notes
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 text-slate-600 dark:text-slate-400 rounded-md text-sm">
+                                        <PenTool className="w-4 h-4" />
+                                        My Whiteboards
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 text-slate-600 dark:text-slate-400 rounded-md text-sm">
+                                        <Network className="w-4 h-4" />
+                                        My Flowcharts
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 text-slate-600 dark:text-slate-400 rounded-md text-sm">
+                                        <Settings className="w-4 h-4" />
+                                        Settings
+                                    </div>
+                                </div>
+
+                                {/* Workspaces List */}
+                                <div>
+                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Workspaces</div>
+                                    <div className="flex items-center gap-2 p-2 text-slate-600 dark:text-slate-400 rounded-md text-sm">
+                                        <Folder className="w-4 h-4 text-blue-500" />
+                                        Personal
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 text-slate-600 dark:text-slate-400 rounded-md text-sm">
+                                        <Folder className="w-4 h-4 text-emerald-500" />
+                                        School
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex-1 p-8 bg-slate-50/50 dark:bg-slate-900/50">
-                                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400 mx-auto">
-                                    <Play className="w-8 h-8 fill-current" />
+                            <div className="flex-1 bg-white dark:bg-slate-950 relative overflow-hidden flex flex-col">
+                                {/* Editor Header */}
+                                <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 bg-white dark:bg-slate-950">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400">
+                                            <FileText className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200">Github Cheatsheet</span>
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-medium">Saved to Cloud</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <div className="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center gap-2 text-xs font-medium text-slate-500">
+                                            <Share2 className="w-3.5 h-3.5" />
+                                            Share
+                                        </div>
+                                        <div className="h-8 px-3 rounded-lg bg-blue-600 flex items-center gap-2 text-xs font-medium text-white shadow-sm shadow-blue-200 dark:shadow-none">
+                                            Publish
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="text-center">
-                                    <h3 className="text-lg font-medium text-slate-400 dark:text-slate-500">App Dashboard Preview</h3>
-                                    <p className="text-sm text-slate-300 dark:text-slate-600">Interact with notes and whiteboards seamlessly</p>
+
+                                {/* Editor Content */}
+                                <div className="flex-1 p-8 overflow-y-auto overflow-x-hidden space-y-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                                    <div>
+                                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Github Cheatsheet</h1>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">1. Take a look at the branch</p>
+                                        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm shadow-lg border border-slate-800 group relative">
+                                            <div className="flex items-center justify-between mb-3 border-b border-slate-700/50 pb-2">
+                                                <div className="flex gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                                                </div>
+                                                <span className="text-xs text-slate-500 font-sans">bash</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <span className="text-green-400 select-none">$</span>
+                                                <span className="text-blue-300">git</span> <span className="text-slate-200">switch frontend</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">2. Update info from server:</p>
+                                        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm shadow-lg border border-slate-800 group relative">
+                                            <div className="flex items-center justify-between mb-3 border-b border-slate-700/50 pb-2">
+                                                <div className="flex gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                                                </div>
+                                                <span className="text-xs text-slate-500 font-sans">bash</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <span className="text-green-400 select-none">$</span>
+                                                <span className="text-blue-300">git</span> <span className="text-slate-200">fetch origin</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Additional text to make it look full */}
+                                    <div className="h-20"></div>
                                 </div>
                             </div>
                         </div>
@@ -164,7 +300,7 @@ export default function LandingPage() {
 
                     <div className="grid md:grid-cols-2 gap-8">
                         {/* Feature 1 */}
-                        <div className="bg-white dark:bg-slate-950 rounded-2xl p-8 border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-shadow duration-300">
+                        <div className="feature-card bg-white dark:bg-slate-950 rounded-2xl p-8 border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-shadow duration-300">
                             <div className="h-48 bg-blue-50 dark:bg-blue-900/10 rounded-xl mb-6 flex items-center justify-center border border-blue-100 dark:border-blue-900/20 overflow-hidden relative group">
                                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')] opacity-10"></div>
                                 {/* Mock Whiteboard Drawing */}
@@ -183,7 +319,7 @@ export default function LandingPage() {
                         </div>
 
                         {/* Feature 2 */}
-                        <div className="bg-white dark:bg-slate-950 rounded-2xl p-8 border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-shadow duration-300">
+                        <div className="feature-card bg-white dark:bg-slate-950 rounded-2xl p-8 border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-shadow duration-300">
                             <div className="h-48 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl mb-6 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/20 overflow-hidden relative">
                                 <div className="flex gap-8 items-center">
                                     <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-lg shadow-sm flex items-center justify-center">
@@ -212,13 +348,46 @@ export default function LandingPage() {
                 <span className="text-blue-600 dark:text-blue-400 font-semibold tracking-wider uppercase text-sm">Demo</span>
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mt-2 mb-12">See It in Action</h2>
 
-                <div className="relative mx-auto max-w-4xl aspect-video bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center group cursor-pointer">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/50 to-purple-900/50 opacity-60"></div>
-                    {/* Fake Video UI */}
-                    <div className="z-10 bg-white/10 backdrop-blur-sm p-4 rounded-full border border-white/20 group-hover:scale-110 transition-transform duration-300">
-                        <Play className="w-12 h-12 text-white fill-white pl-1" />
+                <div className="demo-section relative mx-auto max-w-4xl aspect-video rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 group">
+                    {/* Logic: If no video, show Dummy Demo */}
+                    <div className="w-full h-full bg-white dark:bg-slate-950 flex flex-col relative">
+                        {/* Browser Header */}
+                        <div className="h-8 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 gap-2 bg-slate-50 dark:bg-slate-900 shrink-0">
+                            <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                            <div className="ml-4 w-64 h-4 bg-slate-200 dark:bg-slate-800 rounded-full opacity-50"></div>
+                        </div>
+
+                        {/* Dummy Content Canvas */}
+                        <div className="flex-1 relative p-8 flex items-center justify-center overflow-hidden">
+                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+                            <div className="relative z-10 text-center">
+                                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-blue-400">
+                                    <Play className="w-8 h-8 fill-current ml-1" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Interactive Demo</h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">Experience real-time collaboration</p>
+                            </div>
+
+                            {/* Collaborative Cursor 1 */}
+                            <div className="absolute top-1/4 left-1/4 animate-pulse">
+                                <MousePointer2 className="w-5 h-5 text-purple-500 fill-purple-500 transform -rotate-12 drop-shadow-lg" />
+                                <div className="ml-4 -mt-4 bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-r-md rounded-bl-md font-bold shadow-sm whitespace-nowrap">
+                                    Adam (You)
+                                </div>
+                            </div>
+
+                            {/* Collaborative Cursor 2 */}
+                            <div className="absolute bottom-1/3 right-1/4 animate-bounce duration-[3000ms]">
+                                <MousePointer2 className="w-5 h-5 text-orange-500 fill-orange-500 transform -rotate-12 drop-shadow-lg" />
+                                <div className="ml-4 -mt-4 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-r-md rounded-bl-md font-bold shadow-sm whitespace-nowrap">
+                                    Sarah is typing...
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <p className="absolute bottom-8 text-slate-300 text-sm font-medium">Watch 2-minute walkthrough</p>
                 </div>
             </section>
 
@@ -232,7 +401,7 @@ export default function LandingPage() {
 
                     <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                         {/* Free Plan */}
-                        <div className="bg-white dark:bg-slate-950 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative">
+                        <div className="pricing-card bg-white dark:bg-slate-950 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative">
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Free</h3>
                             <div className="mt-4 flex items-baseline gap-1">
                                 <span className="text-4xl font-bold text-slate-900 dark:text-white">$0</span>
@@ -263,7 +432,7 @@ export default function LandingPage() {
                         </div>
 
                         {/* Pro Plan */}
-                        <div className="bg-white dark:bg-slate-950 rounded-3xl p-8 border-2 border-blue-500 shadow-xl relative overflow-hidden">
+                        <div className="pricing-card bg-white dark:bg-slate-950 rounded-3xl p-8 border-2 border-blue-500 shadow-xl relative overflow-hidden">
                             <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">POPULAR</div>
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Pro Developer</h3>
                             <div className="mt-4 flex items-baseline gap-1">
@@ -311,7 +480,7 @@ export default function LandingPage() {
 
                 <div className="space-y-4">
                     {faqs.map((faq, index) => (
-                        <details key={index} className="group border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 open:ring-1 open:ring-blue-100 dark:open:ring-blue-900 transition-all duration-200">
+                        <details key={index} className="faq-item group border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 open:ring-1 open:ring-blue-100 dark:open:ring-blue-900 transition-all duration-200">
                             <summary className="flex items-center justify-between p-6 cursor-pointer list-none font-medium text-slate-900 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                 {faq.question}
                                 <span className="transform group-open:rotate-180 transition-transform duration-200">
@@ -356,7 +525,7 @@ export default function LandingPage() {
 
                     <div className="border-t border-slate-100 dark:border-slate-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <Image src={"/logo.png"} alt="logo" className="h-6 w-auto" />
+                            <img src={"/logo.png"} alt="logo" className="h-6" />
                         </div>
 
                         <div className="flex gap-6">
