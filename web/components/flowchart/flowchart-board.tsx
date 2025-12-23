@@ -1,18 +1,20 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, Image as KonvaImage } from "react-konva"
+import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, RegularPolygon, Path, Group } from "react-konva"
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Eraser } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 interface FlowchartElement {
     id: string
-    type: 'rectangle' | 'circle' | 'text' | 'arrow'
+    type: 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'
     x: number
     y: number
     width?: number
@@ -29,7 +31,12 @@ const COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#000000'
 export default function FlowchartBoard({ roomId, initialData }: { roomId: string, initialData?: any[] }) {
     const [elements, setElements] = useState<FlowchartElement[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
-    const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow'>('select')
+    const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
+
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, elementId: string | null }>({ visible: false, x: 0, y: 0, elementId: null })
+    const [isTextDialogOpen, setIsTextDialogOpen] = useState(false)
+    const [textInput, setTextInput] = useState("")
 
     // Yjs
     const providerRef = useRef<HocuspocusProvider | null>(null)
@@ -114,6 +121,12 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }, [selectedId, elements])
 
     const handleStageClick = (e: any) => {
+        // Close context menu if clicked elsewhere
+        if (contextMenu.visible) {
+            setContextMenu({ ...contextMenu, visible: false })
+            return
+        }
+
         // Deselect if clicked on empty stage
         if (e.target === e.target.getStage()) {
             setSelectedId(null)
@@ -127,9 +140,17 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 if (activeTool === 'rectangle') {
                     newEl = { id, type: 'rectangle', x: pos.x, y: pos.y, width: 100, height: 60, fill: '#ffffff', stroke: '#000000' }
                 } else if (activeTool === 'circle') {
-                    newEl = { id, type: 'circle', x: pos.x, y: pos.y, width: 50, height: 50, fill: '#ffffff', stroke: '#000000' } // width/height as radius approx
+                    newEl = { id, type: 'circle', x: pos.x, y: pos.y, width: 60, height: 60, fill: '#ffffff', stroke: '#000000' }
                 } else if (activeTool === 'text') {
-                    newEl = { id, type: 'text', x: pos.x, y: pos.y, text: 'Double click to edit', fill: '#000000' }
+                    newEl = { id, type: 'text', x: pos.x, y: pos.y, text: 'Click to edit', fill: '#000000' }
+                } else if (activeTool === 'diamond') {
+                    newEl = { id, type: 'diamond', x: pos.x, y: pos.y, width: 80, height: 80, fill: '#ffffff', stroke: '#000000' }
+                } else if (activeTool === 'rounded_rect') {
+                    newEl = { id, type: 'rounded_rect', x: pos.x, y: pos.y, width: 100, height: 60, fill: '#ffffff', stroke: '#000000' }
+                } else if (activeTool === 'parallelogram') {
+                    newEl = { id, type: 'parallelogram', x: pos.x, y: pos.y, width: 120, height: 60, fill: '#ffffff', stroke: '#000000' }
+                } else if (activeTool === 'cylinder') {
+                    newEl = { id, type: 'cylinder', x: pos.x, y: pos.y, width: 60, height: 80, fill: '#ffffff', stroke: '#000000' }
                 }
 
                 if (newEl && yElementsRef.current) {
@@ -139,6 +160,13 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 }
             }
             return
+        }
+
+        // Handle element click for selection
+        if (e.target !== e.target.getStage()) {
+            // Find parent group ID or shape ID
+            const id = e.target.id() || e.target.parent?.id()
+            if (id) setSelectedId(id)
         }
     }
 
@@ -163,7 +191,6 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             const scaleX = node.scaleX()
             const scaleY = node.scaleY()
 
-            // Reset scale and update width/height
             node.scaleX(1)
             node.scaleY(1)
 
@@ -181,26 +208,82 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         }
     }
 
-    return (
-        <div className="flex flex-col h-screen bg-slate-50">
-            {/* Toolbar - Simple implementation */}
-            <div className="flex items-center p-4 bg-white border-b gap-2">
-                <Button variant={activeTool === 'select' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('select')}><MousePointer2 className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'rectangle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rectangle')}><Square className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'circle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('circle')}><CircleIcon className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'text' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('text')}><Type className="w-4 h-4" /></Button>
+    const handleContextMenu = (e: any, id: string) => {
+        e.evt.preventDefault() // prevent browser menu
+        const stage = e.target.getStage()
+        const pointer = stage.getPointerPosition()
 
+        // Calculate screen-relative position if needed, or stick to absolute over the canvas container
+        // React Konva stage events give pointer relative to stage. 
+        // We'll use viewport relative for fixed menu.
+        const containerRect = stage.container().getBoundingClientRect()
+
+        setContextMenu({
+            visible: true,
+            x: containerRect.left + pointer.x + 10,
+            y: containerRect.top + pointer.y + 10,
+            elementId: id
+        })
+    }
+
+    const handleDeleteElement = () => {
+        if (contextMenu.elementId && yElementsRef.current) {
+            const idx = elements.findIndex(el => el.id === contextMenu.elementId)
+            if (idx !== -1) {
+                yElementsRef.current.delete(idx, 1)
+            }
+        }
+        setContextMenu({ ...contextMenu, visible: false })
+    }
+
+    const handleInsertText = () => {
+        if (contextMenu.elementId) {
+            const el = elements.find(e => e.id === contextMenu.elementId)
+            if (el) {
+                setTextInput(el.text || "")
+                setIsTextDialogOpen(true)
+            }
+        }
+        setContextMenu({ ...contextMenu, visible: false })
+    }
+
+    const saveText = () => {
+        if (contextMenu.elementId && yElementsRef.current) {
+            const idx = elements.findIndex(el => el.id === contextMenu.elementId)
+            if (idx !== -1) {
+                const newAttrs = { ...elements[idx], text: textInput }
+                yElementsRef.current.delete(idx, 1)
+                yElementsRef.current.insert(idx, [newAttrs])
+            }
+        }
+        setIsTextDialogOpen(false)
+    }
+
+    return (
+        <div className="flex flex-col h-screen bg-slate-50 relative">
+            {/* Toolbar */}
+            <div className="flex items-center p-4 bg-white border-b gap-2 overflow-x-auto">
+                <Button variant={activeTool === 'select' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('select')} title="Select"><MousePointer2 className="w-4 h-4" /></Button>
+                <div className="w-px h-6 bg-slate-200 mx-1" />
+                <Button variant={activeTool === 'rectangle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle"><Square className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'rounded_rect' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle"><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
+                <Button variant={activeTool === 'circle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('circle')} title="Ellipse"><CircleIcon className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'diamond' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('diamond')} title="Decision"><Diamond className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'parallelogram' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('parallelogram')} title="Data"><Component className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'cylinder' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('cylinder')} title="Database"><Database className="w-4 h-4" /></Button>
+                <div className="w-px h-6 bg-slate-200 mx-1" />
+                <Button variant={activeTool === 'text' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('text')} title="Text"><Type className="w-4 h-4" /></Button>
 
                 <div className="flex items-center gap-2 text-sm text-slate-500 ml-4">
                     {saveStatus === 'saving' ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Saving...</span>
+                            <span className="hidden md:inline">Saving</span>
                         </>
                     ) : (
                         <>
                             <Cloud className="w-4 h-4" />
-                            <span>Saved</span>
+                            <span className="hidden md:inline">Saved</span>
                         </>
                     )}
                 </div>
@@ -216,52 +299,142 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     width={typeof window !== 'undefined' ? window.innerWidth : 1000}
                     height={typeof window !== 'undefined' ? window.innerHeight - 80 : 800}
                     onClick={handleStageClick}
+                    onContextMenu={(e) => { e.evt.preventDefault(); }} // Prevent overall context menu
                     ref={stageRef}
                 >
                     <Layer>
                         {elements.map((el) => {
-                            if (el.type === 'rectangle') {
-                                return <Rect
-                                    key={el.id}
-                                    id={el.id}
-                                    x={el.x}
-                                    y={el.y}
+                            const commonProps = {
+                                key: el.id,
+                                id: el.id,
+                                draggable: activeTool === 'select',
+                                onClick: () => setSelectedId(el.id),
+                                onDragEnd: (e: any) => handleElementDragEnd(e, el.id),
+                                onTransformEnd: handleTransformEnd,
+                                onContextMenu: (e: any) => handleContextMenu(e, el.id),
+                            }
+
+                            // Render Text centered if exists
+                            const renderText = () => (
+                                el.text ? <KonvaText
+                                    text={el.text}
+                                    x={0}
+                                    y={0}
                                     width={el.width}
                                     height={el.height}
-                                    fill={el.fill}
-                                    stroke={el.stroke}
-                                    draggable={activeTool === 'select'}
-                                    onClick={() => setSelectedId(el.id)}
-                                    onDragEnd={(e) => handleElementDragEnd(e, el.id)}
-                                    onTransformEnd={handleTransformEnd}
-                                />
+                                    align="center"
+                                    verticalAlign="middle"
+                                    fontSize={14}
+                                    padding={5}
+                                    fill={el.stroke === '#ffffff' ? '#000000' : '#000000'} // simple contrast logic or fixed black
+                                    listening={false} // pass clicks to shape
+                                /> : null
+                            )
+
+                            if (el.type === 'rectangle') {
+                                return (
+                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                        <Rect width={el.width} height={el.height} fill={el.fill} stroke={el.stroke} shadowBlur={2} />
+                                        {renderText()}
+                                    </Group>
+                                )
+                            } else if (el.type === 'rounded_rect') {
+                                return (
+                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                        <Rect width={el.width} height={el.height} fill={el.fill} stroke={el.stroke} cornerRadius={20} shadowBlur={2} />
+                                        {renderText()}
+                                    </Group>
+                                )
                             } else if (el.type === 'circle') {
-                                return <Circle
-                                    key={el.id}
-                                    id={el.id}
-                                    x={el.x}
-                                    y={el.y}
-                                    radius={el.width ? el.width / 2 : 25} // approx
-                                    scaleX={el.width && el.height ? 1 : 1} // Handled by transformer usually
-                                    fill={el.fill}
-                                    stroke={el.stroke}
-                                    draggable={activeTool === 'select'}
-                                    onClick={() => setSelectedId(el.id)}
-                                    onDragEnd={(e) => handleElementDragEnd(e, el.id)}
-                                // Transform logic for circle needs radius update
-                                />
+                                return (
+                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                        <Circle width={el.width} height={el.height} fill={el.fill} stroke={el.stroke} offsetX={-(el.width || 0) / 2} offsetY={-(el.height || 0) / 2} shadowBlur={2} />
+                                        {/* Text centering for circle needs offset adjustment or Group logic */}
+                                        <KonvaText
+                                            text={el.text}
+                                            x={0} // circle logic is weird with origin center, Group x/y is top-left usually? 
+                                            // Actually Group x/y is what we pass. If Circle is offset, we need consistency.
+                                            // Let's standardise: Group x/y is top-left of bounding box.
+                                            // Rect is 0,0 relative. Circle center is radius, radius relative.
+                                            // To make text centering easy, let's assume Group is at center or top-left.
+                                            // Current `newEl` logic for Rect uses pos as top-left (konva default). 
+                                            // Circle uses x,y as center. 
+                                            // Refactoring circle create to be consistent? 
+                                            // Let's adjust rendering: Group at x,y. Circle at w/2, h/2.
+                                            y={0} width={el.width} height={el.height} align="center" verticalAlign="middle" padding={5} />
+                                    </Group>
+                                )
+                            } else if (el.type === 'diamond') {
+                                return (
+                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                        <RegularPolygon sides={4} radius={(el.width || 0) / 2} fill={el.fill} stroke={el.stroke}
+                                            x={(el.width || 0) / 2} y={(el.height || 0) / 2} // Center polygon in group box
+                                            shadowBlur={2}
+                                        />
+                                        {renderText()}
+                                    </Group>
+                                )
+                            } else if (el.type === 'parallelogram') {
+                                // Draw manually with Line closed
+                                const w = el.width || 100
+                                const h = el.height || 60
+                                const skew = 20
+                                return (
+                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                        <Line
+                                            points={[skew, 0, w, 0, w - skew, h, 0, h]}
+                                            closed
+                                            fill={el.fill} stroke={el.stroke}
+                                            shadowBlur={2}
+                                        />
+                                        {renderText()}
+                                    </Group>
+                                )
+                            } else if (el.type === 'cylinder') {
+                                const w = el.width || 60
+                                const h = el.height || 80
+                                // Cylinder path approximation or simple manual drawing: Check SVG path logic
+                                // Top ellipse, Down lines, Bottom ellipse half
+                                return (
+                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                        {/* Body */}
+                                        <Path
+                                            data={`M 0 ${h * 0.15} V ${h * 0.85} Q ${w / 2} ${h} ${w} ${h * 0.85} V ${h * 0.15}`}
+                                            fill={el.fill} stroke={el.stroke}
+                                        />
+                                        <Path
+                                            data={`M 0 ${h * 0.15} V ${h * 0.85} Q ${w / 2} ${h * 0.7} ${w} ${h * 0.85} V ${h * 0.15}`} // bottom curve inner (optional, usually solid)
+                                        // Actually let's just do top and bottom
+                                        />
+                                        {/* Top Ellipse */}
+                                        <Circle x={w / 2} y={h * 0.15} radiusX={w / 2} radiusY={h * 0.15} stroke={el.stroke} fill={el.fill} />
+                                        {/* Fix body connection: Rect in middle or just lines? Path is cleaner. */}
+                                        {/* Overwrite for better look: */}
+                                        <Path
+                                            data={`M 0 ${h * 0.15} V ${h * 0.85} A ${w / 2} ${h * 0.15} 0 0 0 ${w} ${h * 0.85} V ${h * 0.15} A ${w / 2} ${h * 0.15} 0 0 0 0 ${h * 0.15}`} // Full loop around
+                                        // This is tricky. Let's do simple: 
+                                        // 1. Ellipse Top
+                                        // 2. Rect Body (hidden top/bottom borders?)
+                                        // 3. Ellipse Bottom
+                                        />
+                                        {/* Standard DB Icon look */}
+                                        <Line points={[0, h * 0.15, 0, h * 0.85]} stroke={el.stroke} />
+                                        <Line points={[w, h * 0.15, w, h * 0.85]} stroke={el.stroke} />
+                                        <Circle x={w / 2} y={h * 0.85} radiusX={w / 2} radiusY={h * 0.15} stroke={el.stroke} fill={el.fill} />
+                                        <Circle x={w / 2} y={h * 0.15} radiusX={w / 2} radiusY={h * 0.15} stroke={el.stroke} fill={el.fill} />
+                                        {/* Re-draw lines to cover fill overlap if needed */}
+
+                                        {renderText()}
+                                    </Group>
+                                )
                             } else if (el.type === 'text') {
                                 return <KonvaText
-                                    key={el.id}
-                                    id={el.id}
+                                    {...commonProps}
                                     x={el.x}
                                     y={el.y}
-                                    text={el.text}
+                                    text={el.text || "Text"}
                                     fill={el.fill}
                                     fontSize={20}
-                                    draggable={activeTool === 'select'}
-                                    onClick={() => setSelectedId(el.id)}
-                                    onDragEnd={(e) => handleElementDragEnd(e, el.id)}
                                 />
                             }
                             return null
@@ -269,7 +442,41 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                         <Transformer ref={transformerRef} />
                     </Layer>
                 </Stage>
+
+                {/* Context Menu HTML Overlay */}
+                {contextMenu.visible && (
+                    <div
+                        className="fixed bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md py-1 z-50 text-sm min-w-[150px]"
+                        style={{ top: contextMenu.y, left: contextMenu.x }}
+                    >
+                        <button
+                            className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 flex items-center gap-2"
+                            onClick={handleInsertText}
+                        >
+                            <Pencil className="w-4 h-4" /> Insert Text
+                        </button>
+                        <button
+                            className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20 flex items-center gap-2"
+                            onClick={handleDeleteElement}
+                        >
+                            <Trash2 className="w-4 h-4" /> Delete Component
+                        </button>
+                    </div>
+                )}
             </div>
+
+            <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Text</DialogTitle>
+                        <DialogDescription>Enter text for this component.</DialogDescription>
+                    </DialogHeader>
+                    <Input value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Type here..." />
+                    <DialogFooter>
+                        <Button onClick={saveText}>Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
