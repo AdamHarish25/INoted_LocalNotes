@@ -431,7 +431,7 @@ export async function assignNoteToWorkspace(noteId: string, workspaceId: string)
 export async function signOut() {
     const supabase = await createClient()
     await supabase.auth.signOut()
-    redirect("/login")
+    redirect("/")
 }
 
 export async function updateWorkspace(id: string, name: string) {
