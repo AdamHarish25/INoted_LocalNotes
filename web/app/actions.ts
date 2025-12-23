@@ -239,6 +239,133 @@ export async function updateWhiteboardSharing(id: string, is_public: boolean) {
     return { success: true }
 }
 
+export async function createFlowchart(formData: FormData | { title: string, workspace_id?: string }) {
+    const supabase = await createClient()
+
+    // Check if user is logged in
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        redirect("/login")
+    }
+
+    let title = "Untitled Flowchart";
+    let workspace_id = null;
+
+    if (formData instanceof FormData) {
+        title = formData.get("title") as string || "Untitled Flowchart";
+        workspace_id = formData.get("workspace_id") as string || null;
+    } else if (typeof formData === 'object') {
+        title = formData.title || "Untitled Flowchart";
+        workspace_id = formData.workspace_id || null;
+    }
+
+    const { data, error } = await supabase
+        .from("flowcharts")
+        .insert({
+            title,
+            owner_id: user.id,
+            workspace_id,
+            content: [], // Empty array initially
+        })
+        .select()
+        .single()
+
+    if (error) {
+        console.error("Error creating flowchart:", error)
+        return
+    }
+
+    if (data) {
+        redirect(`/flowchart/${data.id}`)
+    }
+}
+
+export async function updateFlowchart(id: string, data: { content?: any, title?: string }) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const updates: any = { updated_at: new Date().toISOString() }
+    if (data.content !== undefined) updates.content = data.content
+    if (data.title !== undefined) updates.title = data.title
+
+    const { data: result, error } = await supabase
+        .from("flowcharts")
+        .update(updates)
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .select("id")
+
+    if (error) {
+        console.error("Error updating flowchart:", error)
+        return { error: error.message }
+    }
+
+    if (!result || result.length === 0) {
+        console.error("No flowchart updated. Check RLS or owner_id match.")
+        return { error: "No permission or flowchart not found" }
+    }
+
+    return { success: true }
+}
+
+export async function updateFlowchartSharing(id: string, is_public: boolean) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("flowcharts")
+        .update({ is_public })
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error updating flowchart sharing:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+export async function deleteFlowchart(id: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { error } = await supabase
+        .from("flowcharts")
+        .delete()
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+    if (error) {
+        console.error("Error deleting flowchart:", error)
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+export async function getFlowcharts() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Unauthorized" }
+
+    const { data, error } = await supabase
+        .from("flowcharts")
+        .select("id, title, updated_at")
+        .eq("owner_id", user.id)
+        .order("updated_at", { ascending: false })
+
+    if (error) {
+        console.error("Error fetching flowcharts:", error)
+        return { error: error.message }
+    }
+
+    return { success: true, data }
+}
+
 
 // Workspaces
 

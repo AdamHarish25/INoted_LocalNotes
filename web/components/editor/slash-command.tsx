@@ -54,6 +54,14 @@ const getSuggestionItems = ({ query }: { query: string }) => {
             },
         },
         {
+            title: 'Code Block',
+            description: 'Add a code block with syntax highlighting',
+            icon: Code,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range).toggleCodeBlock().run()
+            },
+        },
+        {
             title: 'Bullet List',
             description: 'Create a simple bullet list',
             icon: List,

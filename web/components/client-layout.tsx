@@ -12,19 +12,24 @@ import { useState, useEffect } from "react"
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const isLoginPage = pathname === "/login"
+    const isLandingPage = pathname === "/"
+    const shouldHideSidebar = isLoginPage || isLandingPage
+
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
     // Automatically expand sidebar when on dashboard
     useEffect(() => {
-        if (pathname === "/") {
+        if (pathname === "/dashboard") {
             setIsSidebarCollapsed(false)
+        } else if (pathname === "/login" || pathname === "/") {
+            setIsSidebarCollapsed(true)
         }
     }, [pathname])
 
     return (
         <div className="flex min-h-screen w-full bg-white text-slate-900">
-            {/* Sidebar - hidden on login page */}
-            {!isLoginPage && (
+            {/* Sidebar - hidden on login/landing page */}
+            {!shouldHideSidebar && (
                 <div className={cn("hidden md:block fixed h-full z-10 transition-all duration-300", isSidebarCollapsed ? "w-16" : "w-64")}>
                     <AppSidebar
                         className="w-full"
@@ -34,11 +39,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 </div>
             )}
 
-            {/* Main content - no margin on login page */}
-            <main className={cn("flex-1 w-full transition-all duration-300", !isLoginPage && (isSidebarCollapsed ? "md:pl-16" : "md:pl-64"))}>
+            {/* Main content - no margin on login/landing page */}
+            <main className={cn("flex-1 w-full transition-all duration-300", !shouldHideSidebar && (isSidebarCollapsed ? "md:pl-16" : "md:pl-64"))}>
                 {children}
             </main>
-            {!isLoginPage && <MobileNav />}
+            {!shouldHideSidebar && <MobileNav />}
             <CookieBanner />
         </div>
     )

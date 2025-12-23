@@ -38,9 +38,16 @@ import {
     Undo,
     Redo,
     ZoomIn,
-    ZoomOut
+    ZoomOut,
+    Download
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
@@ -213,6 +220,100 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         const link = document.createElement('a')
         link.download = `whiteboard-${roomId}.png`
         link.href = canvasRef.current.toDataURL('image/png')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
+    const handleExportJSON = () => {
+        const jsonString = JSON.stringify(elements, null, 2)
+        const blob = new Blob([jsonString], { type: 'application/json' })
+        const link = document.createElement('a')
+        link.download = `whiteboard-${roomId}.json`
+        link.href = URL.createObjectURL(blob)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
+    const handleExportSVG = () => {
+        if (!canvasRef.current) return
+        const width = canvasRef.current.width
+        const height = canvasRef.current.height
+
+        let svgContent = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`
+
+        // Background
+        svgContent += `<rect width="100%" height="100%" fill="${isDark ? '#000000' : '#ffffff'}"/>`
+
+        elements.forEach(el => {
+            let stroke = el.strokeColor
+            if (isDark) {
+                if (stroke === 'black' || stroke === '#000000') stroke = 'white'
+                else if (stroke === 'white' || stroke === '#ffffff') stroke = 'black'
+            } else {
+                if (stroke === 'white' || stroke === '#ffffff') stroke = 'black'
+            }
+
+            const sw = el.strokeWidth || 2
+
+            switch (el.type) {
+                case 'rectangle':
+                    svgContent += `<rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" stroke="${stroke}" stroke-width="${sw}" fill="none"/>`
+                    break
+                case 'circle':
+                    // el.x/y is top-left, width is width. ellipse cx = x + w/2
+                    svgContent += `<ellipse cx="${el.x + el.width / 2}" cy="${el.y + el.height / 2}" rx="${Math.abs(el.width / 2)}" ry="${Math.abs(el.height / 2)}" stroke="${stroke}" stroke-width="${sw}" fill="none"/>`
+                    break
+                case 'line':
+                    svgContent += `<line x1="${el.x}" y1="${el.y}" x2="${el.x + el.width}" y2="${el.y + el.height}" stroke="${stroke}" stroke-width="${sw}"/>`
+                    break
+                case 'arrow':
+                    // Main line
+                    const endX = el.x + el.width
+                    const endY = el.y + el.height
+                    svgContent += `<line x1="${el.x}" y1="${el.y}" x2="${endX}" y2="${endY}" stroke="${stroke}" stroke-width="${sw}"/>`
+                    // Arrowhead
+                    const angle = Math.atan2(endY - el.y, endX - el.x)
+                    const headLen = 10 + sw
+                    const x1 = endX - headLen * Math.cos(angle - Math.PI / 6)
+                    const y1 = endY - headLen * Math.sin(angle - Math.PI / 6)
+                    const x2 = endX - headLen * Math.cos(angle + Math.PI / 6)
+                    const y2 = endY - headLen * Math.sin(angle + Math.PI / 6)
+                    svgContent += `<path d="M ${endX} ${endY} L ${x1} ${y1} M ${endX} ${endY} L ${x2} ${y2}" stroke="${stroke}" stroke-width="${sw}" fill="none"/>`
+                    break
+                case 'pencil':
+                case 'eraser':
+                    if (el.points && el.points.length > 0) {
+                        const d = el.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+                        // For eraser, we might want to mask? SVG doesn't do 'destination-out' easily without masks.
+                        // For now, if eraser, we just paint background color line?
+                        const finalS = el.type === 'eraser' ? (isDark ? 'black' : 'white') : stroke
+                        const finalW = el.type === 'eraser' ? (sw * 2.5) : sw
+                        svgContent += `<path d="${d}" stroke="${finalS}" stroke-width="${finalW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+                    }
+                    break
+                case 'text':
+                    if (el.text) {
+                        // Escape text
+                        const escaped = el.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                        svgContent += `<text x="${el.x}" y="${el.y + 20}" fill="${stroke}" font-family="${el.fontFamily || 'sans-serif'}" font-size="20" text-anchor="${(el.textAlign === 'center' ? 'middle' : (el.textAlign === 'right' ? 'end' : 'start'))}">${escaped}</text>`
+                    }
+                    break
+                case 'image':
+                    if (el.data) {
+                        svgContent += `<image href="${el.data}" x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}"/>`
+                    }
+                    break
+            }
+        })
+
+        svgContent += `</svg>`
+
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+        const link = document.createElement('a')
+        link.download = `whiteboard-${roomId}.svg`
+        link.href = URL.createObjectURL(blob)
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -1061,16 +1162,30 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                         </DialogContent>
                     </Dialog>
 
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10 ml-2"
-                        onClick={handleExportImage}
-                        title="Export as Image"
-                    >
-                        <svg className="w-4 h-4 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        <span className="hidden md:inline">Export</span>
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10 ml-2"
+                                title="Export"
+                            >
+                                <Download className="w-4 h-4 md:mr-2" />
+                                <span className="hidden md:inline">Export</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handleExportImage}>
+                                Export as PNG
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportSVG}>
+                                Export as SVG
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportJSON}>
+                                Export as JSON (Code)
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 

@@ -64,9 +64,9 @@ export function MobileNav() {
 
                         {/* Main Links */}
                         <div className="w-full max-w-xs space-y-2">
-                            <Link onClick={() => setIsNavMenuOpen(false)} href="/" className="w-full">
-                                <Button variant="ghost" className={`w-full justify-start text-lg h-12 text-slate-600 ${pathname === '/' ? 'bg-blue-50/50' : ''}`}>
-                                    <LayoutGrid className={`w-5 h-5 mr-3 ${pathname === '/' ? 'text-blue-600' : 'text-slate-400'}`} />
+                            <Link onClick={() => setIsNavMenuOpen(false)} href="/dashboard" className="w-full">
+                                <Button variant="ghost" className={`w-full justify-start text-lg h-12 text-slate-600 ${pathname === '/dashboard' ? 'bg-blue-50/50' : ''}`}>
+                                    <LayoutGrid className={`w-5 h-5 mr-3 ${pathname === '/dashboard' ? 'text-blue-600' : 'text-slate-400'}`} />
                                     Dashboard
                                 </Button>
                             </Link>

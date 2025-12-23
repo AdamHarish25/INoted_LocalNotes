@@ -19,12 +19,12 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { updateNote, updateWhiteboard, deleteNote, deleteWhiteboard } from "@/app/actions"
+import { updateNote, updateWhiteboard, updateFlowchart, deleteNote, deleteWhiteboard, deleteFlowchart } from "@/app/actions"
 
 interface ResourceOptionsProps {
     id: string
     title: string
-    type: "note" | "whiteboard"
+    type: "note" | "whiteboard" | "flowchart"
 }
 
 export function ResourceOptions({ id, title, type }: ResourceOptionsProps) {
@@ -45,34 +45,10 @@ export function ResourceOptions({ id, title, type }: ResourceOptionsProps) {
         if (type === "note") {
             // updateNote signature: (id: string, data: { content?: any, title?: string })
             res = await updateNote(id, data)
-        } else {
-            // For whiteboard, we only have updateWhiteboard(id, content) but we probably need to handle title updates separately or within same action?
-            // Checking actions.ts updateWhiteboard only takes content.
-            // Wait, I missed checking updateWhiteboard signature carefully.
-            // Let's assume for now I need to fix updateWhiteboard to accept title or use a specific function if not available.
-            // But usually it's cleaner to have direct update. 
-            // Actually, let's look at the DB schema or actions again.
-            // Looking at previous actions file: updateWhiteboard takes (id, content). It doesn't seem to take title.
-            // But createWhiteboard takes title.
-            // I should probably update `updateWhiteboard` to take title as well or make a new action.
-            // For now, I'll assume I can modify the updateWhiteboard action or create a simple updateResourceTitle action if needed.
-            // Let's use a dynamic import or assume I'll fix the action in next step.
-            // To be safe, I will implement a specific server action for renaming if the existing one is insufficient, 
-            // but let's try to fetch what we have.
-
-            // Actually, let's fix the server action in parallel or just assume it works for now?
-            // No, I must be precise. `updateWhiteboard` in actions.ts:
-            // export async function updateWhiteboard(id: string, content: any) { ... .update({ content, ... }) }
-            // It ONLY updates content! I need to change it to accept title.
-
-            // I'll leave a comment here and fix actions.ts in the next step to support title updates for whiteboards.
-            // For now, I'll write the code assuming it accepts an object or I'll create a new utility.
-            // Let's assume I'll modify updateWhiteboard to be: (id: string, data: { content?: any, title?: string })
-            // effectively matching updateNote signature style or close to it.
-            // Or I will create a separate `renameResource` action? No, better to stick to standard updates.
-
-            // Let's assume I'll refactor updateWhiteboard to: updateWhiteboard(id, { title: name })
+        } else if (type === "whiteboard") {
             res = await updateWhiteboard(id, { title: name })
+        } else {
+            res = await updateFlowchart(id, { title: name })
         }
 
         setIsLoading(false)
@@ -87,8 +63,10 @@ export function ResourceOptions({ id, title, type }: ResourceOptionsProps) {
         let res
         if (type === "note") {
             res = await deleteNote(id)
-        } else {
+        } else if (type === "whiteboard") {
             res = await deleteWhiteboard(id)
+        } else {
+            res = await deleteFlowchart(id)
         }
         setIsLoading(false)
         if (res && res.success) {
@@ -123,7 +101,7 @@ export function ResourceOptions({ id, title, type }: ResourceOptionsProps) {
             <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
                 <DialogContent onClick={(e) => e.stopPropagation()}>
                     <DialogHeader>
-                        <DialogTitle>Rename {type === 'note' ? 'Note' : 'Whiteboard'}</DialogTitle>
+                        <DialogTitle>Rename {type === 'note' ? 'Note' : (type === 'whiteboard' ? 'Whiteboard' : 'Flowchart')}</DialogTitle>
                         <DialogDescription>
                             Enter a new name.
                         </DialogDescription>
@@ -151,7 +129,7 @@ export function ResourceOptions({ id, title, type }: ResourceOptionsProps) {
             <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <DialogContent onClick={(e) => e.stopPropagation()}>
                     <DialogHeader>
-                        <DialogTitle>Delete {type === 'note' ? 'Note' : 'Whiteboard'}</DialogTitle>
+                        <DialogTitle>Delete {type === 'note' ? 'Note' : (type === 'whiteboard' ? 'Whiteboard' : 'Flowchart')}</DialogTitle>
                         <DialogDescription>
                             Are you sure you want to delete <strong>{title}</strong>? This action cannot be undone.
                         </DialogDescription>

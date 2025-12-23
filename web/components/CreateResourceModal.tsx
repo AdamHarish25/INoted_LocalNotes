@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { createWhiteboard, createNote } from "@/app/actions"
+import { createWhiteboard, createNote, createFlowchart } from "@/app/actions"
 import { createClient } from "@/utils/supabase/client"
 
 interface Workspace {
@@ -15,7 +15,7 @@ interface Workspace {
 }
 
 interface CreateResourceModalProps {
-    type: "note" | "whiteboard"
+    type: "note" | "whiteboard" | "flowchart"
     workspaces: Workspace[]
     children: React.ReactNode
     defaultWorkspaceId?: string
@@ -38,8 +38,10 @@ export function CreateResourceModal({ type, workspaces, children, defaultWorkspa
 
             if (type === "note") {
                 await createNote(formData)
-            } else {
+            } else if (type === "whiteboard") {
                 await createWhiteboard(formData)
+            } else {
+                await createFlowchart(formData)
             }
             setOpen(false)
             // Reset form
@@ -59,7 +61,7 @@ export function CreateResourceModal({ type, workspaces, children, defaultWorkspa
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{isGuest ? "Account Required" : `Create ${type === "note" ? "Note" : "Whiteboard"}`}</DialogTitle>
+                    <DialogTitle>{isGuest ? "Account Required" : `Create ${type === "note" ? "Note" : (type === 'whiteboard' ? "Whiteboard" : "Flowchart")}`}</DialogTitle>
                     <DialogDescription>
                         {isGuest ? "You need to log in to create new content." : `Enter a name for your new ${type}.`}
                     </DialogDescription>
@@ -85,7 +87,7 @@ export function CreateResourceModal({ type, workspaces, children, defaultWorkspa
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 className="col-span-3"
-                                placeholder={`Untitled ${type === "note" ? "Note" : "Whiteboard"}`}
+                                placeholder={`Untitled ${type === "note" ? "Note" : (type === "whiteboard" ? "Whiteboard" : "Flowchart")}`}
                                 required
                             />
                         </div>

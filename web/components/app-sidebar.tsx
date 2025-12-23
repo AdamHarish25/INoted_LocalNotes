@@ -14,7 +14,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Loader2
+  Loader2,
+  Workflow
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -141,9 +142,9 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
             </h2>
           )}
           <div className="space-y-1">
-            <Link href="/">
+            <Link href="/dashboard">
               <Button
-                variant={pathname === "/" ? "secondary" : "ghost"}
+                variant={pathname === "/dashboard" ? "secondary" : "ghost"}
                 className={cn("w-full text-sidebar-foreground/70 hover:text-sidebar-foreground", isCollapsed ? "justify-center px-0" : "justify-start")}
                 title={isCollapsed ? "Dashboard" : undefined}
               >
@@ -169,6 +170,16 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
               >
                 <PenTool className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
                 {!isCollapsed && "My Whiteboard"}
+              </Button>
+            </Link>
+            <Link href="/flowcharts">
+              <Button
+                variant={pathname?.startsWith("/flowcharts") ? "secondary" : "ghost"}
+                className={cn("w-full text-sidebar-foreground/70 hover:text-sidebar-foreground", isCollapsed ? "justify-center px-0" : "justify-start")}
+                title={isCollapsed ? "My Flowcharts" : undefined}
+              >
+                <Workflow className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                {!isCollapsed && "My Flowcharts"}
               </Button>
             </Link>
             <Link href="/settings">

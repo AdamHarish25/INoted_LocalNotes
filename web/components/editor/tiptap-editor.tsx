@@ -4,12 +4,16 @@ import { useEditor, EditorContent } from "@tiptap/react"
 
 import StarterKit from "@tiptap/starter-kit"
 import Collaboration from "@tiptap/extension-collaboration"
-// import CollaborationCursor from "@tiptap/extension-collaboration-cursor"
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor"
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import { EditorToolbar } from "./toolbar"
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import * as Y from "yjs"
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { all, createLowlight } from 'lowlight'
+
+const lowlight = createLowlight(all)
 
 // Mock content handled by Yjs now
 
@@ -123,9 +127,17 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         extensions: [
             StarterKit.configure({
                 history: false,
+                codeBlock: false, // Disable default codeBlock to use Lowlight
             } as any),
             Collaboration.configure({
                 document: ydoc,
+            }),
+            CollaborationCursor.configure({
+                provider: provider,
+                user: { name: 'User', color: '#' + Math.floor(Math.random() * 16777215).toString(16) }
+            }),
+            CodeBlockLowlight.configure({
+                lowlight,
             }),
             SlashCommand.configure({
                 suggestion,
