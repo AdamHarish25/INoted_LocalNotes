@@ -121,6 +121,7 @@ const COLORS = ['#ef4444', '#3b82f6', '#22c5e', '#eab308', '#a855f7', '#000000',
 export default function FlowchartBoard({ roomId, initialData }: { roomId: string, initialData?: any[] }) {
     const [elements, setElements] = useState<FlowchartElement[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [editingId, setEditingId] = useState<string | null>(null) // Inline editing state
     const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
 
     // Drag-to-connect state
@@ -173,6 +174,22 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const getRenderFill = (color: string | undefined) => {
         if (!color) return 'transparent'
         return color
+    }
+
+    // Helper: Text Contrast Logic
+    const getContrastingTextColor = (fill: string | undefined) => {
+        if (!fill || fill === 'transparent') {
+            return theme === 'dark' ? '#ffffff' : '#000000'
+        }
+        let hex = fill.replace('#', '')
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('')
+        if (hex.length !== 6) return theme === 'dark' ? '#ffffff' : '#000000'
+
+        const r = parseInt(hex.substring(0, 2), 16)
+        const g = parseInt(hex.substring(2, 4), 16)
+        const b = parseInt(hex.substring(4, 6), 16)
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
+        return (yiq >= 128) ? '#000000' : '#ffffff'
     }
 
     // Save to Supabase
@@ -562,8 +579,15 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             const isSelected = selectedId === el.id
                             const commonProps = {
                                 id: el.id,
-                                draggable: activeTool === 'select',
+                                draggable: activeTool === 'select' && editingId !== el.id,
                                 onClick: (e: any) => { e.cancelBubble = true; setSelectedId(el.id); },
+                                onDblClick: (e: any) => {
+                                    e.cancelBubble = true;
+                                    if (activeTool === 'select' && el.type !== 'connection') {
+                                        setEditingId(el.id);
+                                        setTextInput(el.text || "");
+                                    }
+                                },
                                 onDragEnd: (e: any) => handleElementDragEnd(e, el.id),
                                 onTransformEnd: handleTransformEnd,
                                 onContextMenu: (e: any) => handleContextMenu(e, el.id),
@@ -576,10 +600,17 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             // Theme-aware colors
                             const stroke = getRenderColor(el.stroke)
                             const fill = el.fill ? getRenderFill(el.fill) : (theme === 'dark' ? 'transparent' : '#ffffff')
-                            const textColor = getRenderColor(el.type === 'text' && el.fill ? el.fill : '#000000')
+
+                            // Determine Text Color
+                            let textColor = '#000000'
+                            if (el.type === 'text') {
+                                textColor = getRenderColor(el.fill || '#000000')
+                            } else {
+                                textColor = getContrastingTextColor(fill)
+                            }
 
                             const renderText = () => (
-                                el.text ? <KonvaText
+                                el.text && editingId !== el.id ? <KonvaText
                                     text={el.text}
                                     x={0}
                                     y={0}
@@ -704,6 +735,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                             strokeWidth={2}
                                             shadowBlur={theme === 'dark' ? 0 : 2}
                                         />
+                                        {/* Simple Arrow text always visible for now, or editable? */}
                                         <KonvaText
                                             text={el.text}
                                             x={0}
@@ -719,7 +751,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 )
                             }
                             else if (el.type === 'text') {
-                                return <KonvaText
+                                return editingId !== el.id ? <KonvaText
                                     key={el.id}
                                     {...commonProps}
                                     x={el.x}
@@ -727,7 +759,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                     text={el.text || "Text"}
                                     fill={textColor}
                                     fontSize={20}
-                                />
+                                /> : null
                             }
                             return null
                         })}
@@ -745,7 +777,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                                 key={i}
                                                 x={a.x} y={a.y}
                                                 radius={isSnapped ? 6 : 4}
-                                                fill={isSnapped ? '#3b82f6' : theme === 'dark' ? '#000000' : '#ffffff'}
+                                                fill={isSnapped ? '#3b82f6' : theme === 'dark' ? '#ffffff' : '#000000'}
                                                 stroke={isSnapped ? '#3b82f6' : theme === 'dark' ? '#ffffff' : '#000000'}
                                                 strokeWidth={isSnapped ? 0 : 1}
                                                 opacity={isSnapped ? 1 : 0.5}
@@ -780,6 +812,62 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     </Layer>
                 </Stage>
 
+                {/* Inline Editing Overlay */}
+                {editingId && (() => {
+                    const el = elements.find(e => e.id === editingId)
+                    if (!el) return null
+
+                    const isShape = el.type !== 'text' && el.type !== 'connection' && el.type !== 'arrow'
+                    const w = el.width || (el.type === 'text' ? 200 : 100)
+                    const h = el.height || (el.type === 'text' ? 40 : 60)
+                    const bgFill = el.fill ? getRenderFill(el.fill) : (theme === 'dark' ? 'transparent' : '#ffffff')
+
+                    // Approximate centering for textarea padding if it's a shape
+                    const paddingTop = isShape ? Math.max(0, (h / 2) - 10) : 0
+
+                    return (
+                        <textarea
+                            value={textInput}
+                            onChange={(e) => setTextInput(e.target.value)}
+                            onBlur={() => {
+                                if (yElementsRef.current) {
+                                    const idx = elements.findIndex(e => e.id === editingId)
+                                    if (idx !== -1) {
+                                        const newAttrs = { ...elements[idx], text: textInput }
+                                        yElementsRef.current.delete(idx, 1)
+                                        yElementsRef.current.insert(idx, [newAttrs])
+                                    }
+                                }
+                                setEditingId(null)
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault()
+                                    e.currentTarget.blur()
+                                }
+                            }}
+                            autoFocus
+                            style={{
+                                position: 'absolute',
+                                top: el.y,
+                                left: el.x,
+                                width: w,
+                                height: h,
+                                color: isShape ? getContrastingTextColor(bgFill) : (theme === 'dark' ? '#fff' : '#000'),
+                                background: 'transparent',
+                                border: '1px dashed #3b82f6',
+                                textAlign: 'center',
+                                resize: 'none',
+                                outline: 'none',
+                                paddingTop: `${paddingTop}px`,
+                                fontSize: '14px',
+                                fontFamily: 'sans-serif',
+                                lineHeight: '1.2'
+                            }}
+                            className="z-50 bg-transparent focus:ring-0"
+                        />
+                    )
+                })()}
                 {/* Context Menu HTML Overlay */}
                 {contextMenu.visible && (
                     <div
