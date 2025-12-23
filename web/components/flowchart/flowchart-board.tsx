@@ -11,6 +11,7 @@ import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { useTheme } from "next-themes"
 
 interface FlowchartElement {
     id: string
@@ -33,6 +34,10 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
 
+    // Window Size State to prevent hydration mismatch
+    const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 })
+    const { theme } = useTheme()
+
     // Context Menu State
     const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, elementId: string | null }>({ visible: false, x: 0, y: 0, elementId: null })
     const [isTextDialogOpen, setIsTextDialogOpen] = useState(false)
@@ -48,6 +53,40 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const transformerRef = useRef<any>(null)
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
     const supabase = createClient()
+
+    // Handle Window Resize
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const handleResize = () => {
+                setWindowSize({ width: window.innerWidth, height: window.innerHeight - 80 })
+            }
+            handleResize()
+            window.addEventListener('resize', handleResize)
+            return () => window.removeEventListener('resize', handleResize)
+        }
+    }, [])
+
+    // Helper: Dark Mode Color Adapter
+    // If the saved stroke is black (default), and we are in dark mode, render it white.
+    // And vice-versa, or keep it consistent? 
+    // Usually, users want "default ink" to contrast with background.
+    const getRenderColor = (color: string | undefined) => {
+        if (!color) return theme === 'dark' ? '#ffffff' : '#000000' // default
+        if (color === '#000000' && theme === 'dark') return '#ffffff'
+        if (color === '#ffffff' && theme === 'dark') return '#000000' // rare but possible
+        return color
+    }
+
+    // Helper: Fill Color
+    const getRenderFill = (color: string | undefined) => {
+        if (!color) return 'transparent'
+        // If white fill in dark mode? Usually we keep fills as is, but white box in dark mode is bright.
+        // Let's invert white fill to dark fill? No, that changes the "paper" look.
+        // Excalidraw keeps backgrounds transparent often.
+        // Let's assume white fill is "default background" --> make it transparent or dark grey?
+        // For now, let's keep fills authentic to data, but default creation should be mindful.
+        return color
+    }
 
     // Save to Supabase
     useEffect(() => {
@@ -121,50 +160,57 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }, [selectedId, elements])
 
     const handleStageClick = (e: any) => {
-        // Close context menu if clicked elsewhere
+        // Close context menu if visible
         if (contextMenu.visible) {
             setContextMenu({ ...contextMenu, visible: false })
             return
         }
 
-        // Deselect if clicked on empty stage
-        if (e.target === e.target.getStage()) {
-            setSelectedId(null)
+        const clickedOnEmpty = e.target === e.target.getStage()
 
-            // Add element if tool is selected
-            if (activeTool !== 'select') {
-                const pos = e.target.getStage().getPointerPosition()
-                const id = crypto.randomUUID()
-                let newEl: FlowchartElement | null = null
+        // Handle Tool Creation
+        if (activeTool !== 'select') {
+            // Create element
+            const pos = e.target.getStage().getPointerPosition()
+            const id = crypto.randomUUID()
+            let newEl: FlowchartElement | null = null
 
-                if (activeTool === 'rectangle') {
-                    newEl = { id, type: 'rectangle', x: pos.x, y: pos.y, width: 100, height: 60, fill: '#ffffff', stroke: '#000000' }
-                } else if (activeTool === 'circle') {
-                    newEl = { id, type: 'circle', x: pos.x, y: pos.y, width: 60, height: 60, fill: '#ffffff', stroke: '#000000' }
-                } else if (activeTool === 'text') {
-                    newEl = { id, type: 'text', x: pos.x, y: pos.y, text: 'Click to edit', fill: '#000000' }
-                } else if (activeTool === 'diamond') {
-                    newEl = { id, type: 'diamond', x: pos.x, y: pos.y, width: 80, height: 80, fill: '#ffffff', stroke: '#000000' }
-                } else if (activeTool === 'rounded_rect') {
-                    newEl = { id, type: 'rounded_rect', x: pos.x, y: pos.y, width: 100, height: 60, fill: '#ffffff', stroke: '#000000' }
-                } else if (activeTool === 'parallelogram') {
-                    newEl = { id, type: 'parallelogram', x: pos.x, y: pos.y, width: 120, height: 60, fill: '#ffffff', stroke: '#000000' }
-                } else if (activeTool === 'cylinder') {
-                    newEl = { id, type: 'cylinder', x: pos.x, y: pos.y, width: 60, height: 80, fill: '#ffffff', stroke: '#000000' }
-                }
+            // Default colors: White fill, Black stroke (will be inverted in render if dark mode)
+            // We save "semantic" colors usually, or explicit ones.
+            // Let's save explicit #ffffff / #000000 and rely on the renderer to invert if needed, 
+            // OR save them as "theme-dependent"? No, save standard.
+            const defaultFill = '#ffffff'
+            const defaultStroke = '#000000'
 
-                if (newEl && yElementsRef.current) {
-                    yElementsRef.current.push([newEl])
-                    setActiveTool('select') // revert to select
-                    setSelectedId(id)
-                }
+            if (activeTool === 'rectangle') {
+                newEl = { id, type: 'rectangle', x: pos.x, y: pos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'circle') {
+                newEl = { id, type: 'circle', x: pos.x, y: pos.y, width: 60, height: 60, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'text') {
+                // For text, we usually want 'transparent' fill but black text color (fill prop on Text)
+                newEl = { id, type: 'text', x: pos.x, y: pos.y, text: 'Click to edit', fill: defaultStroke }
+            } else if (activeTool === 'diamond') {
+                newEl = { id, type: 'diamond', x: pos.x, y: pos.y, width: 100, height: 100, fill: defaultFill, stroke: defaultStroke } // Fixed size to be square-ish
+            } else if (activeTool === 'rounded_rect') {
+                newEl = { id, type: 'rounded_rect', x: pos.x, y: pos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'parallelogram') {
+                newEl = { id, type: 'parallelogram', x: pos.x, y: pos.y, width: 120, height: 60, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'cylinder') {
+                newEl = { id, type: 'cylinder', x: pos.x, y: pos.y, width: 60, height: 80, fill: defaultFill, stroke: defaultStroke }
+            }
+
+            if (newEl && yElementsRef.current) {
+                yElementsRef.current.push([newEl])
+                setActiveTool('select')
+                setSelectedId(id)
             }
             return
         }
 
-        // Handle element click for selection
-        if (e.target !== e.target.getStage()) {
-            // Find parent group ID or shape ID
+        if (clickedOnEmpty) {
+            setSelectedId(null)
+        } else {
+            // Find clicked group/shape
             const id = e.target.id() || e.target.parent?.id()
             if (id) setSelectedId(id)
         }
@@ -191,15 +237,20 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             const scaleX = node.scaleX()
             const scaleY = node.scaleY()
 
+            // Reset scale to 1 so we can update the actual width/height
             node.scaleX(1)
             node.scaleY(1)
+
+            const currentWidth = elements[idx].width || 100
+            const currentHeight = elements[idx].height || 100
 
             const newAttrs = {
                 ...elements[idx],
                 x: node.x(),
                 y: node.y(),
-                width: Math.max(5, node.width() * scaleX),
-                height: Math.max(5, node.height() * scaleY),
+                // Use the element's previous dimensions * scale factor
+                width: Math.max(5, currentWidth * scaleX),
+                height: Math.max(5, currentHeight * scaleY),
                 rotation: node.rotation()
             }
 
@@ -209,21 +260,21 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleContextMenu = (e: any, id: string) => {
-        e.evt.preventDefault() // prevent browser menu
+        e.evt.preventDefault()
         const stage = e.target.getStage()
+        // Use page coordinates for fixed menu (more reliable than stage pointer + container rect in some cases)
+        // But stage pointer + container rect is standard for Konva.
+        const containerRect = stage.container().getBoundingClientRect()
         const pointer = stage.getPointerPosition()
 
-        // Calculate screen-relative position if needed, or stick to absolute over the canvas container
-        // React Konva stage events give pointer relative to stage. 
-        // We'll use viewport relative for fixed menu.
-        const containerRect = stage.container().getBoundingClientRect()
-
-        setContextMenu({
-            visible: true,
-            x: containerRect.left + pointer.x + 10,
-            y: containerRect.top + pointer.y + 10,
-            elementId: id
-        })
+        if (pointer) {
+            setContextMenu({
+                visible: true,
+                x: containerRect.left + pointer.x + 5,
+                y: containerRect.top + pointer.y + 5,
+                elementId: id
+            })
+        }
     }
 
     const handleDeleteElement = () => {
@@ -231,6 +282,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             const idx = elements.findIndex(el => el.id === contextMenu.elementId)
             if (idx !== -1) {
                 yElementsRef.current.delete(idx, 1)
+                if (selectedId === contextMenu.elementId) setSelectedId(null)
             }
         }
         setContextMenu({ ...contextMenu, visible: false })
@@ -260,21 +312,21 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 relative">
+        <div className="flex flex-col h-screen bg-slate-50 dark:bg-black/90 relative transition-colors duration-200">
             {/* Toolbar */}
-            <div className="flex items-center p-4 bg-white border-b gap-2 overflow-x-auto">
-                <Button variant={activeTool === 'select' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('select')} title="Select"><MousePointer2 className="w-4 h-4" /></Button>
-                <div className="w-px h-6 bg-slate-200 mx-1" />
-                <Button variant={activeTool === 'rectangle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle"><Square className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'rounded_rect' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle"><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
-                <Button variant={activeTool === 'circle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('circle')} title="Ellipse"><CircleIcon className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'diamond' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('diamond')} title="Decision"><Diamond className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'parallelogram' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('parallelogram')} title="Data"><Component className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'cylinder' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('cylinder')} title="Database"><Database className="w-4 h-4" /></Button>
-                <div className="w-px h-6 bg-slate-200 mx-1" />
-                <Button variant={activeTool === 'text' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('text')} title="Text"><Type className="w-4 h-4" /></Button>
+            <div className="flex items-center p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 gap-2 overflow-x-auto shadow-sm">
+                <Button variant={activeTool === 'select' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('select')} title="Select" className="shrink-0"><MousePointer2 className="w-4 h-4" /></Button>
+                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
+                <Button variant={activeTool === 'rectangle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className="shrink-0"><Square className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'rounded_rect' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className="shrink-0"><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
+                <Button variant={activeTool === 'circle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('circle')} title="Ellipse" className="shrink-0"><CircleIcon className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'diamond' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className="shrink-0"><Diamond className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'parallelogram' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className="shrink-0"><Component className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'cylinder' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className="shrink-0"><Database className="w-4 h-4" /></Button>
+                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
+                <Button variant={activeTool === 'text' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('text')} title="Text" className="shrink-0"><Type className="w-4 h-4" /></Button>
 
-                <div className="flex items-center gap-2 text-sm text-slate-500 ml-4">
+                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400 ml-4">
                     {saveStatus === 'saving' ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -289,18 +341,20 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 </div>
 
                 <div className="ml-auto flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.undo()}><Undo className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.redo()}><Redo className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.undo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.redo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></Button>
                 </div>
             </div>
 
-            <div className="flex-1 bg-gray-100 overflow-hidden relative">
+            <div className="flex-1 bg-gray-100 dark:bg-black overflow-hidden relative">
                 <Stage
-                    width={typeof window !== 'undefined' ? window.innerWidth : 1000}
-                    height={typeof window !== 'undefined' ? window.innerHeight - 80 : 800}
+                    width={windowSize.width}
+                    height={windowSize.height}
                     onClick={handleStageClick}
-                    onContextMenu={(e) => { e.evt.preventDefault(); }} // Prevent overall context menu
+                    onContextMenu={(e) => { e.evt.preventDefault(); }}
                     ref={stageRef}
+                    className="cursor-crosshair active:cursor-grabbing"
+                    style={{ background: theme === 'dark' ? '#09090b' : '#f3f4f6' }} // Match zinc-950 or gray-100
                 >
                     <Layer>
                         {elements.map((el) => {
@@ -314,6 +368,13 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 onContextMenu: (e: any) => handleContextMenu(e, el.id),
                             }
 
+                            // Dynamic colors
+                            const stroke = getRenderColor(el.stroke)
+                            const fill = el.fill || (theme === 'dark' ? 'transparent' : '#ffffff')
+
+                            // Text Color: If element type is text, use its fill property (color), adjusted for theme
+                            const textColor = el.type === 'text' ? getRenderColor(el.fill) : getRenderColor('#000000')
+
                             // Render Text centered if exists
                             const renderText = () => (
                                 el.text ? <KonvaText
@@ -326,7 +387,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                     verticalAlign="middle"
                                     fontSize={14}
                                     padding={5}
-                                    fill={el.stroke === '#ffffff' ? '#000000' : '#000000'} // simple contrast logic or fixed black
+                                    fill={textColor}
                                     listening={false} // pass clicks to shape
                                 /> : null
                             )
@@ -334,42 +395,36 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             if (el.type === 'rectangle') {
                                 return (
                                     <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Rect width={el.width} height={el.height} fill={el.fill} stroke={el.stroke} shadowBlur={2} />
+                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} shadowBlur={theme === 'dark' ? 0 : 2} />
                                         {renderText()}
                                     </Group>
                                 )
                             } else if (el.type === 'rounded_rect') {
                                 return (
                                     <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Rect width={el.width} height={el.height} fill={el.fill} stroke={el.stroke} cornerRadius={20} shadowBlur={2} />
+                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={20} shadowBlur={theme === 'dark' ? 0 : 2} />
                                         {renderText()}
                                     </Group>
                                 )
                             } else if (el.type === 'circle') {
                                 return (
                                     <Group {...commonProps} x={el.x} y={el.y}>
-                                        <Circle width={el.width} height={el.height} fill={el.fill} stroke={el.stroke} offsetX={-(el.width || 0) / 2} offsetY={-(el.height || 0) / 2} shadowBlur={2} />
-                                        {/* Text centering for circle needs offset adjustment or Group logic */}
+                                        <Circle width={el.width} height={el.height} fill={fill} stroke={stroke} offsetX={-(el.width || 0) / 2} offsetY={-(el.height || 0) / 2} shadowBlur={theme === 'dark' ? 0 : 2} />
                                         <KonvaText
                                             text={el.text}
-                                            x={0} // circle logic is weird with origin center, Group x/y is top-left usually? 
-                                            // Actually Group x/y is what we pass. If Circle is offset, we need consistency.
-                                            // Let's standardise: Group x/y is top-left of bounding box.
-                                            // Rect is 0,0 relative. Circle center is radius, radius relative.
-                                            // To make text centering easy, let's assume Group is at center or top-left.
-                                            // Current `newEl` logic for Rect uses pos as top-left (konva default). 
-                                            // Circle uses x,y as center. 
-                                            // Refactoring circle create to be consistent? 
-                                            // Let's adjust rendering: Group at x,y. Circle at w/2, h/2.
-                                            y={0} width={el.width} height={el.height} align="center" verticalAlign="middle" padding={5} />
+                                            x={0}
+                                            y={0} width={el.width} height={el.height} align="center" verticalAlign="middle" padding={5}
+                                            fill={textColor}
+                                            listening={false}
+                                        />
                                     </Group>
                                 )
                             } else if (el.type === 'diamond') {
                                 return (
                                     <Group {...commonProps} x={el.x} y={el.y}>
-                                        <RegularPolygon sides={4} radius={(el.width || 0) / 2} fill={el.fill} stroke={el.stroke}
+                                        <RegularPolygon sides={4} radius={(el.width || 0) / 2} fill={fill} stroke={stroke}
                                             x={(el.width || 0) / 2} y={(el.height || 0) / 2} // Center polygon in group box
-                                            shadowBlur={2}
+                                            shadowBlur={theme === 'dark' ? 0 : 2}
                                         />
                                         {renderText()}
                                     </Group>
@@ -384,8 +439,8 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                         <Line
                                             points={[skew, 0, w, 0, w - skew, h, 0, h]}
                                             closed
-                                            fill={el.fill} stroke={el.stroke}
-                                            shadowBlur={2}
+                                            fill={fill} stroke={stroke}
+                                            shadowBlur={theme === 'dark' ? 0 : 2}
                                         />
                                         {renderText()}
                                     </Group>
@@ -393,36 +448,17 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             } else if (el.type === 'cylinder') {
                                 const w = el.width || 60
                                 const h = el.height || 80
-                                // Cylinder path approximation or simple manual drawing: Check SVG path logic
-                                // Top ellipse, Down lines, Bottom ellipse half
                                 return (
                                     <Group {...commonProps} x={el.x} y={el.y}>
-                                        {/* Body */}
                                         <Path
                                             data={`M 0 ${h * 0.15} V ${h * 0.85} Q ${w / 2} ${h} ${w} ${h * 0.85} V ${h * 0.15}`}
-                                            fill={el.fill} stroke={el.stroke}
+                                            fill={fill} stroke={stroke}
                                         />
-                                        <Path
-                                            data={`M 0 ${h * 0.15} V ${h * 0.85} Q ${w / 2} ${h * 0.7} ${w} ${h * 0.85} V ${h * 0.15}`} // bottom curve inner (optional, usually solid)
-                                        // Actually let's just do top and bottom
-                                        />
-                                        {/* Top Ellipse */}
-                                        <Circle x={w / 2} y={h * 0.15} radiusX={w / 2} radiusY={h * 0.15} stroke={el.stroke} fill={el.fill} />
-                                        {/* Fix body connection: Rect in middle or just lines? Path is cleaner. */}
-                                        {/* Overwrite for better look: */}
-                                        <Path
-                                            data={`M 0 ${h * 0.15} V ${h * 0.85} A ${w / 2} ${h * 0.15} 0 0 0 ${w} ${h * 0.85} V ${h * 0.15} A ${w / 2} ${h * 0.15} 0 0 0 0 ${h * 0.15}`} // Full loop around
-                                        // This is tricky. Let's do simple: 
-                                        // 1. Ellipse Top
-                                        // 2. Rect Body (hidden top/bottom borders?)
-                                        // 3. Ellipse Bottom
-                                        />
-                                        {/* Standard DB Icon look */}
-                                        <Line points={[0, h * 0.15, 0, h * 0.85]} stroke={el.stroke} />
-                                        <Line points={[w, h * 0.15, w, h * 0.85]} stroke={el.stroke} />
-                                        <Circle x={w / 2} y={h * 0.85} radiusX={w / 2} radiusY={h * 0.15} stroke={el.stroke} fill={el.fill} />
-                                        <Circle x={w / 2} y={h * 0.15} radiusX={w / 2} radiusY={h * 0.15} stroke={el.stroke} fill={el.fill} />
-                                        {/* Re-draw lines to cover fill overlap if needed */}
+                                        <Line points={[0, h * 0.15, 0, h * 0.85]} stroke={stroke} />
+                                        <Line points={[w, h * 0.15, w, h * 0.85]} stroke={stroke} />
+                                        <Circle x={w / 2} y={h * 0.85} radiusX={w / 2} radiusY={h * 0.15} stroke={stroke} fill={fill} />
+                                        {/* Top cover (filled) */}
+                                        <Circle x={w / 2} y={h * 0.15} radiusX={w / 2} radiusY={h * 0.15} stroke={stroke} fill={fill} />
 
                                         {renderText()}
                                     </Group>
@@ -433,7 +469,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                     x={el.x}
                                     y={el.y}
                                     text={el.text || "Text"}
-                                    fill={el.fill}
+                                    fill={textColor}
                                     fontSize={20}
                                 />
                             }
@@ -446,17 +482,17 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 {/* Context Menu HTML Overlay */}
                 {contextMenu.visible && (
                     <div
-                        className="fixed bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md py-1 z-50 text-sm min-w-[150px]"
+                        className="fixed bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md py-1 z-50 text-sm min-w-[150px] animate-in fade-in zoom-in-95"
                         style={{ top: contextMenu.y, left: contextMenu.x }}
                     >
                         <button
-                            className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 dark:text-zinc-200 flex items-center gap-2"
                             onClick={handleInsertText}
                         >
                             <Pencil className="w-4 h-4" /> Insert Text
                         </button>
                         <button
-                            className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20 flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 dark:text-red-400 dark:hover:bg-red-900/20 flex items-center gap-2"
                             onClick={handleDeleteElement}
                         >
                             <Trash2 className="w-4 h-4" /> Delete Component
