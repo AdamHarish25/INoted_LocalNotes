@@ -37,19 +37,14 @@ export default function LandingPage() {
             {/* Navbar */}
             <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
+                    <div className="flex justify-between items-center h-16 relative">
                         {/* Logo */}
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
-                                <Code className="w-5 h-5" />
-                            </div>
-                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                                Inoted
-                            </span>
+                            <Image src={"/logo.png"} alt="logo" className="h-6 w-auto" />
                         </div>
 
                         {/* Desktop Links */}
-                        <div className="hidden md:flex items-center gap-8">
+                        <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-8">
                             <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">Features</a>
                             <a href="#demo" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">Demo</a>
                             <a href="#pricing" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">Pricing</a>
@@ -84,7 +79,7 @@ export default function LandingPage() {
 
                 {/* Mobile Menu */}
                 {mobileMenuOpen && (
-                    <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-4 space-y-4 shadow-lg absolute w-full">
+                    <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-4 space-y-4 shadow-lg absolute w-full top-16 left-0">
                         <a href="#features" className="block text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400" onClick={() => setMobileMenuOpen(false)}>Features</a>
                         <a href="#demo" className="block text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400" onClick={() => setMobileMenuOpen(false)}>Demo</a>
                         <a href="#pricing" className="block text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
@@ -361,10 +356,7 @@ export default function LandingPage() {
 
                     <div className="border-t border-slate-100 dark:border-slate-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white">
-                                <Code className="w-3 h-3" />
-                            </div>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">Inoted</span>
+                            <Image src={"/logo.png"} alt="logo" className="h-6 w-auto" />
                         </div>
 
                         <div className="flex gap-6">
