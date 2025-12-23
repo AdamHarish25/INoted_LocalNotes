@@ -159,12 +159,12 @@ export default function LandingPage() {
                 {/* Hero Image / Screenshot */}
                 <div className="hero-image relative mx-auto max-w-5xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 overflow-hidden transform hover:scale-[1.01] transition-transform duration-500">
                     {/* Placeholder for the app screenshot - creating a mock UI with divs */}
-                    <div className="w-full aspect-[16/9] bg-white dark:bg-slate-950 flex flex-col">
-                        <div className="h-8 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 gap-2 bg-slate-50 dark:bg-slate-900">
+                    <div className="w-full h-[500px] md:h-auto md:aspect-[16/9] bg-white dark:bg-slate-950 flex flex-col">
+                        <div className="h-8 border-b border-slate-100 dark:border-slate-800 flex items-center px-4 gap-2 bg-slate-50 dark:bg-slate-900 shrink-0">
                             <div className="w-3 h-3 rounded-full bg-red-400"></div>
                             <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
                             <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                            <div className="ml-4 w-64 h-4 bg-slate-200 dark:bg-slate-800 rounded-full opacity-50"></div>
+                            <div className="ml-4 w-32 md:w-64 h-4 bg-slate-200 dark:bg-slate-800 rounded-full opacity-50"></div>
                         </div>
                         <div className="flex-1 flex overflow-hidden">
                             <div className="w-64 border-r border-slate-100 dark:border-slate-800 p-4 hidden md:flex flex-col gap-6 bg-white dark:bg-slate-950">
@@ -348,7 +348,7 @@ export default function LandingPage() {
                 <span className="text-blue-600 dark:text-blue-400 font-semibold tracking-wider uppercase text-sm">Demo</span>
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mt-2 mb-12">See It in Action</h2>
 
-                <div className="demo-section relative mx-auto max-w-4xl aspect-video rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 group">
+                <div className="demo-section relative mx-auto max-w-4xl h-[400px] md:h-auto md:aspect-video rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 group">
                     {/* Logic: If no video, show Dummy Demo */}
                     <div className="w-full h-full bg-white dark:bg-slate-950 flex flex-col relative">
                         {/* Browser Header */}
@@ -356,12 +356,12 @@ export default function LandingPage() {
                             <div className="w-3 h-3 rounded-full bg-red-400"></div>
                             <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
                             <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                            <div className="ml-4 w-64 h-4 bg-slate-200 dark:bg-slate-800 rounded-full opacity-50"></div>
+                            <div className="ml-4 w-32 md:w-64 h-4 bg-slate-200 dark:bg-slate-800 rounded-full opacity-50"></div>
                         </div>
 
                         {/* Dummy Content Canvas */}
                         <div className="flex-1 relative p-8 flex items-center justify-center overflow-hidden">
-                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[length:16px_16px]"></div>
 
                             <div className="relative z-10 text-center">
                                 <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-blue-400">
@@ -380,7 +380,7 @@ export default function LandingPage() {
                             </div>
 
                             {/* Collaborative Cursor 2 */}
-                            <div className="absolute bottom-1/3 right-1/4 animate-bounce duration-[3000ms]">
+                            <div className="absolute bottom-1/3 right-1/4 animate-bounce duration-3000">
                                 <MousePointer2 className="w-5 h-5 text-orange-500 fill-orange-500 transform -rotate-12 drop-shadow-lg" />
                                 <div className="ml-4 -mt-4 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-r-md rounded-bl-md font-bold shadow-sm whitespace-nowrap">
                                     Sarah is typing...
