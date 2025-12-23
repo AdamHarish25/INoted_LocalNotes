@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/utils/supabase/client"
-import { login, signup } from "@/app/login/actions"
+import { login, signup, loginWithGoogle } from "@/app/login/actions"
 
 export function LoginContent() {
     const searchParams = useSearchParams()
@@ -55,33 +55,8 @@ export function LoginContent() {
     // Google Login Handler
     const handleGoogleLogin = async () => {
         setIsLoading(true)
-        const supabase = createClient()
-
-        // Dynamically determine the redirect URL
-        // If on localhost or preview, use the current origin.
-        // Otherwise, you can default to the production URL or let Supabase handle it based on your settings.
-        const origin = typeof window !== 'undefined' && (window.location.hostname.includes('localhost') || window.location.hostname.includes('--'))
-            ? window.location.origin
-            : location.origin;
-
-        const redirectTo = `${origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`
-
-        const options: any = {
-            redirectTo,
-        }
-
-        if (captchaToken) {
-            options.queryParams = {
-                captcha_token: captchaToken
-            }
-        }
-
         try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options,
-            })
-            if (error) throw error
+            await loginWithGoogle()
         } catch (error) {
             console.error("Google login failed", error)
             setIsLoading(false)
@@ -131,7 +106,7 @@ export function LoginContent() {
 
             <form className="space-y-6">
                 <input type="hidden" name="captchaToken" value={captchaToken || ""} />
-                <input type="hidden" name="next" value={next || "/"} />
+                <input type="hidden" name="next" value={next || "/dashboard"} />
 
                 <div className="space-y-6">
                     <div className="space-y-2 relative">

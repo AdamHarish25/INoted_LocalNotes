@@ -46,8 +46,16 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     // Protect Dashboard: if requesting protected route and no user, redirect to login
+    // Protect Dashboard: if requesting protected route and no user, redirect to login
+    // Check for NextAuth/Auth.js session cookies as well
+    const hasNextAuthSession = request.cookies.getAll().some(cookie =>
+        cookie.name.includes('authjs.session-token') ||
+        cookie.name.includes('next-auth.session-token')
+    )
+
     if (
         !user &&
+        !hasNextAuthSession &&
         !request.nextUrl.pathname.startsWith('/login') &&
         !request.nextUrl.pathname.startsWith('/auth') &&
         request.nextUrl.pathname !== '/'

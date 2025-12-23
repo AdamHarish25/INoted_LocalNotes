@@ -10,12 +10,31 @@ import { SearchInput } from "@/components/search-input"
 import { ResourceOptions } from "@/components/resource-options"
 import { GuestBanner } from "@/components/guest-banner"
 
+import { auth } from "@/auth"
+
 export default async function DashboardPage(props: { searchParams?: Promise<{ q?: string }> }) {
   const searchParams = await props.searchParams
   const query = searchParams?.q || ""
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  let { data: { user } } = await supabase.auth.getUser()
+
+  // Fallback to Auth.js session if Supabase auth is missing
+  if (!user) {
+    const session = await auth()
+    if (session?.user) {
+      user = {
+        id: session.user.id as string,
+        email: session.user.email,
+        is_anonymous: false,
+        aud: "authenticated",
+        created_at: new Date().toISOString(),
+        app_metadata: {},
+        user_metadata: {},
+        role: "authenticated"
+      } as any
+    }
+  }
 
   // Check if user is anonymous (guest)
   const isGuest = user?.is_anonymous ?? false;

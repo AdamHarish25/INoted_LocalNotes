@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
 
 import { createClient } from "@/utils/supabase/server"
+import { signIn } from "@/auth"
 
 export async function login(formData: FormData) {
     const supabase = await createClient()
@@ -27,7 +28,7 @@ export async function login(formData: FormData) {
 
     const next = formData.get("next") as string
     revalidatePath("/", "layout")
-    redirect(next && next.startsWith("/") ? next : "/")
+    redirect(next && next.startsWith("/") ? next : "/dashboard")
 }
 
 export async function signup(formData: FormData) {
@@ -58,3 +59,7 @@ export async function signup(formData: FormData) {
 
 
 
+
+export async function loginWithGoogle() {
+    await signIn("google", { redirectTo: "/dashboard" })
+}
