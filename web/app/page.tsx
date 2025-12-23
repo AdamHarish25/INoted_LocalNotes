@@ -218,37 +218,37 @@ export default function LandingPage() {
                             </div>
                             <div className="flex-1 bg-white dark:bg-slate-950 relative overflow-hidden flex flex-col">
                                 {/* Editor Header */}
-                                <div className="h-14 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 bg-white dark:bg-slate-950">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400">
+                                <div className="h-auto py-4 md:h-14 md:py-0 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-6 bg-white dark:bg-slate-950 gap-3">
+                                    <div className="flex items-center gap-3 w-full md:w-auto">
+                                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400 shrink-0">
                                             <FileText className="w-4 h-4" />
                                         </div>
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <span className="font-semibold text-slate-700 dark:text-slate-200">Github Cheatsheet</span>
-                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-medium">Saved to Cloud</span>
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[150px] sm:max-w-none">Github Cheatsheet</span>
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-medium w-fit">Saved to Cloud</span>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3">
-                                        <div className="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center gap-2 text-xs font-medium text-slate-500">
+                                    <div className="flex gap-3 w-full md:w-auto">
+                                        <div className="flex-1 md:flex-none h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center gap-2 text-xs font-medium text-slate-500 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                                             <Share2 className="w-3.5 h-3.5" />
                                             Share
                                         </div>
-                                        <div className="h-8 px-3 rounded-lg bg-blue-600 flex items-center gap-2 text-xs font-medium text-white shadow-sm shadow-blue-200 dark:shadow-none">
+                                        <div className="flex-1 md:flex-none h-8 px-3 rounded-lg bg-blue-600 flex items-center justify-center gap-2 text-xs font-medium text-white shadow-sm shadow-blue-200 dark:shadow-none cursor-pointer hover:bg-blue-700 transition-colors">
                                             Publish
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Editor Content */}
-                                <div className="flex-1 p-8 overflow-y-auto overflow-x-hidden space-y-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                                <div className="flex-1 p-4 md:p-8 overflow-y-auto overflow-x-hidden space-y-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
                                     <div>
-                                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Github Cheatsheet</h1>
+                                        <h1 className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white mb-4">Github Cheatsheet</h1>
                                     </div>
 
                                     <div className="space-y-3">
                                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">1. Take a look at the branch</p>
-                                        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm shadow-lg border border-slate-800 group relative">
-                                            <div className="flex items-center justify-between mb-3 border-b border-slate-700/50 pb-2">
+                                        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm shadow-lg border border-slate-800 group relative overflow-x-auto">
+                                            <div className="flex items-center justify-between mb-3 border-b border-slate-700/50 pb-2 min-w-[200px]">
                                                 <div className="flex gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
                                                     <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
                                                     <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
@@ -256,7 +256,7 @@ export default function LandingPage() {
                                                 </div>
                                                 <span className="text-xs text-slate-500 font-sans">bash</span>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 min-w-[200px]">
                                                 <span className="text-green-400 select-none">$</span>
                                                 <span className="text-blue-300">git</span> <span className="text-slate-200">switch frontend</span>
                                             </div>
@@ -265,8 +265,8 @@ export default function LandingPage() {
 
                                     <div className="space-y-3">
                                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">2. Update info from server:</p>
-                                        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm shadow-lg border border-slate-800 group relative">
-                                            <div className="flex items-center justify-between mb-3 border-b border-slate-700/50 pb-2">
+                                        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm shadow-lg border border-slate-800 group relative overflow-x-auto">
+                                            <div className="flex items-center justify-between mb-3 border-b border-slate-700/50 pb-2 min-w-[200px]">
                                                 <div className="flex gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
                                                     <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
                                                     <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
@@ -274,7 +274,7 @@ export default function LandingPage() {
                                                 </div>
                                                 <span className="text-xs text-slate-500 font-sans">bash</span>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 min-w-[200px]">
                                                 <span className="text-green-400 select-none">$</span>
                                                 <span className="text-blue-300">git</span> <span className="text-slate-200">fetch origin</span>
                                             </div>
