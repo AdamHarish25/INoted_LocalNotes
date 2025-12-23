@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, RegularPolygon, Path, Group } from "react-konva"
+import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, RegularPolygon, Path, Group, Arrow } from "react-konva"
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
@@ -15,9 +15,9 @@ import { useTheme } from "next-themes"
 
 interface FlowchartElement {
     id: string
-    type: 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'
-    x: number
-    y: number
+    type: 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'connection'
+    x?: number
+    y?: number
     width?: number
     height?: number
     fill?: string
@@ -25,6 +25,45 @@ interface FlowchartElement {
     text?: string
     points?: number[]
     rotation?: number
+    startId?: string
+    endId?: string
+}
+
+const getEdgePoint = (node: FlowchartElement, target: { x: number, y: number }) => {
+    const w = node.width || 100
+    const h = node.height || 60
+    const x = node.x || 0
+    const y = node.y || 0
+
+    const cx = x + w / 2
+    const cy = y + h / 2
+
+    const dx = target.x - cx
+    const dy = target.y - cy
+
+    if (dx === 0 && dy === 0) return { x: cx, y: cy }
+
+    // For Circle/Cylinder (approximate as circle)
+    if (node.type === 'circle' || node.type === 'cylinder') {
+        const angle = Math.atan2(dy, dx)
+        const rx = w / 2
+        const ry = h / 2
+        return {
+            x: cx + rx * Math.cos(angle),
+            y: cy + ry * Math.sin(angle)
+        }
+    }
+
+    // For Rectangle/Diamond/Others (Box intersection)
+    const t = Math.min(
+        (w / 2) / Math.abs(dx),
+        (h / 2) / Math.abs(dy)
+    )
+
+    return {
+        x: cx + dx * t,
+        y: cy + dy * t
+    }
 }
 
 const COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#000000', '#ffffff']
@@ -33,6 +72,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const [elements, setElements] = useState<FlowchartElement[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
+    const [connectionStartId, setConnectionStartId] = useState<string | null>(null)
 
     // Window Size State to prevent hydration mismatch
     const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 })
@@ -170,15 +210,50 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
         // Handle Tool Creation
         if (activeTool !== 'select') {
-            // Create element
             const pos = e.target.getStage().getPointerPosition()
+
+            // Special handling for Arrow (Connection)
+            if (activeTool === 'arrow') {
+                const clickedId = e.target.id() || e.target.parent?.id()
+
+                if (clickedId && !clickedOnEmpty) {
+                    // Clicked on a shape
+                    if (!connectionStartId) {
+                        setConnectionStartId(clickedId)
+                        // TODO: Add visual feedback
+                    } else {
+                        // Create Connection
+                        if (clickedId !== connectionStartId) {
+                            const newConn: FlowchartElement = {
+                                id: crypto.randomUUID(),
+                                type: 'connection',
+                                startId: connectionStartId,
+                                endId: clickedId,
+                                stroke: getRenderColor('#000000') // Default stroke
+                            }
+                            if (yElementsRef.current) {
+                                yElementsRef.current.push([newConn])
+                            }
+                        }
+                        setConnectionStartId(null)
+                        setActiveTool('select') // Reset tool after connection
+                    }
+                    return
+                } else {
+                    // Clicked on empty space
+                    if (connectionStartId) {
+                        // Cancel connection
+                        setConnectionStartId(null)
+                        return
+                    }
+                    // Else fall through to create Free Arrow
+                }
+            }
+
+            // Standard Shape Creation
             const id = crypto.randomUUID()
             let newEl: FlowchartElement | null = null
 
-            // Default colors: White fill, Black stroke (will be inverted in render if dark mode)
-            // We save "semantic" colors usually, or explicit ones.
-            // Let's save explicit #ffffff / #000000 and rely on the renderer to invert if needed, 
-            // OR save them as "theme-dependent"? No, save standard.
             const defaultFill = '#ffffff'
             const defaultStroke = '#000000'
 
@@ -187,16 +262,18 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             } else if (activeTool === 'circle') {
                 newEl = { id, type: 'circle', x: pos.x, y: pos.y, width: 60, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'text') {
-                // For text, we usually want 'transparent' fill but black text color (fill prop on Text)
                 newEl = { id, type: 'text', x: pos.x, y: pos.y, text: 'Click to edit', fill: defaultStroke }
             } else if (activeTool === 'diamond') {
-                newEl = { id, type: 'diamond', x: pos.x, y: pos.y, width: 100, height: 100, fill: defaultFill, stroke: defaultStroke } // Fixed size to be square-ish
+                newEl = { id, type: 'diamond', x: pos.x, y: pos.y, width: 100, height: 100, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'rounded_rect') {
                 newEl = { id, type: 'rounded_rect', x: pos.x, y: pos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'parallelogram') {
                 newEl = { id, type: 'parallelogram', x: pos.x, y: pos.y, width: 120, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'cylinder') {
                 newEl = { id, type: 'cylinder', x: pos.x, y: pos.y, width: 60, height: 80, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'arrow') {
+                // Free arrow creation (if not connecting)
+                newEl = { id, type: 'arrow', x: pos.x, y: pos.y, width: 100, height: 40, fill: defaultStroke, stroke: defaultStroke }
             }
 
             if (newEl && yElementsRef.current) {
@@ -315,18 +392,24 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         <div className="flex flex-col h-screen bg-slate-50 dark:bg-black/90 relative transition-colors duration-200">
             {/* Toolbar */}
             <div className="flex items-center p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 gap-2 overflow-x-auto shadow-sm">
-                <Button variant={activeTool === 'select' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('select')} title="Select" className="shrink-0"><MousePointer2 className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'select' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('select')} title="Select" className="shrink-0 dark:text-zinc-100"><MousePointer2 className="w-4 h-4" /></Button>
                 <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant={activeTool === 'rectangle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className="shrink-0"><Square className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'rounded_rect' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className="shrink-0"><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
-                <Button variant={activeTool === 'circle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('circle')} title="Ellipse" className="shrink-0"><CircleIcon className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'diamond' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className="shrink-0"><Diamond className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'parallelogram' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className="shrink-0"><Component className="w-4 h-4" /></Button>
-                <Button variant={activeTool === 'cylinder' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className="shrink-0"><Database className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'rectangle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className="shrink-0 dark:text-zinc-100"><Square className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'rounded_rect' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className="shrink-0 dark:text-zinc-100"><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
+                <Button variant={activeTool === 'circle' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('circle')} title="Ellipse" className="shrink-0 dark:text-zinc-100"><CircleIcon className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'diamond' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className="shrink-0 dark:text-zinc-100"><Diamond className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'parallelogram' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className="shrink-0 dark:text-zinc-100"><Component className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'cylinder' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className="shrink-0 dark:text-zinc-100"><Database className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'arrow' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('arrow')} title="Arrow" className="shrink-0 dark:text-zinc-100"><ArrowRight className="w-4 h-4" /></Button>
                 <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant={activeTool === 'text' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('text')} title="Text" className="shrink-0"><Type className="w-4 h-4" /></Button>
+                <Button variant={activeTool === 'text' ? 'default' : 'ghost'} size="icon" onClick={() => setActiveTool('text')} title="Text" className="shrink-0 dark:text-zinc-100"><Type className="w-4 h-4" /></Button>
 
                 <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400 ml-4">
+                    {connectionStartId && (
+                        <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 px-2 py-0.5 rounded-full text-xs font-medium animate-pulse">
+                            Select target
+                        </span>
+                    )}
                     {saveStatus === 'saving' ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -457,10 +540,33 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                         <Line points={[0, h * 0.15, 0, h * 0.85]} stroke={stroke} />
                                         <Line points={[w, h * 0.15, w, h * 0.85]} stroke={stroke} />
                                         <Circle x={w / 2} y={h * 0.85} radiusX={w / 2} radiusY={h * 0.15} stroke={stroke} fill={fill} />
-                                        {/* Top cover (filled) */}
                                         <Circle x={w / 2} y={h * 0.15} radiusX={w / 2} radiusY={h * 0.15} stroke={stroke} fill={fill} />
-
                                         {renderText()}
+                                    </Group>
+                                )
+                            } else if (el.type === 'arrow') {
+                                return (
+                                    <Group {...commonProps} x={el.x} y={el.y}>
+                                        <Arrow
+                                            points={[0, (el.height || 20) / 2, el.width || 100, (el.height || 20) / 2]}
+                                            pointerLength={10}
+                                            pointerWidth={10}
+                                            fill={stroke}
+                                            stroke={stroke}
+                                            strokeWidth={2}
+                                            shadowBlur={theme === 'dark' ? 0 : 2}
+                                        />
+                                        <KonvaText
+                                            text={el.text}
+                                            x={0}
+                                            y={0}
+                                            width={el.width}
+                                            height={el.height}
+                                            align="center"
+                                            verticalAlign="middle"
+                                            fill={textColor}
+                                            listening={false}
+                                        />
                                     </Group>
                                 )
                             } else if (el.type === 'text') {
