@@ -13,8 +13,27 @@ export async function getSupabaseUser() {
         if (session?.user) {
             const { createAdminClient } = await import("@/utils/supabase/server")
             supabase = await createAdminClient()
+
+            // Default ID from Auth.js (often UUID provided by adapter or provider)
+            let userId = session.user.id as string
+
+            // Sync/Lookup: Check if this email exists in Supabase 'auth.users' to unify accounts
+            // This fixes the issue where Traditional created items are not visible to Google Login
+            if (session.user.email) {
+                const { data: supabaseUser } = await supabase
+                    .schema('auth')
+                    .from('users')
+                    .select('id')
+                    .eq('email', session.user.email)
+                    .maybeSingle()
+
+                if (supabaseUser) {
+                    userId = supabaseUser.id
+                }
+            }
+
             user = {
-                id: session.user.id as string,
+                id: userId,
                 email: session.user.email,
                 is_anonymous: false,
                 aud: "authenticated",
