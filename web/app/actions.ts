@@ -3,46 +3,10 @@
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 
+import { getSupabaseUser as getSupabaseUserUtil } from "@/utils/supabase/get-user"
+
 export async function getSupabaseUser() {
-    let supabase = await createClient()
-    let { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-        const { auth } = await import("@/auth")
-        const session = await auth()
-        if (session?.user) {
-            const { createAdminClient } = await import("@/utils/supabase/server")
-            supabase = await createAdminClient()
-
-            // Default ID from Auth.js (often UUID provided by adapter or provider)
-            let userId = session.user.id as string
-
-            // Sync/Lookup: Check if this email exists in Supabase 'auth.users' to unify accounts
-            // Use Admin API listUsers because direct access to 'auth' schema is blocked
-            if (session.user.email) {
-                const { data, error } = await supabase.auth.admin.listUsers()
-
-                if (data && data.users) {
-                    const match = data.users.find((u: any) => u.email === session?.user?.email)
-                    if (match) {
-                        userId = match.id
-                    }
-                }
-            }
-
-            user = {
-                id: userId,
-                email: session.user.email,
-                is_anonymous: false,
-                aud: "authenticated",
-                created_at: new Date().toISOString(),
-                app_metadata: {},
-                user_metadata: {},
-                role: "authenticated"
-            } as any
-        }
-    }
-    return { supabase, user }
+    return await getSupabaseUserUtil()
 }
 
 // Helper to auto-generate unique title for creation
