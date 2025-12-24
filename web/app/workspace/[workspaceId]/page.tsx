@@ -19,33 +19,14 @@ export default async function WorkspaceDashboardPage(props: {
     const workspaceId = params.workspaceId
     const query = searchParams?.q || ""
 
-    let supabase = await createClient()
-    let { data: { user } } = await supabase.auth.getUser()
+    const { getSupabaseUser } = await import("@/utils/supabase/get-user")
+    let { supabase, user } = await getSupabaseUser()
 
     // Check if user is anonymous (guest)
-    let isGuest = user?.is_anonymous ?? false;
+    const isGuest = user?.is_anonymous ?? false;
 
-    // Fallback to Auth.js session if Supabase auth is missing
     if (!user) {
-        const { auth } = await import("@/auth")
-        const session = await auth()
-        if (session?.user) {
-            const { createAdminClient } = await import("@/utils/supabase/server")
-            supabase = await createAdminClient()
-
-            user = {
-                id: session.user.id as string,
-                email: session.user.email,
-                is_anonymous: false,
-                aud: "authenticated",
-                created_at: new Date().toISOString(),
-                app_metadata: {},
-                user_metadata: {},
-                role: "authenticated"
-            } as any
-        } else {
-            redirect("/login")
-        }
+        redirect("/login")
     }
 
     // Fetch Workspace Details
