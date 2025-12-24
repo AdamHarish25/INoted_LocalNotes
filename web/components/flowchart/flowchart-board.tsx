@@ -145,7 +145,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const stageRef = useRef<any>(null)
     const transformerRef = useRef<any>(null)
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
-    const supabase = createClient()
+    // const supabase = createClient()
 
     // Handle Window Resize
     useEffect(() => {
@@ -199,13 +199,14 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         const saveToDb = async () => {
             setSaveStatus('saving')
             try {
-                const { error } = await supabase
-                    .from('flowcharts')
-                    .update({ content: elements })
-                    .eq('id', roomId)
+                const { updateFlowchart } = await import("@/app/actions")
+                // Sanitize elements
+                const sanitizedElements = JSON.parse(JSON.stringify(elements))
 
-                if (error) {
-                    console.error("Supabase Save Error:", error)
+                const result = await updateFlowchart(roomId, { content: sanitizedElements })
+
+                if (result.error) {
+                    console.error("Supabase Save Error:", result.error)
                 }
             } catch (err) {
                 console.error("Save failed:", err)
@@ -216,7 +217,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
         const timeoutId = setTimeout(saveToDb, 2000)
         return () => clearTimeout(timeoutId)
-    }, [elements, roomId, supabase])
+    }, [elements, roomId])
 
     useEffect(() => {
         const ydoc = new Y.Doc()

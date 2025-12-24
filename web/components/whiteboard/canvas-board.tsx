@@ -184,8 +184,8 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const imageCache = useRef<Map<string, HTMLImageElement>>(new Map())
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // Supabase Client
-    const supabase = createClient()
+    // Supabase Client (replaced by Server Actions)
+    // const supabase = createClient()
 
     // Save Status State
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
@@ -325,15 +325,17 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         const saveToDb = async () => {
             setSaveStatus('saving')
-            console.log("Saving to Supabase (Client-side)...")
+            console.log("Saving to Supabase (Server Action)...")
             try {
-                const { error } = await supabase
-                    .from('whiteboards')
-                    .update({ content: elements })
-                    .eq('id', roomId)
+                const { updateWhiteboard } = await import("@/app/actions")
+                // Only send necessary data to reduce payload if possible, but here we send all elements
+                // Sanitize elements to ensure no non-serializable data
+                const sanitizedElements = JSON.parse(JSON.stringify(elements))
 
-                if (error) {
-                    console.error("Supabase Save Error:", error)
+                const result = await updateWhiteboard(roomId, { content: sanitizedElements })
+
+                if (result.error) {
+                    console.error("Supabase Save Error:", result.error)
                 } else {
                     console.log("Saved to Supabase successfully")
                 }
@@ -347,7 +349,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         const timeoutId = setTimeout(saveToDb, 2000) // Debounce 2s
 
         return () => clearTimeout(timeoutId)
-    }, [elements, roomId, supabase])
+    }, [elements, roomId])
 
     // Setup Collaboration
     useEffect(() => {

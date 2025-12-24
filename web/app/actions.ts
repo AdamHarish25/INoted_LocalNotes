@@ -3,11 +3,35 @@
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 
+export async function getSupabaseUser() {
+    let supabase = await createClient()
+    let { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        const { auth } = await import("@/auth")
+        const session = await auth()
+        if (session?.user) {
+            const { createAdminClient } = await import("@/utils/supabase/server")
+            supabase = await createAdminClient()
+            user = {
+                id: session.user.id as string,
+                email: session.user.email,
+                is_anonymous: false,
+                aud: "authenticated",
+                created_at: new Date().toISOString(),
+                app_metadata: {},
+                user_metadata: {},
+                role: "authenticated"
+            } as any
+        }
+    }
+    return { supabase, user }
+}
+
 export async function createNote(formData: FormData | { title: string, workspace_id?: string }) {
-    const supabase = await createClient()
+    const { supabase, user } = await getSupabaseUser()
 
     // Check if user is logged in
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         redirect("/login")
     }
@@ -45,10 +69,9 @@ export async function createNote(formData: FormData | { title: string, workspace
 }
 
 export async function createWhiteboard(formData: FormData | { title: string, workspace_id?: string }) {
-    const supabase = await createClient()
+    const { supabase, user } = await getSupabaseUser()
 
     // Check if user is logged in
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         redirect("/login")
     }
@@ -86,8 +109,7 @@ export async function createWhiteboard(formData: FormData | { title: string, wor
 }
 
 export async function updateNote(id: string, data: { content?: any, title?: string }) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const updates: any = { updated_at: new Date().toISOString() }
@@ -173,8 +195,7 @@ function extractTasks(content: any): any[] {
 }
 
 export async function updateNoteSharing(id: string, is_public: boolean) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -192,8 +213,7 @@ export async function updateNoteSharing(id: string, is_public: boolean) {
 }
 
 export async function updateWhiteboard(id: string, data: { content?: any, title?: string }) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const updates: any = { updated_at: new Date().toISOString() }
@@ -221,8 +241,7 @@ export async function updateWhiteboard(id: string, data: { content?: any, title?
 }
 
 export async function updateWhiteboardSharing(id: string, is_public: boolean) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -240,10 +259,9 @@ export async function updateWhiteboardSharing(id: string, is_public: boolean) {
 }
 
 export async function createFlowchart(formData: FormData | { title: string, workspace_id?: string }) {
-    const supabase = await createClient()
+    const { supabase, user } = await getSupabaseUser()
 
     // Check if user is logged in
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         redirect("/login")
     }
@@ -281,8 +299,7 @@ export async function createFlowchart(formData: FormData | { title: string, work
 }
 
 export async function updateFlowchart(id: string, data: { content?: any, title?: string }) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const updates: any = { updated_at: new Date().toISOString() }
@@ -310,8 +327,7 @@ export async function updateFlowchart(id: string, data: { content?: any, title?:
 }
 
 export async function updateFlowchartSharing(id: string, is_public: boolean) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -329,8 +345,7 @@ export async function updateFlowchartSharing(id: string, is_public: boolean) {
 }
 
 export async function deleteFlowchart(id: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -348,8 +363,7 @@ export async function deleteFlowchart(id: string) {
 }
 
 export async function getFlowcharts() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { data, error } = await supabase
@@ -370,8 +384,7 @@ export async function getFlowcharts() {
 // Workspaces
 
 export async function createWorkspace(name: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { data, error } = await supabase
@@ -392,8 +405,7 @@ export async function createWorkspace(name: string) {
 }
 
 export async function getWorkspaces() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { data, error } = await supabase
@@ -410,8 +422,7 @@ export async function getWorkspaces() {
 }
 
 export async function assignNoteToWorkspace(noteId: string, workspaceId: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -435,8 +446,7 @@ export async function signOut() {
 }
 
 export async function updateWorkspace(id: string, name: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -454,8 +464,7 @@ export async function updateWorkspace(id: string, name: string) {
 }
 
 export async function deleteWorkspace(id: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -472,8 +481,7 @@ export async function deleteWorkspace(id: string) {
     return { success: true }
 }
 export async function deleteNote(id: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -491,8 +499,7 @@ export async function deleteNote(id: string) {
 }
 
 export async function deleteWhiteboard(id: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
@@ -510,8 +517,7 @@ export async function deleteWhiteboard(id: string) {
 }
 
 export async function updateProfile(displayName: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase.auth.updateUser({
@@ -529,8 +535,7 @@ export async function updateProfile(displayName: string) {
 
 
 export async function getWhiteboards() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { data, error } = await supabase
