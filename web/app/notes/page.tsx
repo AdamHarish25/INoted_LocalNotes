@@ -92,6 +92,7 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
     let whiteboardsQuery = supabase
         .from("whiteboards")
         .select("*")
+        .eq("owner_id", user!.id)
         .order("created_at", { ascending: false })
 
     if (query) {

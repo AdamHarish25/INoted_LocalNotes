@@ -28,6 +28,37 @@ export async function getSupabaseUser() {
     return { supabase, user }
 }
 
+// Helper to auto-generate unique title for creation
+async function getUniqueTitle(supabase: any, table: string, column: string, baseTitle: string, userId: string) {
+    let title = baseTitle
+    let counter = 1
+
+    while (true) {
+        let query = supabase.from(table).select(column).eq("owner_id", userId).eq(column, title)
+
+        const { data, error } = await query
+
+        if (error || !data || data.length === 0) {
+            return title;
+        }
+
+        title = `${baseTitle} (${counter})`
+        counter++
+    }
+}
+
+// Helper to check for existing title for update (strict check)
+async function checkTitleExists(supabase: any, table: string, column: string, title: string, userId: string, excludeId: string) {
+    const { data } = await supabase
+        .from(table)
+        .select("id")
+        .eq("owner_id", userId)
+        .eq(column, title)
+        .neq("id", excludeId)
+        .single()
+    return !!data
+}
+
 export async function createNote(formData: FormData | { title: string, workspace_id?: string }) {
     const { supabase, user } = await getSupabaseUser()
 
@@ -46,6 +77,8 @@ export async function createNote(formData: FormData | { title: string, workspace
         title = formData.title || "Untitled Note";
         workspace_id = formData.workspace_id || null;
     }
+
+    title = await getUniqueTitle(supabase, "notes", "title", title, user.id)
 
     const { data, error } = await supabase
         .from("notes")
@@ -87,6 +120,8 @@ export async function createWhiteboard(formData: FormData | { title: string, wor
         workspace_id = formData.workspace_id || null;
     }
 
+    title = await getUniqueTitle(supabase, "whiteboards", "title", title, user.id)
+
     const { data, error } = await supabase
         .from("whiteboards")
         .insert({
@@ -116,7 +151,6 @@ export async function updateNote(id: string, data: { content?: any, title?: stri
     if (data.content !== undefined) {
         updates.content = data.content
 
-        // Extract tasks from content to save separately
         try {
             const tasks = extractTasks(data.content)
             updates.tasks = tasks
@@ -124,7 +158,12 @@ export async function updateNote(id: string, data: { content?: any, title?: stri
             console.error("Error extracting tasks:", e)
         }
     }
-    if (data.title !== undefined) updates.title = data.title
+
+    if (data.title !== undefined) {
+        const exists = await checkTitleExists(supabase, "notes", "title", data.title, user.id, id)
+        if (exists) return { error: "Title already exists" }
+        updates.title = data.title
+    }
 
     let { data: result, error } = await supabase
         .from("notes")
@@ -218,7 +257,12 @@ export async function updateWhiteboard(id: string, data: { content?: any, title?
 
     const updates: any = { updated_at: new Date().toISOString() }
     if (data.content !== undefined) updates.content = data.content
-    if (data.title !== undefined) updates.title = data.title
+
+    if (data.title !== undefined) {
+        const exists = await checkTitleExists(supabase, "whiteboards", "title", data.title, user.id, id)
+        if (exists) return { error: "Title already exists" }
+        updates.title = data.title
+    }
 
     const { data: result, error } = await supabase
         .from("whiteboards")
@@ -277,6 +321,8 @@ export async function createFlowchart(formData: FormData | { title: string, work
         workspace_id = formData.workspace_id || null;
     }
 
+    title = await getUniqueTitle(supabase, "flowcharts", "title", title, user.id)
+
     const { data, error } = await supabase
         .from("flowcharts")
         .insert({
@@ -304,7 +350,12 @@ export async function updateFlowchart(id: string, data: { content?: any, title?:
 
     const updates: any = { updated_at: new Date().toISOString() }
     if (data.content !== undefined) updates.content = data.content
-    if (data.title !== undefined) updates.title = data.title
+
+    if (data.title !== undefined) {
+        const exists = await checkTitleExists(supabase, "flowcharts", "title", data.title, user.id, id)
+        if (exists) return { error: "Title already exists" }
+        updates.title = data.title
+    }
 
     const { data: result, error } = await supabase
         .from("flowcharts")
@@ -387,6 +438,8 @@ export async function createWorkspace(name: string) {
     const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
+    name = await getUniqueTitle(supabase, "workspaces", "name", name, user.id)
+
     const { data, error } = await supabase
         .from("workspaces")
         .insert({
@@ -411,6 +464,7 @@ export async function getWorkspaces() {
     const { data, error } = await supabase
         .from("workspaces")
         .select("*")
+        .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
 
     if (error) {
@@ -448,6 +502,9 @@ export async function signOut() {
 export async function updateWorkspace(id: string, name: string) {
     const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
+
+    const exists = await checkTitleExists(supabase, "workspaces", "name", name, user.id, id)
+    if (exists) return { error: "Name already exists" }
 
     const { error } = await supabase
         .from("workspaces")
