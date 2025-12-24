@@ -16,13 +16,18 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
   const searchParams = await props.searchParams
   const query = searchParams?.q || ""
 
-  const supabase = await createClient()
+  let supabase = await createClient()
   let { data: { user } } = await supabase.auth.getUser()
 
   // Fallback to Auth.js session if Supabase auth is missing
   if (!user) {
     const session = await auth()
     if (session?.user) {
+      // Use Admin Client to bypass RLS since we are authenticated via Auth.js
+      // and standard Supabase client doesn't have the user context.
+      const { createAdminClient } = await import("@/utils/supabase/server")
+      supabase = await createAdminClient()
+
       user = {
         id: session.user.id as string,
         email: session.user.email,

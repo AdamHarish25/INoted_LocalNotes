@@ -36,3 +36,32 @@ export async function createClient() {
         }
     )
 }
+
+export async function createAdminClient() {
+    const cookieStore = await cookies()
+
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use Service Role Key for Admin Access
+        {
+            cookies: {
+                getAll() {
+                    return cookieStore.getAll()
+                },
+                setAll(cookiesToSet) {
+                    // Admin client usually doesn't need to set cookies, but we keep the structure
+                    try {
+                        cookiesToSet.forEach(({ name, value, options }) => {
+                            const { domain, ...validOptions } = options
+                            if (process.env.NODE_ENV === 'development') {
+                                validOptions.secure = false
+                            }
+                            cookieStore.set(name, value, validOptions)
+                        })
+                    } catch {
+                    }
+                },
+            },
+        }
+    )
+}

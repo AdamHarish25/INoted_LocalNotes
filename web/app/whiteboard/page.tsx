@@ -14,21 +14,39 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
     const searchParams = await props.searchParams
     const query = searchParams?.q || ""
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let supabase = await createClient()
+    let { data: { user } } = await supabase.auth.getUser()
 
     // Check if user is anonymous (guest)
-    const isGuest = user?.is_anonymous ?? false;
+    let isGuest = user?.is_anonymous ?? false;
 
+    // Fallback to Auth.js session if Supabase auth is missing
     if (!user) {
-        redirect("/login")
+        const { auth } = await import("@/auth")
+        const session = await auth()
+        if (session?.user) {
+            const { createAdminClient } = await import("@/utils/supabase/server")
+            supabase = await createAdminClient()
+            user = {
+                id: session.user.id as string,
+                email: session.user.email,
+                is_anonymous: false,
+                aud: "authenticated",
+                created_at: new Date().toISOString(),
+                app_metadata: {},
+                user_metadata: {},
+                role: "authenticated"
+            } as any
+        } else {
+            redirect("/login")
+        }
     }
 
     // Fetch Whiteboards
     let whiteboardsQuery = supabase
         .from("whiteboards")
         .select("*")
-        .eq("owner_id", user.id) // SECURITY FIX
+        .eq("owner_id", user!.id) // SECURITY FIX
         .order("created_at", { ascending: false })
 
     if (query) {
@@ -41,7 +59,7 @@ export default async function WhiteboardDashboardPage(props: { searchParams?: Pr
     const { data: workspaces } = await supabase
         .from("workspaces")
         .select("*")
-        .eq("owner_id", user.id) // SECURITY FIX
+        .eq("owner_id", user!.id) // SECURITY FIX
         .order("created_at", { ascending: false })
 
     return (
