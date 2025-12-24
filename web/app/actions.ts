@@ -18,17 +18,15 @@ export async function getSupabaseUser() {
             let userId = session.user.id as string
 
             // Sync/Lookup: Check if this email exists in Supabase 'auth.users' to unify accounts
-            // This fixes the issue where Traditional created items are not visible to Google Login
+            // Use Admin API listUsers because direct access to 'auth' schema is blocked
             if (session.user.email) {
-                const { data: supabaseUser } = await supabase
-                    .schema('auth')
-                    .from('users')
-                    .select('id')
-                    .eq('email', session.user.email)
-                    .maybeSingle()
+                const { data, error } = await supabase.auth.admin.listUsers()
 
-                if (supabaseUser) {
-                    userId = supabaseUser.id
+                if (data && data.users) {
+                    const match = data.users.find((u: any) => u.email === session?.user?.email)
+                    if (match) {
+                        userId = match.id
+                    }
                 }
             }
 
