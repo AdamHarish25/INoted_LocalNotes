@@ -849,23 +849,25 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
-    // Broadcast Cursor Position
+    // Broadcast Cursor Position (World Coordinates)
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!providerRef.current || !providerRef.current.awareness) return
 
         const { left, top } = e.currentTarget.getBoundingClientRect()
-        const x = e.clientX - left
-        const y = e.clientY - top
+        const mouseX = e.clientX - left
+        const mouseY = e.clientY - top
 
-        // Broadcast relative to pan/zoom if needed, keeping it screen coords for simple overlay is easier, 
-        // but for world-scaling cursors we might want world coords. 
-        // Let's stick to screen coords relative to the container for the cursor overlay.
+        // Convert Screen to World
+        const worldX = (mouseX - panOffset.x) / zoom
+        const worldY = (mouseY - panOffset.y) / zoom
 
-        providerRef.current.awareness.setLocalStateField('cursor', { x, y })
+        providerRef.current.awareness.setLocalStateField('cursor', { x: worldX, y: worldY })
 
         // Also call drawing logic
         draw(e as unknown as React.MouseEvent<HTMLCanvasElement>)
     }
+
+
 
     // Touch Handling Helpers
     const getTouchPos = (e: React.TouchEvent<HTMLCanvasElement>, index: number = 0) => {
@@ -1217,6 +1219,9 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     }
 
     const getCursorStyle = () => {
+        if (isPanning) return 'grabbing'
+        if (draggingElement || isDraggingTextRef) return 'move'
+
         switch (activeTool) {
             case 'hand': return 'grab'
             case 'selection': return 'default'
@@ -1363,7 +1368,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                         {/* Connection Status */}
                         <div className="flex items-center gap-1.5 mr-2" title={`Connection: ${connectionStatus}`}>
                             <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' :
-                                    connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
+                                connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
                                 }`} />
                             <span className="hidden sm:inline capitalize">{connectionStatus}</span>
                         </div>
@@ -1471,26 +1476,40 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
                 {/* Remote Cursors Overlay */}
                 <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
-                    {Object.entries(remoteCursors).map(([clientId, cursor]) => cursor.hasCursor && (
-                        <div
-                            key={clientId}
-                            className="absolute transition-transform duration-75 ease-out flex flex-col items-start gap-1"
-                            style={{
-                                transform: `translate(${cursor.x}px, ${cursor.y}px)`,
-                            }}
-                        >
-                            <MousePointer2
-                                className="w-4 h-4 fill-current"
-                                style={{ color: cursor.color }}
-                            />
-                            <span
-                                className="text-[10px] text-white px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap"
-                                style={{ backgroundColor: cursor.color }}
+                    {Object.entries(remoteCursors).map(([clientId, cursor]) => {
+                        if (!cursor.hasCursor) return null;
+
+                        // Convert World to Local Screen
+                        const screenX = cursor.x * zoom + panOffset.x
+                        const screenY = cursor.y * zoom + panOffset.y
+
+                        if (isNaN(screenX) || isNaN(screenY)) return null
+
+                        return (
+                            <div
+                                key={clientId}
+                                className={`absolute transition-transform duration-75 ease-out flex flex-col items-start gap-1 ${cursor.role === 'editor' ? '' : 'opacity-80'
+                                    }`}
+                                style={{
+                                    transform: `translate(${screenX}px, ${screenY}px)`,
+                                }}
                             >
-                                {cursor.name}
-                            </span>
-                        </div>
-                    ))}
+                                <MousePointer2
+                                    className={`w-4 h-4 fill-current ${cursor.role === 'editor' ? 'stroke-[3px] stroke-green-500' : ''}`}
+                                    style={{ color: cursor.color }}
+                                />
+                                <span
+                                    className={`text-[10px] text-white px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap flex items-center gap-1 ${cursor.role === 'editor' ? 'border-2 border-green-500' : ''
+                                        }`}
+                                    style={{ backgroundColor: cursor.color }}
+                                >
+                                    {cursor.name}
+                                    {/* Indikator Editor vs Viewer */}
+                                    {cursor.role === 'editor' && <div className="w-1.5 h-1.5 rounded-full bg-green-300" />}
+                                </span>
+                            </div>
+                        )
+                    })}
                 </div>
 
                 <canvas
@@ -1504,7 +1523,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                     onTouchEnd={stopDrawing}
                     onContextMenu={handleContextMenu}
                     className="block touch-none absolute inset-0 z-10"
-                    style={{ cursor: 'none' }} // Hide default cursor? Or maybe just custom? let's stick to default for now, 'none' if drawing pencil
+                    style={{ cursor: getCursorStyle() }}
                 />
 
                 {/* Context Menu */}

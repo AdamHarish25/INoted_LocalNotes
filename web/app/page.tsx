@@ -532,7 +532,7 @@ export default function LandingPage() {
                         </div>
                         {/* Footer Decorative Icon/Graphic could go here */}
                         <div className="hidden md:block opacity-20 transform rotate-12">
-                            <Code className="w-40 h-40 text-blue-600 animate-bounce duration-1000" />
+                            <Code className="w-40 h-40 text-blue-600 animate-bounce duration-3000" />
                         </div>
                     </div>
 
