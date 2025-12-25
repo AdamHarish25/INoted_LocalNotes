@@ -50,9 +50,16 @@ export function SettingsUI({ user }: { user: any }) {
                     <div className="space-y-2">
                         <Label>Profile Picture</Label>
                         <div className="flex items-center gap-4">
-                            <div className="h-16 w-16 rounded-full bg-slate-200 overflow-hidden border">
-                                {/* Placeholder for now */}
-                                <img src={user?.user_metadata?.avatar_url || "/avatar-placeholder.png"} className="h-full w-full object-cover" alt="Avatar" />
+                            <div className="h-16 w-16 p-0.5 rounded-full border bg-slate-200 dark:bg-slate-800">
+                                <span className="sr-only">{name}</span>
+                                {/* Use Avatar component for consistency and fallback handling */}
+                                <div className="h-full w-full rounded-full overflow-hidden flex items-center justify-center bg-muted text-muted-foreground text-xl font-medium">
+                                    {user?.user_metadata?.avatar_url ? (
+                                        <img src={user.user_metadata.avatar_url} className="h-full w-full object-cover" alt="Avatar" />
+                                    ) : (
+                                        <span>{(name?.[0] || "U").toUpperCase()}</span>
+                                    )}
+                                </div>
                             </div>
                             <Button variant="outline" disabled>Change (Coming Soon)</Button>
                         </div>
