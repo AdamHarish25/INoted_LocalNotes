@@ -14,12 +14,18 @@ export async function getSupabaseUser() {
             let userId = session.user.id as string
 
             // Sync/Lookup: Check if this email exists in Supabase 'auth.users' to unify accounts
+            // Sync/Lookup: Check if this email exists in Supabase 'auth.users' to unify accounts
             if (session.user.email) {
-                const { data } = await supabase.auth.admin.listUsers()
+                // Fetch up to 1000 users to avoid pagination issues (default is 50)
+                const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
 
                 if (data && data.users) {
-                    const match = data.users.find((u: any) => u.email === session?.user?.email)
+                    const searchEmail = session.user.email.toLowerCase();
+                    // Debug: console.log("Searching for:", searchEmail);
+
+                    const match = data.users.find((u: any) => u.email?.toLowerCase() === searchEmail)
                     if (match) {
+                        // Debug: console.log("Found match:", match.email, match.id);
                         userId = match.id
                     }
                 }
