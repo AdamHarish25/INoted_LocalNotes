@@ -14,6 +14,19 @@ export default function LandingPage() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const mainRef = useRef(null)
 
+    // Redirection Logic: If user visits landing page while logged in, redirect to dashboard
+    useLayoutEffect(() => {
+        const checkSession = async () => {
+            const { getAuthenticatedUser } = await import("@/app/actions")
+            const user = await getAuthenticatedUser()
+            if (user) {
+                // Use native browser redirect properly
+                window.location.href = "/dashboard"
+            }
+        }
+        checkSession()
+    }, [])
+
     useLayoutEffect(() => {
         gsap.registerPlugin(ScrollTrigger)
         let ctx = gsap.context(() => {
