@@ -27,6 +27,25 @@ export async function getSupabaseUser() {
                     if (match) {
                         matchedUser = match;
                         userId = match.id
+                    } else {
+                        // JIT Provisioning: Create user in Supabase if not found
+                        // This fixes issues where 'notes' creation fails due to FK constraints on owner_id
+                        const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+                            email: session.user.email,
+                            email_confirm: true,
+                            user_metadata: {
+                                display_name: session.user.name || "User",
+                                avatar_url: session.user.image,
+                                full_name: session.user.name
+                            }
+                        })
+
+                        if (newUser?.user) {
+                            matchedUser = newUser.user;
+                            userId = newUser.user.id
+                        } else {
+                            console.warn("JIT User Creation failed:", createError?.message)
+                        }
                     }
                 }
             }
