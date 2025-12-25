@@ -474,10 +474,12 @@ export async function assignNoteToWorkspace(noteId: string, workspaceId: string)
     return { success: true }
 }
 
+import { signOut as nextAuthSignOut } from "@/auth"
+
 export async function signOut() {
     const supabase = await createClient()
     await supabase.auth.signOut()
-    redirect("/")
+    await nextAuthSignOut({ redirectTo: "/" })
 }
 
 export async function updateWorkspace(id: string, name: string) {
