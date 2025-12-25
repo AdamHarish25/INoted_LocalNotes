@@ -211,6 +211,9 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     // Context Menu State
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, elementId: string } | null>(null)
 
+    // Connection Status State
+    const [connectionStatus, setConnectionStatus] = useState('disconnected')
+
     const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
         e.preventDefault()
         if (!context || !canvasRef.current) return
@@ -466,6 +469,9 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
             url: hostUrl,
             name: roomId,
             document: ydoc,
+            onStatus: (item) => {
+                setConnectionStatus(item.status)
+            }
         })
         providerRef.current = provider
 
@@ -1354,6 +1360,14 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                     </div>
 
                     <div className={`flex items-center gap-2 text-xs text-slate-400`}>
+                        {/* Connection Status */}
+                        <div className="flex items-center gap-1.5 mr-2" title={`Connection: ${connectionStatus}`}>
+                            <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' :
+                                    connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
+                                }`} />
+                            <span className="hidden sm:inline capitalize">{connectionStatus}</span>
+                        </div>
+
                         {saveStatus === 'saving' ? (
                             <>
                                 <Loader2 className="w-3 h-3 animate-spin" />
