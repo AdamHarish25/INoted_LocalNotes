@@ -39,6 +39,10 @@ import { Table } from '@tiptap/extension-table'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableRow } from '@tiptap/extension-table-row'
+import { BubbleMenu } from '@tiptap/react/menus'
+import { default as BubbleMenuExtension } from '@tiptap/extension-bubble-menu'
+import { Bold, Italic, Strikethrough, Code, AlignLeft, AlignCenter, AlignRight, FileText } from 'lucide-react'
+import TextAlign from '@tiptap/extension-text-align'
 
 export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly = false }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
     const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
@@ -154,6 +158,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             TaskItem.configure({
                 nested: true,
             }),
+
             Table.configure({
                 resizable: true,
             }),
@@ -161,6 +166,12 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             TableHeader,
             TableCell,
             WhiteboardExtension,
+            TextAlign.configure({
+                types: ['heading', 'paragraph'],
+            }),
+            BubbleMenuExtension.configure({
+                pluginKey: 'bubbleMenu', // Optional
+            }),
         ],
         editorProps: {
             attributes: {
@@ -583,6 +594,102 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 />
 
                 <EditorContent editor={editor} className="dark:text-zinc-100" />
+
+                {editor && (
+                    <BubbleMenu
+                        editor={editor}
+                        className="flex items-center gap-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-lg p-1 rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                    >
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editor.chain().focus().toggleBold().run()}
+                            className={`h-8 w-8 ${editor.isActive('bold') ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Bold (Ctrl+B)"
+                        >
+                            <Bold className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editor.chain().focus().toggleItalic().run()}
+                            className={`h-8 w-8 ${editor.isActive('italic') ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Italic (Ctrl+I)"
+                        >
+                            <Italic className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editor.chain().focus().toggleStrike().run()}
+                            className={`h-8 w-8 ${editor.isActive('strike') ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Strikethrough"
+                        >
+                            <Strikethrough className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editor.chain().focus().toggleCode().run()}
+                            className={`h-8 w-8 ${editor.isActive('code') ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Code"
+                        >
+                            <Code className="w-4 h-4" />
+                        </Button>
+
+                        <div className="w-px h-4 bg-slate-200 dark:bg-zinc-600 mx-1" />
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                            className={`h-8 w-8 ${editor.isActive({ textAlign: 'left' }) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Align Left"
+                        >
+                            <AlignLeft className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                            className={`h-8 w-8 ${editor.isActive({ textAlign: 'center' }) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Align Center"
+                        >
+                            <AlignCenter className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                            className={`h-8 w-8 ${editor.isActive({ textAlign: 'right' }) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Align Right"
+                        >
+                            <AlignRight className="w-4 h-4" />
+                        </Button>
+
+                        <div className="w-px h-4 bg-slate-200 dark:bg-zinc-600 mx-1" />
+
+                        {/* Heading Levels */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                            className={`h-8 px-2 text-xs font-bold ${editor.isActive('heading', { level: 1 }) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Heading 1"
+                        >
+                            H1
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                            className={`h-8 px-2 text-xs font-bold ${editor.isActive('heading', { level: 2 }) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+                            title="Heading 2"
+                        >
+                            H2
+                        </Button>
+                    </BubbleMenu>
+                )}
 
                 {/* Custom Context Menu */}
                 {contextMenu && contextMenu.isOpen && (

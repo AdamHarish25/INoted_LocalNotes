@@ -650,6 +650,51 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         return () => window.removeEventListener('resize', handleResize)
     }, [elements, toolOptions])
 
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if typing in an input or textarea
+            if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+            // Undo/Redo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault()
+                if (e.shiftKey) {
+                    undoManagerRef.current?.redo()
+                } else {
+                    undoManagerRef.current?.undo()
+                }
+                return
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                e.preventDefault()
+                undoManagerRef.current?.redo()
+                return
+            }
+
+            // Tools
+            switch (e.key.toLowerCase()) {
+                case 'v': setActiveTool('selection'); break;
+                case 'h': setActiveTool('hand'); break;
+                case 'r': setActiveTool('rectangle'); break;
+                case 'o': setActiveTool('circle'); break;
+                case 'l': setActiveTool('line'); break;
+                case 't': setActiveTool('text'); break;
+                case 'p': setActiveTool('pencil'); break;
+                case 'e': setActiveTool('eraser'); break;
+                case 'backspace':
+                case 'delete':
+                    // Delete selected element logic logic isn't fully in state yet (just draggingElement), 
+                    // but if we had a proper selection state we'd do it here.
+                    // For now, let's skip unless we track 'selectedElement'
+                    break;
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [])
+
 
 
     // Touch Handling Helpers
@@ -811,10 +856,10 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
     const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
         const { offsetX, offsetY } = e.nativeEvent
-        processDraw(offsetX, offsetY)
+        processDraw(offsetX, offsetY, e.shiftKey)
     }
 
-    const processDraw = (offsetX: number, offsetY: number) => {
+    const processDraw = (offsetX: number, offsetY: number, isShiftPressed: boolean = false) => {
         if (isPanning) {
             const deltaX = offsetX - startPanMousePosition.x
             const deltaY = offsetY - startPanMousePosition.y
@@ -877,10 +922,33 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
             })
         } else {
             // Update Size
+            let w = worldX - currentElement.x
+            let h = worldY - currentElement.y
+
+            // Constrain proportions if Shift is pressed
+            if (isShiftPressed) {
+                // For rectangle/circle/diamond, make it 1:1
+                // For line/arrow, this logic snaps to 45/90 degrees usually, but simple square aspect is requested.
+                // Let's implement square aspect for shapes and maybe simple snap for lines?
+                // The request said "menegakkan ukuran componen ... agar seimbang", which implies Aspect Ratio 1:1.
+
+                if (['rectangle', 'circle', 'diamond'].includes(activeTool)) {
+                    const minDim = Math.min(Math.abs(w), Math.abs(h))
+                    const maxDim = Math.max(Math.abs(w), Math.abs(h))
+                    // Use max dimension to prevent "shrinking" feel when moving mouse far away
+                    const dim = maxDim;
+                    w = w < 0 ? -dim : dim
+                    h = h < 0 ? -dim : dim
+                } else if (['line', 'arrow'].includes(activeTool)) {
+                    // Straight lines (0, 45, 90 deg)
+                    // Not implemented here yet as request specifically mentioned "balanced size" (seimbang)
+                }
+            }
+
             setCurrentElement({
                 ...currentElement,
-                width: worldX - currentElement.x,
-                height: worldY - currentElement.y
+                width: w,
+                height: h
             })
         }
     }
@@ -984,20 +1052,20 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         }
     }
 
-    const tools: { id: Tool | 'undo' | 'redo', icon: React.ReactNode }[] = [
-        { id: 'hand', icon: <Hand className="w-5 h-5" /> },
-        { id: 'selection', icon: <MousePointer2 className="w-5 h-5" /> },
-        { id: 'rectangle', icon: <Square className="w-5 h-5" /> },
-        { id: 'circle', icon: <Circle className="w-5 h-5" /> },
+    const tools: { id: Tool | 'undo' | 'redo', icon: React.ReactNode, shortcut?: string }[] = [
+        { id: 'hand', icon: <Hand className="w-5 h-5" />, shortcut: 'H' },
+        { id: 'selection', icon: <MousePointer2 className="w-5 h-5" />, shortcut: 'V' },
+        { id: 'rectangle', icon: <Square className="w-5 h-5" />, shortcut: 'R' },
+        { id: 'circle', icon: <Circle className="w-5 h-5" />, shortcut: 'O' },
         { id: 'diamond', icon: <Diamond className="w-5 h-5" /> },
         { id: 'arrow', icon: <ArrowRight className="w-5 h-5" /> },
-        { id: 'line', icon: <Minus className="w-5 h-5" /> },
-        { id: 'pencil', icon: <Pencil className="w-5 h-5" /> },
-        { id: 'text', icon: <Type className="w-5 h-5" /> },
+        { id: 'line', icon: <Minus className="w-5 h-5" />, shortcut: 'L' },
+        { id: 'pencil', icon: <Pencil className="w-5 h-5" />, shortcut: 'P' },
+        { id: 'text', icon: <Type className="w-5 h-5" />, shortcut: 'T' },
         { id: 'image', icon: <ImageIcon className="w-5 h-5" /> },
-        { id: 'eraser', icon: <Eraser className="w-5 h-5" /> },
-        { id: 'undo', icon: <Undo className="w-5 h-5" /> },
-        { id: 'redo', icon: <Redo className="w-5 h-5" /> },
+        { id: 'eraser', icon: <Eraser className="w-5 h-5" />, shortcut: 'E' },
+        { id: 'undo', icon: <Undo className="w-5 h-5" />, shortcut: 'Ctrl+Z' },
+        { id: 'redo', icon: <Redo className="w-5 h-5" />, shortcut: 'Ctrl+Y' },
     ]
 
     // Action Handlers
@@ -1250,7 +1318,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                                     setActiveTool(tool.id as Tool)
                                 }
                             }}
-                            title={tool.id.charAt(0).toUpperCase() + tool.id.slice(1)}
+                            title={`${tool.id.charAt(0).toUpperCase() + tool.id.slice(1)} ${tool.shortcut ? `(${tool.shortcut})` : ''}`}
                         >
                             {tool.icon}
                         </Button>
