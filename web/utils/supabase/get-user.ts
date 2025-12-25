@@ -13,7 +13,8 @@ export async function getSupabaseUser() {
             // Default ID from Auth.js
             let userId = session.user.id as string
 
-            // Sync/Lookup: Check if this email exists in Supabase 'auth.users' to unify accounts
+            let matchedUser: any = null;
+
             // Sync/Lookup: Check if this email exists in Supabase 'auth.users' to unify accounts
             if (session.user.email) {
                 // Fetch up to 1000 users to avoid pagination issues (default is 50)
@@ -24,19 +25,30 @@ export async function getSupabaseUser() {
 
                     const match = data.users.find((u: any) => u.email?.toLowerCase().trim() === searchEmail)
                     if (match) {
+                        matchedUser = match;
                         userId = match.id
                     }
                 }
             }
+
+            // Merge metadata: Supabase match takes precedence, invalid keys fallback to Session
+            const existingMetadata = matchedUser?.user_metadata || {};
+            const displayName = existingMetadata.display_name || existingMetadata.full_name || session.user.name || "User";
+            const avatarUrl = existingMetadata.avatar_url || existingMetadata.picture || session.user.image;
 
             user = {
                 id: userId,
                 email: session.user.email,
                 is_anonymous: false,
                 aud: "authenticated",
-                created_at: new Date().toISOString(),
-                app_metadata: {},
-                user_metadata: {},
+                created_at: matchedUser?.created_at || new Date().toISOString(),
+                app_metadata: matchedUser?.app_metadata || {},
+                user_metadata: {
+                    ...existingMetadata,
+                    display_name: displayName,
+                    avatar_url: avatarUrl,
+                    full_name: displayName // ensuring compatibility
+                },
                 role: "authenticated"
             } as any
         }
