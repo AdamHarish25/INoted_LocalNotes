@@ -22,7 +22,7 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ id:
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-white">
-            <CanvasBoard roomId={id} initialData={whiteboard?.content || []} initialIsPublic={whiteboard?.is_public} />
+            <CanvasBoard roomId={id} initialData={whiteboard?.content || []} initialIsPublic={whiteboard?.is_public} currentUser={user} />
         </div>
     )
 }

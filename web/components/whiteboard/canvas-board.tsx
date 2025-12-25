@@ -39,7 +39,8 @@ import {
     Redo,
     ZoomIn,
     ZoomOut,
-    Download
+    Download,
+    Trash2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -133,12 +134,22 @@ const ALIGNS = [
     { value: 'right', icon: <AlignRight className="w-4 h-4" /> },
 ]
 
-export default function CanvasBoard({ roomId, initialData, initialIsPublic = false }: { roomId: string, initialData?: any[], initialIsPublic?: boolean }) {
+// Helper for random colors
+const getRandomColor = () => {
+    const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#ec4899', '#14b8a6']
+    return colors[Math.floor(Math.random() * colors.length)]
+}
+
+export default function CanvasBoard({ roomId, initialData, initialIsPublic = false, currentUser }: { roomId: string, initialData?: any[], initialIsPublic?: boolean, currentUser?: any }) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null)
     const [activeTool, setActiveTool] = useState<Tool>('hand')
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+    // Remote Cursors State
+    const [remoteCursors, setRemoteCursors] = useState<{ [key: number]: { x: number, y: number, name: string, color: string, avatar?: string | null, role?: string, hasCursor?: boolean } }>({})
+    const providerRef = useRef<HocuspocusProvider | null>(null)
 
 
     // Tool Options State
@@ -193,6 +204,64 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     // Share State
     const [isPublic, setIsPublic] = useState(initialIsPublic)
     const [isCopied, setIsCopied] = useState(false)
+
+    // Sharing Permission Role
+    const [accessRole, setAccessRole] = useState<'viewer' | 'editor' | 'commenter'>('viewer')
+
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, elementId: string } | null>(null)
+
+    const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        e.preventDefault()
+        if (!context || !canvasRef.current) return
+
+        const { offsetX, offsetY } = e.nativeEvent
+        const worldX = (offsetX - panOffset.x) / zoom
+        const worldY = (offsetY - panOffset.y) / zoom
+
+        // Check if hitting an element (reverse iteration for z-index)
+        let hitId: string | null = null
+        for (let i = elements.length - 1; i >= 0; i--) {
+            if (isHit(elements[i], worldX, worldY, context)) {
+                hitId = elements[i].id
+                break
+            }
+        }
+
+        if (hitId) {
+            setContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                elementId: hitId
+            })
+        } else {
+            setContextMenu(null)
+        }
+    }
+
+    const handleDeleteComponent = () => {
+        if (!contextMenu) return
+
+        // Remove from local state and Yjs
+        const index = elements.findIndex(el => el.id === contextMenu.elementId)
+        if (index !== -1) {
+            const newElements = [...elements]
+            newElements.splice(index, 1)
+            setElements(newElements)
+
+            if (yElementsRef.current) {
+                yElementsRef.current.delete(index, 1)
+            }
+        }
+        setContextMenu(null)
+    }
+
+    // Close context menu on click elsewhere
+    useEffect(() => {
+        const handleClick = () => setContextMenu(null)
+        window.addEventListener('click', handleClick)
+        return () => window.removeEventListener('click', handleClick)
+    }, [])
 
 
 
@@ -332,7 +401,11 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                 // Sanitize elements to ensure no non-serializable data
                 const sanitizedElements = JSON.parse(JSON.stringify(elements))
 
-                const result = await updateWhiteboard(roomId, { content: sanitizedElements })
+                const payload = {
+                    elements: sanitizedElements,
+                    publicRole: accessRole
+                }
+                const result = await updateWhiteboard(roomId, { content: payload })
 
                 if (result.error) {
                     console.error("Supabase Save Error:", result.error)
@@ -351,16 +424,30 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         return () => clearTimeout(timeoutId)
     }, [elements, roomId])
 
-    // Setup Collaboration
+    // Setup Collaboration & Awareness
     useEffect(() => {
         const ydoc = new Y.Doc()
 
         // Initialize with server-fetched data if available and doc is empty
         const yArray = ydoc.getArray<CanvasElement>("elements")
-        if (initialData && initialData.length > 0 && yArray.length === 0) {
-            console.log("Hydrating from initialData:", initialData.length, "elements")
-            yArray.insert(0, initialData as CanvasElement[])
-            setElements(yArray.toArray())
+        const yMap = ydoc.getMap("meta")
+
+        if (initialData) {
+            if (Array.isArray(initialData)) {
+                if (yArray.length === 0 && initialData.length > 0) {
+                    yArray.insert(0, initialData as CanvasElement[])
+                    setElements(yArray.toArray())
+                }
+            } else if (typeof initialData === 'object' && (initialData as any).elements) {
+                const data = initialData as any
+                if (yArray.length === 0 && data.elements.length > 0) {
+                    yArray.insert(0, data.elements as CanvasElement[])
+                    setElements(yArray.toArray())
+                }
+                if (data.publicRole && !yMap.has('publicRole')) {
+                    yMap.set('publicRole', data.publicRole)
+                }
+            }
         }
 
         yElementsRef.current = yArray
@@ -380,6 +467,67 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
             name: roomId,
             document: ydoc,
         })
+        providerRef.current = provider
+
+        // Observer for public role changes
+        yMap.observe(() => {
+            const remotePublicRole = yMap.get('publicRole') as string
+            if (remotePublicRole && !currentUser?.id && isPublic) {
+                setAccessRole(remotePublicRole as any)
+                if (provider.awareness) {
+                    const current = provider.awareness.getLocalState()
+                    provider.awareness.setLocalStateField('user', { ...current?.user, role: remotePublicRole })
+                }
+            }
+        })
+
+        // Awareness Setup
+        const myColor = getRandomColor()
+        const myName = currentUser?.user_metadata?.display_name || currentUser?.email || "Guest " + Math.floor(Math.random() * 1000)
+        const myAvatar = currentUser?.user_metadata?.avatar_url || currentUser?.user_metadata?.picture || null
+        // Determine role: Owner is always editor. For others, it depends on the public setting (simulated for now)
+        // In a real app, we'd fetch the specific permission. 
+        // For this demo, we assume if it's public, it's 'editor' if the toggle is set to 'editor', otherwise 'viewer'.
+        // logic: owner ? editor : (sharedAsEditor ? editor : viewer). 
+        // We need a state for 'sharedAsEditor'. Let's assume it's stored in the whiteboard content or separate.
+        // For passed props, let's treat currentUser presence as 'editor' if logged in and owner.
+        const myRole = currentUser?.id ? 'editor' : (isPublic ? (yMap.get('publicRole') as string || 'viewer') : 'viewer')
+        setAccessRole(myRole as any)
+
+
+        if (provider.awareness) {
+            provider.awareness.setLocalStateField('user', {
+                name: myName,
+                color: myColor,
+                avatar: myAvatar,
+                role: myRole
+            })
+
+            // Listen for remote cursors
+            provider.awareness.on('change', () => {
+                if (!provider.awareness) return
+                const states = provider.awareness.getStates()
+                const cursors: any = {}
+                states.forEach((state: any, clientId: any) => {
+                    // Check awareness again just in case, though closure should capture it? 
+                    // Better use providerRef or just optional chaining if strictly needed, but here provider.awareness is truthy in this block.
+                    // However, TypeScript might not know that inside the callback if it thinks provider varies.
+                    // Actually, 'provider' is const here.
+                    if (clientId !== provider.awareness?.clientID && state.user) {
+                        cursors[clientId] = {
+                            x: state.cursor?.x || 0,
+                            y: state.cursor?.y || 0,
+                            name: state.user.name,
+                            color: state.user.color,
+                            avatar: state.user.avatar,
+                            role: state.user.role,
+                            hasCursor: !!state.cursor
+                        }
+                    }
+                })
+                setRemoteCursors(cursors)
+            })
+        }
 
         provider.on('status', (event: any) => {
             console.log('Hocuspocus Connection Status:', event.status)
@@ -415,7 +563,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
             provider.destroy()
             ydoc.destroy()
         }
-    }, [roomId])
+    }, [roomId, currentUser])
 
     // Preload Images
     useEffect(() => {
@@ -695,7 +843,23 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
+    // Broadcast Cursor Position
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!providerRef.current || !providerRef.current.awareness) return
 
+        const { left, top } = e.currentTarget.getBoundingClientRect()
+        const x = e.clientX - left
+        const y = e.clientY - top
+
+        // Broadcast relative to pan/zoom if needed, keeping it screen coords for simple overlay is easier, 
+        // but for world-scaling cursors we might want world coords. 
+        // Let's stick to screen coords relative to the container for the cursor overlay.
+
+        providerRef.current.awareness.setLocalStateField('cursor', { x, y })
+
+        // Also call drawing logic
+        draw(e as unknown as React.MouseEvent<HTMLCanvasElement>)
+    }
 
     // Touch Handling Helpers
     const getTouchPos = (e: React.TouchEvent<HTMLCanvasElement>, index: number = 0) => {
@@ -780,6 +944,9 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     }
 
     const processStartDrawing = (offsetX: number, offsetY: number) => {
+        // Enforce Read Only for Viewers using accessRole state (synced from YMap/Public)
+        if (accessRole === 'viewer' && activeTool !== 'hand') return
+
         if (activeTool === 'hand') {
             setIsPanning(true)
             setStartPanMousePosition({ x: offsetX, y: offsetY })
@@ -1139,128 +1306,145 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const showTextProps = activeTool === 'text'
 
     return (
-        <div className="flex flex-col h-screen w-full bg-slate-50 dark:bg-background overflow-hidden relative">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-background overflow-hidden relative">
             {/* Header */}
-            <div className="flex items-center p-4 bg-white dark:bg-card border-b border-gray-200 dark:border-border shrink-0 h-[73px] z-10 relative transition-colors">
-                <Link href="../" className="flex items-center text-slate-500 dark:text-muted-foreground hover:text-slate-800 dark:hover:text-primary transition-colors">
-                    <ArrowLeft className="w-5 h-5 mr-2" />
-                    <span className="font-medium">Back to Dashboard</span>
-                </Link>
+            <div className="flex items-center justify-between px-4 py-2 border-b bg-white dark:bg-card z-50 shadow-sm h-14 shrink-0">
+                <div className="flex items-center gap-4">
+                    <Link href="/dashboard" className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors">
+                        <ArrowLeft className="w-4 h-4" />
+                        <span className="font-semibold text-lg hidden md:block">Whiteboard</span>
+                    </Link>
 
-                {/* Save Status Indicator & Share Button */}
-                <div className="ml-auto flex items-center gap-2 md:gap-4 text-sm text-slate-400 dark:text-muted-foreground">
-                    {saveStatus === 'saving' ? (
-                        <div className="flex items-center">
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            <span className="hidden md:inline">Saving...</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center">
-                            <Cloud className="w-4 h-4 mr-2" />
-                            <span className="hidden md:inline">Saved</span>
-                        </div>
-                    )}
+                    {/* Toolbar (Moved to Header for desktop, float for mobile) */}
+                    <div className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-muted p-1 rounded-lg border">
+                        {/* ... Toolbar Buttons ... */}
+                        {/* We can reproduce the toolbar here or keep it floating. Let's keep the existing floating toolbar but maybe show active users here. */}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {/* Active Users List */}
+                    <div className="flex items-center -space-x-2 mr-2">
+                        {Object.values(remoteCursors).map((user: any, i) => (
+                            <div
+                                key={i}
+                                className={`relative w-8 h-8 rounded-full border-2 ${user.role === 'editor' ? 'border-green-500' : 'border-slate-200'} overflow-hidden bg-slate-200 tooltip-trigger group`}
+                                title={`${user.name} (${user.role})`}
+                            >
+                                {user.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">
+                                        {user.name.charAt(0)}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {currentUser && (
+                            <div className="relative w-8 h-8 rounded-full border-2 border-green-500 overflow-hidden bg-slate-200 z-10" title="You">
+                                {currentUser.user_metadata?.avatar_url ? (
+                                    <img src={currentUser.user_metadata?.avatar_url} alt="You" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">
+                                        {currentUser.user_metadata?.display_name?.charAt(0) || "U"}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={`flex items-center gap-2 text-xs text-slate-400`}>
+                        {saveStatus === 'saving' ? (
+                            <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span className="hidden sm:inline">Saving...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Cloud className="w-3 h-3" />
+                                <span className="hidden sm:inline">Saved</span>
+                            </>
+                        )}
+                    </div>
 
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10">
-                                <span className="mr-2 hidden md:inline">Share</span>
+                            <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
                                 <Share className="w-4 h-4" />
+                                Share
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Share</DialogTitle>
-                                <DialogDescription>
-                                    Share this whiteboard with others.
-                                </DialogDescription>
+                                <DialogTitle>Share Whiteboard</DialogTitle>
+                                <DialogDescription>Collaborate with others in real-time.</DialogDescription>
                             </DialogHeader>
-                            <div className="flex flex-col gap-4 py-4">
-                                <div className="space-y-4">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex gap-3">
-                                            <div className="mt-1 bg-slate-100 dark:bg-muted p-2 rounded-full">
-                                                <Globe className="w-4 h-4 text-slate-500 dark:text-muted-foreground" />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <h4 className="text-sm font-medium leading-none">General Access</h4>
-                                                <p className="text-xs text-slate-500 dark:text-muted-foreground max-w-[200px]">
-                                                    {isPublic
-                                                        ? "Anyone on the internet with the link can view"
-                                                        : "Only you can access this whiteboard"}
-                                                </p>
-                                            </div>
-                                        </div>
 
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleShareToggle}
-                                            className="shrink-0"
-                                        >
-                                            {isPublic ? "Anyone with the link" : "Restricted"}
-                                            {/* Chevron could go here */}
-                                        </Button>
+                            <div className="grid gap-4 py-4">
+                                <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-muted/50">
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2 font-medium">
+                                            <Globe className="w-4 h-4 text-slate-500" />
+                                            General Access
+                                        </div>
+                                        <p className="text-xs text-slate-500">
+                                            {isPublic ? "Anyone with the link can access" : "Only invited people can access"}
+                                        </p>
                                     </div>
 
-                                    {isPublic && (
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-muted border rounded-md overflow-hidden">
-                                                <Globe className="w-3 h-3 text-slate-400 dark:text-muted-foreground shrink-0" />
-                                                <input
-                                                    className="flex-1 text-xs bg-transparent text-slate-600 dark:text-foreground outline-none truncate"
-                                                    readOnly
-                                                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/whiteboard/${roomId}`}
-                                                />
-                                            </div>
-                                            <Button onClick={copyLink} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
-                                                <Copy className="w-3 h-3 mr-2" />
-                                                Copy Link
-                                            </Button>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            className="text-xs border rounded p-1 bg-white dark:bg-zinc-800"
+                                            value={isPublic ? (accessRole) : 'off'}
+                                            onChange={(e) => {
+                                                if (e.target.value === 'off') {
+                                                    // Turn off public
+                                                    if (isPublic) handleShareToggle()
+                                                } else {
+                                                    // Turn on public if was off
+                                                    if (!isPublic) handleShareToggle()
+                                                    setAccessRole(e.target.value as any)
+                                                }
+                                            }}
+                                        >
+                                            <option value="off">Restricted</option>
+                                            <option value="viewer">Viewer</option>
+                                            <option value="commenter">Commenter</option>
+                                            <option value="editor">Editor</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="bg-slate-50 dark:bg-muted/50 -mx-6 -mb-6 px-6 py-4 flex justify-between items-center border-t dark:border-border">
-                                <span className="text-xs text-slate-400 dark:text-muted-foreground">
-                                    Update permissions to allow others to edit (Coming Soon)
-                                </span>
-                                <Button variant="default" size="sm" onClick={() => document.querySelector('[data-state="open"]')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))}>
-                                    Done
-                                </Button>
+
+                                {isPublic && (
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-muted border rounded-md overflow-hidden">
+                                            <input
+                                                className="flex-1 text-xs bg-transparent outline-none truncate"
+                                                readOnly
+                                                value={`${window.location.origin}/whiteboard/${roomId}`}
+                                            />
+                                        </div>
+                                        <Button size="icon" variant="outline" onClick={copyLink}>
+                                            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </DialogContent>
                     </Dialog>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 md:h-9 md:w-auto md:px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full md:rounded-md p-0 md:p-2 border md:border-transparent border-slate-200 bg-slate-50 md:bg-transparent dark:text-muted-foreground dark:hover:text-primary dark:hover:bg-muted dark:bg-muted/10 ml-2"
-                                title="Export"
-                            >
-                                <Download className="w-4 h-4 md:mr-2" />
-                                <span className="hidden md:inline">Export</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={handleExportImage}>
-                                Export as PNG
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleExportSVG}>
-                                Export as SVG
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleExportJSON}>
-                                Export as JSON (Code)
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden">
+                        {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                    </Button>
                 </div>
             </div>
 
             {/* Canvas Container */}
-            <div ref={containerRef} className="flex-1 relative w-full bg-white dark:bg-background overflow-hidden">
+            <div
+                ref={containerRef}
+                className="flex-1 relative w-full bg-white dark:bg-background overflow-hidden cursor-crosshair"
+                onMouseMove={handleMouseMove} // Use this for cursor tracking instead of canvas onMouseMove for drawing updates only
+            >
                 {/* Dot Grid Background for Dark Mode */}
                 <div
                     className="absolute inset-0 pointer-events-none opacity-0 dark:opacity-20 transition-opacity duration-300"
@@ -1271,18 +1455,60 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                     }}
                 />
 
+                {/* Remote Cursors Overlay */}
+                <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+                    {Object.entries(remoteCursors).map(([clientId, cursor]) => cursor.hasCursor && (
+                        <div
+                            key={clientId}
+                            className="absolute transition-transform duration-75 ease-out flex flex-col items-start gap-1"
+                            style={{
+                                transform: `translate(${cursor.x}px, ${cursor.y}px)`,
+                            }}
+                        >
+                            <MousePointer2
+                                className="w-4 h-4 fill-current"
+                                style={{ color: cursor.color }}
+                            />
+                            <span
+                                className="text-[10px] text-white px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap"
+                                style={{ backgroundColor: cursor.color }}
+                            >
+                                {cursor.name}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
                 <canvas
                     ref={canvasRef}
                     onMouseDown={startDrawing}
-                    onMouseMove={draw}
+                    // onMouseMove={draw} // moved to container handleMouseMove
                     onMouseUp={stopDrawing}
                     onMouseLeave={stopDrawing}
                     onTouchStart={startTouchDrawing}
                     onTouchMove={touchDraw}
                     onTouchEnd={stopDrawing}
-                    className="block touch-none absolute inset-0"
-                    style={{ cursor: getCursorStyle() }}
+                    onContextMenu={handleContextMenu}
+                    className="block touch-none absolute inset-0 z-10"
+                    style={{ cursor: 'none' }} // Hide default cursor? Or maybe just custom? let's stick to default for now, 'none' if drawing pencil
                 />
+
+                {/* Context Menu */}
+                {contextMenu && (
+                    <div
+                        className="fixed z-50 bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-xl rounded-lg p-1 min-w-[120px] animate-in fade-in zoom-in-95 duration-100"
+                        style={{ top: contextMenu.y, left: contextMenu.x }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={handleDeleteComponent}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                        </button>
+                    </div>
+                )}
 
                 {/* Hidden File Input */}
                 <input
