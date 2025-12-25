@@ -20,14 +20,17 @@ export async function getSupabaseUser() {
                 const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
 
                 if (data && data.users) {
-                    const searchEmail = session.user.email.toLowerCase();
-                    // Debug: console.log("Searching for:", searchEmail);
+                    const searchEmail = session.user.email.toLowerCase().trim();
+                    console.log("Debug: Auth Session Email:", searchEmail);
 
-                    const match = data.users.find((u: any) => u.email?.toLowerCase() === searchEmail)
+                    const match = data.users.find((u: any) => u.email?.toLowerCase().trim() === searchEmail)
                     if (match) {
-                        // Debug: console.log("Found match:", match.email, match.id);
+                        console.log("Debug: Found Supabase Match:", match.email, match.id);
                         userId = match.id
+                    } else {
+                        console.log("Debug: No Match Found in", data.users.length, "users");
                     }
+                    console.log("Debug: Final UserId used:", userId);
                 }
             }
 
