@@ -9,6 +9,11 @@ export async function getSupabaseUser() {
     return await getSupabaseUserUtil()
 }
 
+export async function getAuthenticatedUser() {
+    const { user } = await getSupabaseUserUtil()
+    return user
+}
+
 // Helper to auto-generate unique title for creation
 async function getUniqueTitle(supabase: any, table: string, column: string, baseTitle: string, userId: string) {
     let title = baseTitle
