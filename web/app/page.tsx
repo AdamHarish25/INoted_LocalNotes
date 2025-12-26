@@ -148,11 +148,11 @@ export default function LandingPage() {
                 <div className="absolute top-40 right-10 w-32 h-32 bg-indigo-100 rounded-full blur-3xl opacity-50 animate-pulse"></div>
 
                 <h1 className="hero-text text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-6">
-                    All-in-One Notes for <br className="hidden sm:block" />
-                    <span className="text-blue-600 dark:text-blue-500">Developers</span>
+                    Documentation Tool That Keeps You in <br className="hidden sm:block" />
+                    <span className="text-blue-600 dark:text-blue-500">The Flow</span>
                 </h1>
                 <p className="hero-text text-lg sm:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                    Write, diagram, and collaborate—all in one place. No more switching between tools—ever.
+                    Write Docs, Sketch Architecture, and Sync to Git—Without Leaving the Tab.
                 </p>
 
                 <div className="hero-buttons flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
