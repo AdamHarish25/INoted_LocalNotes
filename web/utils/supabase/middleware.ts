@@ -68,10 +68,20 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // Redirect to Dashboard if already logged in and visiting login or landing page
+    // Redirect to Dashboard (or intended page) if already logged in and visiting login or landing page
     if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname === '/')) {
         const url = request.nextUrl.clone()
-        url.pathname = '/dashboard'
+        const next = request.nextUrl.searchParams.get('next')
+        if (next) {
+            // Decode and set pathname. Note: simple handling assumes next is a pathname relative to site root
+            // Security: In a real app validate 'next' doesn't lead to external domains (open redirect)
+            // But Next.js URL constructor handling relative paths helps.
+            const nextUrl = new URL(next, request.url)
+            url.pathname = nextUrl.pathname
+            url.search = nextUrl.search
+        } else {
+            url.pathname = '/dashboard'
+        }
         return NextResponse.redirect(url)
     }
 
