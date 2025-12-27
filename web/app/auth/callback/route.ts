@@ -21,20 +21,26 @@ export async function GET(request: Request) {
 
     // Determine protocol for comparison (ignore http/https mismatch on localhost usually, but important for prod)
     if (canonicalOrigin) {
-        // Ensure protocol presence
+        // Ensure protocol presence for the redirection URL construction
         if (!canonicalOrigin.startsWith('http')) {
             canonicalOrigin = `https://${canonicalOrigin}`;
         }
 
-        // If current origin is different from canonical (and not localhost interacting), redirect!
-        // We skip this check if "localhost" to avoid development friction, unless explicitly desired.
-        const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+        let canonicalHost = new URL(canonicalOrigin).host;
+        let requestHost = requestUrl.host;
 
-        if (!isLocalhost && origin !== canonicalOrigin) {
-            console.log(`Redirecting from ${origin} to ${canonicalOrigin}`);
+        // Note: requestUrl.origin might report 'http' protocol on some platforms (like Vercel/Netlify) 
+        // even if served over https due to internal proxying. 
+        // So we strictly compare HOSTNAMES to avoid infinite redirect loops on protocol mismatch.
+
+        // If current host is different from canonical host (and not localhost)
+        const isLocalhost = requestHost.includes('localhost') || requestHost.includes('127.0.0.1');
+
+        if (!isLocalhost && requestHost !== canonicalHost) {
+            console.log(`Redirecting from host ${requestHost} to ${canonicalHost}`);
             const redirectUrl = new URL(request.url);
             redirectUrl.protocol = new URL(canonicalOrigin).protocol;
-            redirectUrl.host = new URL(canonicalOrigin).host;
+            redirectUrl.host = canonicalHost;
             redirectUrl.port = new URL(canonicalOrigin).port;
             return NextResponse.redirect(redirectUrl);
         }
