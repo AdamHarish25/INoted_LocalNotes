@@ -7,6 +7,7 @@ import { headers } from "next/headers"
 export async function forgotPassword(formData: FormData) {
     const supabase = await createClient()
     const email = formData.get("email") as string
+    const captchaToken = formData.get("captchaToken") as string
     const origin = (await headers()).get("origin")
 
     if (!email) {
@@ -15,6 +16,7 @@ export async function forgotPassword(formData: FormData) {
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${origin}/auth/callback?next=/update-password`,
+        captchaToken
     })
 
     if (error) {

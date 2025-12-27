@@ -294,7 +294,7 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
         <div className={cn("flex items-center dark:bg-black gap-3 p-3 bg-blue-100/50 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer", isCollapsed && "p-2 justify-center aspect-square rounded-full")}>
           <Avatar className="h-9 w-9 border border-white shadow-sm dark:shadow-white">
             <AvatarImage src={user?.user_metadata?.avatar_url || user?.user_metadata?.picture} alt={user?.user_metadata?.display_name || "User"} />
-            <AvatarFallback>{(user?.user_metadata?.display_name?.[0] || user?.email?.[0] || "User").toUpperCase()}</AvatarFallback>
+            <AvatarFallback>{(user?.user_metadata?.display_name?.[0] || user?.email?.[0] || "U").toUpperCase()}</AvatarFallback>
           </Avatar>
           {!isCollapsed && (
             <>
