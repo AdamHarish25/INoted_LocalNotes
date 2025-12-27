@@ -65,7 +65,16 @@ export async function updateSession(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         url.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search)
-        return NextResponse.redirect(url)
+
+        const redirectResponse = NextResponse.redirect(url)
+
+        // IMPORTANT: Copy cookies from supabaseResponse (which might have refreshed tokens) to the redirect response
+        const allCookies = supabaseResponse.cookies.getAll()
+        allCookies.forEach(cookie => {
+            redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+        })
+
+        return redirectResponse
     }
 
     // Redirect to Dashboard (or intended page) if already logged in and visiting login or landing page
@@ -82,7 +91,16 @@ export async function updateSession(request: NextRequest) {
         } else {
             url.pathname = '/dashboard'
         }
-        return NextResponse.redirect(url)
+
+        const redirectResponse = NextResponse.redirect(url)
+
+        // IMPORTANT: Copy cookies from supabaseResponse to persist any session updates
+        const allCookies = supabaseResponse.cookies.getAll()
+        allCookies.forEach(cookie => {
+            redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+        })
+
+        return redirectResponse
     }
 
     // Set Permissive CSP for Cloudflare/Supabase
