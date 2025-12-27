@@ -5,7 +5,7 @@ import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, Regul
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
@@ -122,7 +122,12 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const [elements, setElements] = useState<FlowchartElement[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [editingId, setEditingId] = useState<string | null>(null) // Inline editing state
-    const [activeTool, setActiveTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
+    const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
+
+    // Viewport State
+    const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
+    const [stageScale, setStageScale] = useState(1)
+    const [isSpacePressed, setIsSpacePressed] = useState(false)
 
     // Drag-to-connect state
     const [drawingArrow, setDrawingArrow] = useState<{ startId: string, endPos: { x: number, y: number }, snappedTo?: { nodeId: string, side: string } } | null>(null)
@@ -146,6 +151,47 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const transformerRef = useRef<any>(null)
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
     // const supabase = createClient()
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' && !editingId) {
+                // Prevent scrolling page when pressing space
+                // e.preventDefault() // Might block other native things? Use carefully.
+                // Actually, only preventing if we are focusing the body, otherwise text inputs need space.
+                if (document.activeElement === document.body) {
+                    e.preventDefault()
+                    setIsSpacePressed(true)
+                }
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+                e.preventDefault()
+                handleZoom(1.1)
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                e.preventDefault()
+                handleZoom(0.9) // 1/1.1 approx 0.9
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                e.preventDefault()
+                setStageScale(1)
+                setStagePos({ x: 0, y: 0 })
+            }
+        }
+
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.code === 'Space') {
+                setIsSpacePressed(false)
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        window.addEventListener('keyup', handleKeyUp)
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown)
+            window.removeEventListener('keyup', handleKeyUp)
+        }
+    }, [editingId, stageScale]) // Depend on stageScale for zoom handler closure if needed (or use functional update)
 
     // Handle Window Resize
     useEffect(() => {
@@ -264,9 +310,103 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         }
     }, [selectedId, elements])
 
+    const handleZoom = (factor: number, center?: { x: number, y: number }) => {
+        setStageScale(oldScale => {
+            const newScale = oldScale * factor
+            // Clamp zoom
+            if (newScale < 0.1 || newScale > 5) return oldScale
+
+            // If center provided, zoom towards it (mouse position)
+            // Logic handled in wheel event usually, but for buttons we zoom center screen
+            if (!center && stageRef.current) {
+                // Center of viewport
+                const stage = stageRef.current
+                const viewCenter = {
+                    x: stage.width() / 2,
+                    y: stage.height() / 2
+                }
+                const oldPos = stage.position()
+                const mousePointTo = {
+                    x: (viewCenter.x - oldPos.x) / oldScale,
+                    y: (viewCenter.y - oldPos.y) / oldScale,
+                }
+
+                const newPos = {
+                    x: viewCenter.x - mousePointTo.x * newScale,
+                    y: viewCenter.y - mousePointTo.y * newScale,
+                }
+                setStagePos(newPos)
+            }
+
+            return newScale
+        })
+    }
+
+    const handleWheel = (e: any) => {
+        e.evt.preventDefault()
+        const stage = stageRef.current
+        if (!stage) return
+
+        // 1. Zoom (Ctrl + Wheel)
+        if (e.evt.ctrlKey || e.evt.metaKey) {
+            const oldScale = stage.scaleX()
+            const pointer = stage.getPointerPosition()
+
+            const mousePointTo = {
+                x: (pointer.x - stage.x()) / oldScale,
+                y: (pointer.y - stage.y()) / oldScale,
+            }
+
+            // Normal scroll is usually 100 per tick. Normalize direction.
+            // e.evt.deltaY > 0 -> Scroll Down -> Zoom Out
+            const direction = e.evt.deltaY > 0 ? -1 : 1
+            const scaleBy = 1.1
+            const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy
+
+            // Limit bounds
+            if (newScale < 0.1 || newScale > 10) return
+
+            setStageScale(newScale)
+
+            const newPos = {
+                x: pointer.x - mousePointTo.x * newScale,
+                y: pointer.y - mousePointTo.y * newScale,
+            }
+            setStagePos(newPos)
+        } else {
+            // 2. Panning (Touchpad scroll or Shift+Scroll)
+            // On trackpad, deltaX and deltaY act as panning
+            const dx = -e.evt.deltaX
+            const dy = -e.evt.deltaY
+
+            setStagePos(prev => ({
+                x: prev.x + dx,
+                y: prev.y + dy
+            }))
+        }
+    }
+
     const handleStageMouseDown = (e: any) => {
+        // If Spacebar is pressed, we are dragging the stage, bubbling is fine (konva handles drag)
+        // If Hand Tool is active, same.
+
         const stage = e.target.getStage()
-        const pos = stage.getPointerPosition()
+        const pos = stage.getPointerPosition() // This is relative to stage top-left, adjusted by transform?
+        // Actually getPointerPosition gives {x, y} coordinate relative to the container (screen pixels on canvas), 
+        // regardless of scale/pos, but mapped? No, wait. 
+        // getPointerPosition returns the position on the STAGE content, i.e., after inverse transform?
+        // Docs: "Returns pointer position relative to the stage container" -> Screen pixels relative to top-left of canvas DOM.
+
+        // We need "Scene Coordinates" (world) for creating elements:
+        // transform: (screen - stagePos) / scale
+        const transformToScene = (screen: { x: number, y: number }) => {
+            return {
+                x: (screen.x - stagePos.x) / stageScale,
+                y: (screen.y - stagePos.y) / stageScale
+            }
+        }
+
+        const scenePos = pos ? transformToScene(pos) : { x: 0, y: 0 }
 
         // Handle Arrow Creation (Drag start)
         if (activeTool === 'arrow') {
@@ -276,7 +416,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             if (clickedElement && clickedElement.type !== 'connection') {
                 setDrawingArrow({
                     startId: clickedId,
-                    endPos: pos
+                    endPos: scenePos
                 })
                 return
             }
@@ -284,11 +424,22 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleStageMouseMove = (e: any) => {
-        if (drawingArrow) {
-            const stage = e.target.getStage()
-            const pos = stage.getPointerPosition()
+        const stage = e.target.getStage() // Can be undefined during rapid unmount
+        if (!stage) return
 
-            let snapPos = pos
+        const pos = stage.getPointerPosition()
+        if (!pos) return
+
+        const transformToScene = (screen: { x: number, y: number }) => {
+            return {
+                x: (screen.x - stagePos.x) / stageScale,
+                y: (screen.y - stagePos.y) / stageScale
+            }
+        }
+        const scenePos = transformToScene(pos)
+
+        if (drawingArrow) {
+            let snapPos = scenePos
             let snappedTo = undefined
 
             // Find closest anchor on other nodes
@@ -300,7 +451,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
                 const anchors = getAllAnchors(el)
                 for (const anchor of anchors) {
-                    const dist = Math.pow(anchor.x - pos.x, 2) + Math.pow(anchor.y - pos.y, 2)
+                    const dist = Math.pow(anchor.x - scenePos.x, 2) + Math.pow(anchor.y - scenePos.y, 2)
                     if (dist < closestDist) {
                         closestDist = dist
                         snapPos = { x: anchor.x, y: anchor.y }
@@ -369,8 +520,18 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         }
 
         // Handle Tool Creation
-        if (activeTool !== 'select') {
+        // Handle Tool Creation
+        if (activeTool !== 'select' && activeTool !== 'hand') {
             const pos = stage.getPointerPosition()
+            if (!pos) return
+
+            const transformToScene = (screen: { x: number, y: number }) => {
+                return {
+                    x: (screen.x - stagePos.x) / stageScale,
+                    y: (screen.y - stagePos.y) / stageScale
+                }
+            }
+            const scenePos = transformToScene(pos)
 
             // Standard Shape Creation
             const id = crypto.randomUUID()
@@ -380,19 +541,19 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             const defaultStroke = '#000000'
 
             if (activeTool === 'rectangle') {
-                newEl = { id, type: 'rectangle', x: pos.x, y: pos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
+                newEl = { id, type: 'rectangle', x: scenePos.x, y: scenePos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'circle') {
-                newEl = { id, type: 'circle', x: pos.x, y: pos.y, width: 60, height: 60, fill: defaultFill, stroke: defaultStroke }
+                newEl = { id, type: 'circle', x: scenePos.x, y: scenePos.y, width: 60, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'text') {
-                newEl = { id, type: 'text', x: pos.x, y: pos.y, text: 'Click to edit', fill: defaultStroke }
+                newEl = { id, type: 'text', x: scenePos.x, y: scenePos.y, text: 'Click to edit', fill: defaultStroke }
             } else if (activeTool === 'diamond') {
-                newEl = { id, type: 'diamond', x: pos.x, y: pos.y, width: 100, height: 100, fill: defaultFill, stroke: defaultStroke }
+                newEl = { id, type: 'diamond', x: scenePos.x, y: scenePos.y, width: 100, height: 100, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'rounded_rect') {
-                newEl = { id, type: 'rounded_rect', x: pos.x, y: pos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
+                newEl = { id, type: 'rounded_rect', x: scenePos.x, y: scenePos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'parallelogram') {
-                newEl = { id, type: 'parallelogram', x: pos.x, y: pos.y, width: 120, height: 60, fill: defaultFill, stroke: defaultStroke }
+                newEl = { id, type: 'parallelogram', x: scenePos.x, y: scenePos.y, width: 120, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'cylinder') {
-                newEl = { id, type: 'cylinder', x: pos.x, y: pos.y, width: 60, height: 80, fill: defaultFill, stroke: defaultStroke }
+                newEl = { id, type: 'cylinder', x: scenePos.x, y: scenePos.y, width: 60, height: 80, fill: defaultFill, stroke: defaultStroke }
             }
 
             if (newEl && yElementsRef.current) {
@@ -518,6 +679,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             {/* Toolbar */}
             <div className="flex items-center p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 gap-2 overflow-x-auto shadow-sm z-10">
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('select')} title="Select" className={getToolClass('select')}><MousePointer2 className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('hand')} title="Hand (Pan) [Space]" className={getToolClass('hand')}><Hand className="w-4 h-4" /></Button>
                 <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className={getToolClass('rectangle')}><Square className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className={getToolClass('rounded_rect')}><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
@@ -543,6 +705,12 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     )}
                 </div>
 
+                <div className="flex items-center gap-1 ml-4 border-l pl-4 border-slate-200 dark:border-zinc-700">
+                    <Button variant="ghost" size="icon" onClick={() => handleZoom(0.9)} title="Zoom Out (Ctrl-)" className="text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"><ZoomOut className="w-4 h-4" /></Button>
+                    <span className="text-xs w-10 text-center text-slate-500 dark:text-zinc-400">{Math.round(stageScale * 100)}%</span>
+                    <Button variant="ghost" size="icon" onClick={() => handleZoom(1.1)} title="Zoom In (Ctrl+)" className="text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"><ZoomIn className="w-4 h-4" /></Button>
+                </div>
+
                 <div className="ml-auto flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.undo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.redo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></Button>
@@ -563,13 +731,25 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 <Stage
                     width={windowSize.width}
                     height={windowSize.height}
+                    draggable={activeTool === 'hand' || isSpacePressed}
+                    x={stagePos.x}
+                    y={stagePos.y}
+                    scaleX={stageScale}
+                    scaleY={stageScale}
+                    onWheel={handleWheel}
+                    onDragEnd={(e) => {
+                        // Only update state if stage was dragged
+                        if (e.target === stageRef.current) {
+                            setStagePos(e.target.position())
+                        }
+                    }}
                     onMouseDown={handleStageMouseDown}
                     onMouseMove={handleStageMouseMove}
                     onMouseUp={handleStageMouseUp}
                     onClick={handleStageClick}
                     onContextMenu={(e) => { e.evt.preventDefault(); }}
                     ref={stageRef}
-                    className="cursor-crosshair active:cursor-grabbing"
+                    className={`${activeTool === 'hand' || isSpacePressed ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'}`}
                     style={{ background: 'transparent' }}
                 >
                     <Layer>
@@ -580,7 +760,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             const isSelected = selectedId === el.id
                             const commonProps = {
                                 id: el.id,
-                                draggable: activeTool === 'select' && editingId !== el.id,
+                                draggable: (activeTool === 'select' && editingId !== el.id),
                                 onClick: (e: any) => { e.cancelBubble = true; setSelectedId(el.id); },
                                 onDblClick: (e: any) => {
                                     e.cancelBubble = true;
