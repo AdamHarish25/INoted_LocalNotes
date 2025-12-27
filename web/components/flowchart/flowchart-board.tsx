@@ -698,651 +698,651 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         setIsTextDialogOpen(false)
     }
 
-    if (isMobile) {
-        return (
-            <div className="flex flex-col h-screen w-full items-center justify-center bg-slate-50 dark:bg-zinc-950 p-4 text-center">
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-zinc-800 max-w-md w-full flex flex-col items-center animate-in fade-in zoom-in duration-300">
-                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400">
-                        <MonitorOff className="w-8 h-8" />
-                    </div>
-                    <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-zinc-100">
-                        Device Not Supported
-                    </h2>
-                    <p className="text-slate-600 dark:text-zinc-400 mb-8">
-                        This page is only for tablets or desktops. Please access this page from a larger screen to edit flowcharts.
-                    </p>
-                    <Button asChild className="w-full">
-                        <Link href="/dashboard">Back to Dashboard</Link>
-                    </Button>
-                </div>
-            </div>
-        )
-    }
-
     return (
-        <div className="flex flex-col h-screen bg-slate-50 dark:bg-zinc-950 relative transition-colors duration-200">
-            {/* Toolbar */}
-            <div className="flex items-center p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 gap-2 overflow-x-auto shadow-sm z-10">
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('select')} title="Select" className={getToolClass('select')}><MousePointer2 className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('hand')} title="Hand (Pan) [Space]" className={getToolClass('hand')}><Hand className="w-4 h-4" /></Button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className={getToolClass('rectangle')}><Square className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className={getToolClass('rounded_rect')}><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('circle')} title="Ellipse" className={getToolClass('circle')}><CircleIcon className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className={getToolClass('diamond')}><Diamond className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className={getToolClass('parallelogram')}><Component className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className={getToolClass('cylinder')}><Database className="w-4 h-4" /></Button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('triangle')} title="Triangle (Merge)" className={getToolClass('triangle')}><Triangle className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('hexagon')} title="Hexagon (Preparation)" className={getToolClass('hexagon')}><Hexagon className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('trapezoid')} title="Trapezoid (Manual Op)" className={getToolClass('trapezoid')}><Hash className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('document')} title="Document" className={getToolClass('document')}><FileText className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('cloud')} title="Cloud" className={getToolClass('cloud')}><CloudIcon className="w-4 h-4" /></Button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('arrow')} title="Arrow" className={getToolClass('arrow')}><ArrowRight className="w-4 h-4" /></Button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
-                <Button variant="ghost" size="icon" onClick={() => setActiveTool('text')} title="Text" className={getToolClass('text')}><Type className="w-4 h-4" /></Button>
+        <div className="relative h-screen w-full bg-slate-50 dark:bg-zinc-950 overflow-hidden">
+            {isMobile && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-50 dark:bg-zinc-950 p-4 text-center">
+                    <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-zinc-800 max-w-md w-full flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400">
+                            <MonitorOff className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-zinc-100">
+                            Device Not Supported
+                        </h2>
+                        <p className="text-slate-600 dark:text-zinc-400 mb-8">
+                            This page is only for tablets or desktops. Please access this page from a larger screen to edit flowcharts.
+                        </p>
+                        <Button asChild className="w-full">
+                            <Link href="/dashboard">Back to Dashboard</Link>
+                        </Button>
+                    </div>
+                </div>
+            )}
 
-                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400 ml-4">
-                    {saveStatus === 'saving' ? (
-                        <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="hidden md:inline">Saving</span>
-                        </>
-                    ) : (
-                        <>
-                            <Cloud className="w-4 h-4" />
-                            <span className="hidden md:inline">Saved</span>
-                        </>
-                    )}
+            <div className={`flex flex-col h-full w-full transition-colors duration-200 ${isMobile ? 'invisible pointer-events-none absolute inset-0' : ''}`}>
+                {/* Toolbar */}
+                <div className="flex items-center p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-800 gap-2 overflow-x-auto shadow-sm z-10">
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('select')} title="Select" className={getToolClass('select')}><MousePointer2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('hand')} title="Hand (Pan) [Space]" className={getToolClass('hand')}><Hand className="w-4 h-4" /></Button>
+                    <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('rectangle')} title="Rectangle" className={getToolClass('rectangle')}><Square className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('rounded_rect')} title="Rounded Rectangle" className={getToolClass('rounded_rect')}><RectangleHorizontal className="w-4 h-4 rounded-xl" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('circle')} title="Ellipse" className={getToolClass('circle')}><CircleIcon className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className={getToolClass('diamond')}><Diamond className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className={getToolClass('parallelogram')}><Component className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className={getToolClass('cylinder')}><Database className="w-4 h-4" /></Button>
+                    <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('triangle')} title="Triangle (Merge)" className={getToolClass('triangle')}><Triangle className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('hexagon')} title="Hexagon (Preparation)" className={getToolClass('hexagon')}><Hexagon className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('trapezoid')} title="Trapezoid (Manual Op)" className={getToolClass('trapezoid')}><Hash className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('document')} title="Document" className={getToolClass('document')}><FileText className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('cloud')} title="Cloud" className={getToolClass('cloud')}><CloudIcon className="w-4 h-4" /></Button>
+                    <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('arrow')} title="Arrow" className={getToolClass('arrow')}><ArrowRight className="w-4 h-4" /></Button>
+                    <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('text')} title="Text" className={getToolClass('text')}><Type className="w-4 h-4" /></Button>
+
+                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400 ml-4">
+                        {saveStatus === 'saving' ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span className="hidden md:inline">Saving</span>
+                            </>
+                        ) : (
+                            <>
+                                <Cloud className="w-4 h-4" />
+                                <span className="hidden md:inline">Saved</span>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-1 ml-4 border-l pl-4 border-slate-200 dark:border-zinc-700">
+                        <Button variant="ghost" size="icon" onClick={() => handleZoom(0.9)} title="Zoom Out (Ctrl-)" className="text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"><ZoomOut className="w-4 h-4" /></Button>
+                        <span className="text-xs w-10 text-center text-slate-500 dark:text-zinc-400">{Math.round(stageScale * 100)}%</span>
+                        <Button variant="ghost" size="icon" onClick={() => handleZoom(1.1)} title="Zoom In (Ctrl+)" className="text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"><ZoomIn className="w-4 h-4" /></Button>
+                    </div>
+
+                    <div className="ml-auto flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.undo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.redo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></Button>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-1 ml-4 border-l pl-4 border-slate-200 dark:border-zinc-700">
-                    <Button variant="ghost" size="icon" onClick={() => handleZoom(0.9)} title="Zoom Out (Ctrl-)" className="text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"><ZoomOut className="w-4 h-4" /></Button>
-                    <span className="text-xs w-10 text-center text-slate-500 dark:text-zinc-400">{Math.round(stageScale * 100)}%</span>
-                    <Button variant="ghost" size="icon" onClick={() => handleZoom(1.1)} title="Zoom In (Ctrl+)" className="text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"><ZoomIn className="w-4 h-4" /></Button>
-                </div>
-
-                <div className="ml-auto flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.undo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.redo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></Button>
-                </div>
-            </div>
-
-            <div className="flex-1 relative w-full bg-white dark:bg-zinc-950 overflow-hidden">
-                {/* Dot Grid Background */}
-                <div
-                    className="absolute inset-0 pointer-events-none opacity-30 dark:opacity-20"
-                    style={{
-                        backgroundImage: theme === 'dark'
-                            ? 'radial-gradient(circle, #ffffff 1.5px, transparent 1.5px)'
-                            : 'radial-gradient(circle, #000000 1.5px, transparent 1.5px)',
-                        backgroundSize: '20px 20px',
-                    }}
-                />
-                <Stage
-                    width={windowSize.width}
-                    height={windowSize.height}
-                    draggable={activeTool === 'hand' || isSpacePressed}
-                    x={stagePos.x}
-                    y={stagePos.y}
-                    scaleX={stageScale}
-                    scaleY={stageScale}
-                    onWheel={handleWheel}
-                    onDragEnd={(e) => {
-                        // Only update state if stage was dragged
-                        if (e.target === stageRef.current) {
-                            setStagePos(e.target.position())
-                        }
-                    }}
-                    onMouseDown={handleStageMouseDown}
-                    onMouseMove={handleStageMouseMove}
-                    onMouseUp={handleStageMouseUp}
-                    onClick={handleStageClick}
-                    onContextMenu={(e) => { e.evt.preventDefault(); }}
-                    ref={stageRef}
-                    className={`${activeTool === 'hand' || isSpacePressed ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'}`}
-                    style={{ background: 'transparent' }}
-                >
-                    <Layer>
-                        {elements.map((el) => {
-                            if (!el.type) return null
-
-                            // Common props for interactivity
-                            const isSelected = selectedId === el.id
-                            const commonProps = {
-                                id: el.id,
-                                draggable: (activeTool === 'select' && editingId !== el.id),
-                                onClick: (e: any) => { e.cancelBubble = true; setSelectedId(el.id); },
-                                onDblClick: (e: any) => {
-                                    e.cancelBubble = true;
-                                    if (activeTool === 'select' && el.type !== 'connection') {
-                                        setEditingId(el.id);
-                                        setTextInput(el.text || "");
-                                    }
-                                },
-                                onDragEnd: (e: any) => handleElementDragEnd(e, el.id),
-                                onTransformEnd: handleTransformEnd,
-                                onContextMenu: (e: any) => handleContextMenu(e, el.id),
-                                strokeWidth: 2,
-                                shadowColor: 'cyan',
-                                shadowBlur: (isSelected && theme === 'dark') ? 0 : (isSelected ? 10 : 0),
-                                shadowOpacity: 0.6,
-                                strokeScaleEnabled: false
+                <div className="flex-1 relative w-full bg-white dark:bg-zinc-950 overflow-hidden">
+                    {/* Dot Grid Background */}
+                    <div
+                        className="absolute inset-0 pointer-events-none opacity-30 dark:opacity-20"
+                        style={{
+                            backgroundImage: theme === 'dark'
+                                ? 'radial-gradient(circle, #ffffff 1.5px, transparent 1.5px)'
+                                : 'radial-gradient(circle, #000000 1.5px, transparent 1.5px)',
+                            backgroundSize: '20px 20px',
+                        }}
+                    />
+                    <Stage
+                        width={windowSize.width}
+                        height={windowSize.height}
+                        draggable={activeTool === 'hand' || isSpacePressed}
+                        x={stagePos.x}
+                        y={stagePos.y}
+                        scaleX={stageScale}
+                        scaleY={stageScale}
+                        onWheel={handleWheel}
+                        onDragEnd={(e) => {
+                            // Only update state if stage was dragged
+                            if (e.target === stageRef.current) {
+                                setStagePos(e.target.position())
                             }
-                            // Theme-aware colors
-                            const stroke = getRenderColor(el.stroke)
-                            const fill = el.fill ? getRenderFill(el.fill) : (theme === 'dark' ? 'transparent' : '#ffffff')
+                        }}
+                        onMouseDown={handleStageMouseDown}
+                        onMouseMove={handleStageMouseMove}
+                        onMouseUp={handleStageMouseUp}
+                        onClick={handleStageClick}
+                        onContextMenu={(e) => { e.evt.preventDefault(); }}
+                        ref={stageRef}
+                        className={`${activeTool === 'hand' || isSpacePressed ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'}`}
+                        style={{ background: 'transparent' }}
+                    >
+                        <Layer>
+                            {elements.map((el) => {
+                                if (!el.type) return null
 
-                            // Determine Text Color
-                            let textColor = '#000000'
-                            if (el.type === 'text') {
-                                textColor = getRenderColor(el.fill || '#000000')
-                            } else {
-                                textColor = getContrastingTextColor(fill)
-                            }
+                                // Common props for interactivity
+                                const isSelected = selectedId === el.id
+                                const commonProps = {
+                                    id: el.id,
+                                    draggable: (activeTool === 'select' && editingId !== el.id),
+                                    onClick: (e: any) => { e.cancelBubble = true; setSelectedId(el.id); },
+                                    onDblClick: (e: any) => {
+                                        e.cancelBubble = true;
+                                        if (activeTool === 'select' && el.type !== 'connection') {
+                                            setEditingId(el.id);
+                                            setTextInput(el.text || "");
+                                        }
+                                    },
+                                    onDragEnd: (e: any) => handleElementDragEnd(e, el.id),
+                                    onTransformEnd: handleTransformEnd,
+                                    onContextMenu: (e: any) => handleContextMenu(e, el.id),
+                                    strokeWidth: 2,
+                                    shadowColor: 'cyan',
+                                    shadowBlur: (isSelected && theme === 'dark') ? 0 : (isSelected ? 10 : 0),
+                                    shadowOpacity: 0.6,
+                                    strokeScaleEnabled: false
+                                }
+                                // Theme-aware colors
+                                const stroke = getRenderColor(el.stroke)
+                                const fill = el.fill ? getRenderFill(el.fill) : (theme === 'dark' ? 'transparent' : '#ffffff')
 
-                            const renderText = () => (
-                                el.text && editingId !== el.id ? <KonvaText
-                                    text={el.text}
-                                    x={0}
-                                    y={0}
-                                    width={el.width}
-                                    height={el.height}
-                                    align="center"
-                                    verticalAlign="middle"
-                                    fill={textColor}
-                                    listening={false}
-                                /> : null
-                            )
+                                // Determine Text Color
+                                let textColor = '#000000'
+                                if (el.type === 'text') {
+                                    textColor = getRenderColor(el.fill || '#000000')
+                                } else {
+                                    textColor = getContrastingTextColor(fill)
+                                }
 
-                            if (el.type === 'rectangle') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={2} />
-                                        {renderText()}
-                                    </Group>
+                                const renderText = () => (
+                                    el.text && editingId !== el.id ? <KonvaText
+                                        text={el.text}
+                                        x={0}
+                                        y={0}
+                                        width={el.width}
+                                        height={el.height}
+                                        align="center"
+                                        verticalAlign="middle"
+                                        fill={textColor}
+                                        listening={false}
+                                    /> : null
                                 )
-                            } else if (el.type === 'circle') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Circle radius={Math.min((el.width || 50) / 2, (el.height || 50) / 2)} offsetX={-((el.width || 0) / 2)} offsetY={-((el.height || 0) / 2)} fill={fill} stroke={stroke} />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'rounded_rect') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={10} />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'diamond') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <RegularPolygon sides={4} radius={Math.min((el.width || 50) / 2, (el.height || 50) / 2)} offsetX={-((el.width || 0) / 2)} offsetY={-((el.height || 0) / 2)} fill={fill} stroke={stroke} />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'parallelogram') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Path data={`M 0 ${el.height || 50} L ${el.width || 100} ${el.height || 50} L ${(el.width || 100) * 0.8} 0 L ${(el.width || 100) * 0.2} 0 Z`} fill={fill} stroke={stroke} />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'cylinder') {
-                                const w = el.width || 60
-                                const h = el.height || 80
-                                const ry = w / 4
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Path data={`M 0 ${ry} L 0 ${h - ry} A ${w / 2} ${ry} 0 0 0 ${w} ${h - ry} L ${w} ${ry} A ${w / 2} ${ry} 0 0 1 0 ${ry} Z`} fill={fill} stroke={stroke} />
-                                        <Circle x={w / 2} y={ry} radiusX={w / 2} radiusY={ry} fill={fill} stroke={stroke} />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'connection' && el.startId && el.endId) {
-                                const startNode = elements.find(e => e.id === el.startId)
-                                const endNode = elements.find(e => e.id === el.endId)
 
-                                if (startNode && endNode) {
-                                    const { points, handlePos, isVerticalSegment } = getOrthogonalPoints(startNode, endNode, el.manualPosition)
-
-                                    const dash = el.lineType === 'dashed' ? [10, 10] : (el.lineType === 'dotted' ? [2, 5] : undefined)
-                                    const pointerLength = el.arrowType === 'sharp' ? 20 : (el.arrowType === 'none' ? 0 : 10)
-                                    const pointerWidth = el.arrowType === 'sharp' ? 10 : (el.arrowType === 'none' ? 0 : 10)
-                                    const tension = el.lineType === 'curved' ? 0.4 : 0
-
-                                    // For diamond arrow type (aggregation), we might need custom logic, but for now lets stick to Konva standard or simple overrides.
-                                    // Konva Arrow doesn't support Diamond head natively easily without custom drawing.
-                                    // Simulating Diamond by drawing a separate shape usually.
-                                    // For simplicity in this iteration, 'diamond' will just be a larger square-ish head.
-
+                                if (el.type === 'rectangle') {
                                     return (
-                                        <Group key={el.id}>
-                                            <Arrow
-                                                points={points}
-                                                stroke={stroke}
-                                                fill={stroke}
-                                                strokeWidth={2}
-                                                pointerLength={pointerLength}
-                                                pointerWidth={pointerWidth}
-                                                dash={dash}
-                                                tension={tension}
-                                                lineCap="round"
-                                                lineJoin="round"
-                                                hitStrokeWidth={20}
-                                                onClick={(e) => {
-                                                    e.cancelBubble = true;
-                                                    setSelectedId(el.id);
-                                                }}
-                                                onContextMenu={(e) => handleContextMenu(e, el.id)}
-                                            />
-                                            {selectedId === el.id && (
-                                                <Circle
-                                                    x={handlePos.x}
-                                                    y={handlePos.y}
-                                                    radius={5}
-                                                    fill="#3b82f6"
-                                                    draggable
-                                                    dragBoundFunc={(pos) => {
-                                                        if (isVerticalSegment) {
-                                                            return { x: pos.x, y: handlePos.y }
-                                                        } else {
-                                                            return { x: handlePos.x, y: pos.y }
-                                                        }
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={2} />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'circle') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Circle radius={Math.min((el.width || 50) / 2, (el.height || 50) / 2)} offsetX={-((el.width || 0) / 2)} offsetY={-((el.height || 0) / 2)} fill={fill} stroke={stroke} />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'rounded_rect') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={10} />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'diamond') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <RegularPolygon sides={4} radius={Math.min((el.width || 50) / 2, (el.height || 50) / 2)} offsetX={-((el.width || 0) / 2)} offsetY={-((el.height || 0) / 2)} fill={fill} stroke={stroke} />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'parallelogram') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Path data={`M 0 ${el.height || 50} L ${el.width || 100} ${el.height || 50} L ${(el.width || 100) * 0.8} 0 L ${(el.width || 100) * 0.2} 0 Z`} fill={fill} stroke={stroke} />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'cylinder') {
+                                    const w = el.width || 60
+                                    const h = el.height || 80
+                                    const ry = w / 4
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Path data={`M 0 ${ry} L 0 ${h - ry} A ${w / 2} ${ry} 0 0 0 ${w} ${h - ry} L ${w} ${ry} A ${w / 2} ${ry} 0 0 1 0 ${ry} Z`} fill={fill} stroke={stroke} />
+                                            <Circle x={w / 2} y={ry} radiusX={w / 2} radiusY={ry} fill={fill} stroke={stroke} />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'connection' && el.startId && el.endId) {
+                                    const startNode = elements.find(e => e.id === el.startId)
+                                    const endNode = elements.find(e => e.id === el.endId)
+
+                                    if (startNode && endNode) {
+                                        const { points, handlePos, isVerticalSegment } = getOrthogonalPoints(startNode, endNode, el.manualPosition)
+
+                                        const dash = el.lineType === 'dashed' ? [10, 10] : (el.lineType === 'dotted' ? [2, 5] : undefined)
+                                        const pointerLength = el.arrowType === 'sharp' ? 20 : (el.arrowType === 'none' ? 0 : 10)
+                                        const pointerWidth = el.arrowType === 'sharp' ? 10 : (el.arrowType === 'none' ? 0 : 10)
+                                        const tension = el.lineType === 'curved' ? 0.4 : 0
+
+                                        // For diamond arrow type (aggregation), we might need custom logic, but for now lets stick to Konva standard or simple overrides.
+                                        // Konva Arrow doesn't support Diamond head natively easily without custom drawing.
+                                        // Simulating Diamond by drawing a separate shape usually.
+                                        // For simplicity in this iteration, 'diamond' will just be a larger square-ish head.
+
+                                        return (
+                                            <Group key={el.id}>
+                                                <Arrow
+                                                    points={points}
+                                                    stroke={stroke}
+                                                    fill={stroke}
+                                                    strokeWidth={2}
+                                                    pointerLength={pointerLength}
+                                                    pointerWidth={pointerWidth}
+                                                    dash={dash}
+                                                    tension={tension}
+                                                    lineCap="round"
+                                                    lineJoin="round"
+                                                    hitStrokeWidth={20}
+                                                    onClick={(e) => {
+                                                        e.cancelBubble = true;
+                                                        setSelectedId(el.id);
                                                     }}
-                                                    onDragEnd={(e) => {
-                                                        const node = e.target
-                                                        const newPos = isVerticalSegment ? node.x() : node.y()
-                                                        const idx = elements.findIndex(x => x.id === el.id)
-                                                        if (idx !== -1 && yElementsRef.current) {
-                                                            const newAttrs = { ...elements[idx], manualPosition: newPos }
-                                                            yElementsRef.current.delete(idx, 1)
-                                                            yElementsRef.current.insert(idx, [newAttrs])
-                                                        }
-                                                    }}
+                                                    onContextMenu={(e) => handleContextMenu(e, el.id)}
                                                 />
-                                            )}
+                                                {selectedId === el.id && (
+                                                    <Circle
+                                                        x={handlePos.x}
+                                                        y={handlePos.y}
+                                                        radius={5}
+                                                        fill="#3b82f6"
+                                                        draggable
+                                                        dragBoundFunc={(pos) => {
+                                                            if (isVerticalSegment) {
+                                                                return { x: pos.x, y: handlePos.y }
+                                                            } else {
+                                                                return { x: handlePos.x, y: pos.y }
+                                                            }
+                                                        }}
+                                                        onDragEnd={(e) => {
+                                                            const node = e.target
+                                                            const newPos = isVerticalSegment ? node.x() : node.y()
+                                                            const idx = elements.findIndex(x => x.id === el.id)
+                                                            if (idx !== -1 && yElementsRef.current) {
+                                                                const newAttrs = { ...elements[idx], manualPosition: newPos }
+                                                                yElementsRef.current.delete(idx, 1)
+                                                                yElementsRef.current.insert(idx, [newAttrs])
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            </Group>
+                                        )
+                                    }
+                                    return null
+                                } else if (el.type === 'arrow') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Arrow
+                                                points={[0, (el.height || 20) / 2, el.width || 100, (el.height || 20) / 2]}
+                                                pointerLength={10}
+                                                pointerWidth={10}
+                                                fill={stroke}
+                                                stroke={stroke}
+                                                strokeWidth={2}
+                                                shadowBlur={theme === 'dark' ? 0 : 2}
+                                            />
+                                            {/* Simple Arrow text always visible for now, or editable? */}
+                                            <KonvaText
+                                                text={el.text}
+                                                x={0}
+                                                y={0}
+                                                width={el.width}
+                                                height={el.height}
+                                                align="center"
+                                                verticalAlign="middle"
+                                                fill={textColor}
+                                                listening={false}
+                                            />
                                         </Group>
                                     )
                                 }
-                                return null
-                            } else if (el.type === 'arrow') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Arrow
-                                            points={[0, (el.height || 20) / 2, el.width || 100, (el.height || 20) / 2]}
-                                            pointerLength={10}
-                                            pointerWidth={10}
-                                            fill={stroke}
-                                            stroke={stroke}
-                                            strokeWidth={2}
-                                            shadowBlur={theme === 'dark' ? 0 : 2}
-                                        />
-                                        {/* Simple Arrow text always visible for now, or editable? */}
-                                        <KonvaText
-                                            text={el.text}
-                                            x={0}
-                                            y={0}
-                                            width={el.width}
-                                            height={el.height}
-                                            align="center"
-                                            verticalAlign="middle"
-                                            fill={textColor}
-                                            listening={false}
-                                        />
-                                    </Group>
-                                )
-                            }
 
-                            else if (el.type === 'triangle') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <RegularPolygon
-                                            x={(el.width || 80) / 2} // Center
-                                            y={(el.height || 80) / 2 + 5} // Check visual center
-                                            sides={3}
-                                            radius={(el.width || 80) / 2}
-                                            fill={fill}
-                                            stroke={stroke}
-                                            rotation={el.rotation || 0}
-                                            scaleX={1}
-                                            scaleY={(el.height || 80) / (el.width || 80)} // Aspect ratio hack for RegularPolygon
-                                        />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'hexagon') {
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <RegularPolygon
-                                            x={(el.width || 100) / 2}
-                                            y={(el.height || 80) / 2}
-                                            sides={6}
-                                            radius={(el.width || 100) / 2}
-                                            fill={fill}
-                                            stroke={stroke}
-                                            rotation={el.rotation || 0}
-                                            scaleX={1}
-                                            scaleY={(el.height || 80) / (el.width || 100)}
-                                        />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'trapezoid') {
-                                const w = el.width || 100
-                                const h = el.height || 60
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Line
-                                            points={[0, h, w * 0.2, 0, w * 0.8, 0, w, h]}
-                                            closed
-                                            fill={fill}
-                                            stroke={stroke}
-                                        />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'document') {
-                                const w = el.width || 80
-                                const h = el.height || 100
-                                // Simple wave path at bottom
-                                // Start top-left
-                                // M 0 0 L w 0 L w h-20 Q w*0.75 h w*0.5 h-20 T 0 h-20 Z
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Path
-                                            data={`M 0 0 L ${w} 0 L ${w} ${h - 15} Q ${w * 0.75} ${h} ${w * 0.5} ${h - 15} T 0 ${h - 15} Z`}
-                                            fill={fill}
-                                            stroke={stroke}
-                                            scaleX={1}
-                                            scaleY={1}
-                                        />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            } else if (el.type === 'cloud') {
-                                const w = el.width || 100
-                                const h = el.height || 80
-                                // Simple cloud path
-                                // M 10,50 Q 20,40 30,50 Q 40,20 60,30 Q 80,10 90,40 Q 100,50 90,60 Q 90,90 60,80 Q 40,90 20,70 Q 0,70 10,50 Z
-                                // Scalable path is hard with raw string.
-                                // We can use SVG path viewbox scaling, but Konva Path data is absolute.
-                                // Let's use a normalized path and scale it with group or just approximated points relative to w/h.
-                                // Or standard simple path:
-                                return (
-                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
-                                        <Path
-                                            data={`M ${w * 0.1} ${h * 0.6} Q ${w * 0.2} ${h * 0.4} ${w * 0.3} ${h * 0.5} Q ${w * 0.4} ${h * 0.2} ${w * 0.6} ${h * 0.3} Q ${w * 0.8} ${h * 0.1} ${w * 0.9} ${h * 0.4} Q ${w} ${h * 0.5} ${w * 0.9} ${h * 0.6} Q ${w * 0.9} ${h * 0.9} ${w * 0.6} ${h * 0.8} Q ${w * 0.4} ${h * 0.9} ${w * 0.2} ${h * 0.7} Q 0 ${h * 0.7} ${w * 0.1} ${h * 0.6} Z`}
-                                            fill={fill}
-                                            stroke={stroke}
-                                        />
-                                        {renderText()}
-                                    </Group>
-                                )
-                            }
-
-                            else if (el.type === 'text') {
-                                return editingId !== el.id ? <KonvaText
-                                    key={el.id}
-                                    {...commonProps}
-                                    x={el.x}
-                                    y={el.y}
-                                    text={el.text || "Text"}
-                                    fill={textColor}
-                                    fontSize={20}
-                                /> : null
-                            }
-                            return null
-                        })}
-
-                        {/* Anchor Indicators during Drag */}
-                        {drawingArrow && elements.map((el) => {
-                            if (el.id === drawingArrow.startId || el.type === 'connection' || el.type === 'text') return null
-                            const anchors = getAllAnchors(el)
-                            return (
-                                <Group key={`anchors-${el.id}`}>
-                                    {anchors.map((a, i) => {
-                                        const isSnapped = drawingArrow.snappedTo?.nodeId === el.id && drawingArrow.snappedTo?.side === a.side
-                                        return (
-                                            <Circle
-                                                key={i}
-                                                x={a.x} y={a.y}
-                                                radius={isSnapped ? 6 : 4}
-                                                fill={isSnapped ? '#3b82f6' : theme === 'dark' ? '#ffffff' : '#000000'}
-                                                stroke={isSnapped ? '#3b82f6' : theme === 'dark' ? '#ffffff' : '#000000'}
-                                                strokeWidth={isSnapped ? 0 : 1}
-                                                opacity={isSnapped ? 1 : 0.5}
-                                                shadowBlur={isSnapped ? 10 : 0}
-                                                shadowColor="#3b82f6"
-                                                listening={false}
+                                else if (el.type === 'triangle') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <RegularPolygon
+                                                x={(el.width || 80) / 2} // Center
+                                                y={(el.height || 80) / 2 + 5} // Check visual center
+                                                sides={3}
+                                                radius={(el.width || 80) / 2}
+                                                fill={fill}
+                                                stroke={stroke}
+                                                rotation={el.rotation || 0}
+                                                scaleX={1}
+                                                scaleY={(el.height || 80) / (el.width || 80)} // Aspect ratio hack for RegularPolygon
                                             />
-                                        )
-                                    })}
-                                </Group>
-                            )
-                        })}
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'hexagon') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <RegularPolygon
+                                                x={(el.width || 100) / 2}
+                                                y={(el.height || 80) / 2}
+                                                sides={6}
+                                                radius={(el.width || 100) / 2}
+                                                fill={fill}
+                                                stroke={stroke}
+                                                rotation={el.rotation || 0}
+                                                scaleX={1}
+                                                scaleY={(el.height || 80) / (el.width || 100)}
+                                            />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'trapezoid') {
+                                    const w = el.width || 100
+                                    const h = el.height || 60
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Line
+                                                points={[0, h, w * 0.2, 0, w * 0.8, 0, w, h]}
+                                                closed
+                                                fill={fill}
+                                                stroke={stroke}
+                                            />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'document') {
+                                    const w = el.width || 80
+                                    const h = el.height || 100
+                                    // Simple wave path at bottom
+                                    // Start top-left
+                                    // M 0 0 L w 0 L w h-20 Q w*0.75 h w*0.5 h-20 T 0 h-20 Z
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Path
+                                                data={`M 0 0 L ${w} 0 L ${w} ${h - 15} Q ${w * 0.75} ${h} ${w * 0.5} ${h - 15} T 0 ${h - 15} Z`}
+                                                fill={fill}
+                                                stroke={stroke}
+                                                scaleX={1}
+                                                scaleY={1}
+                                            />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'cloud') {
+                                    const w = el.width || 100
+                                    const h = el.height || 80
+                                    // Simple cloud path
+                                    // M 10,50 Q 20,40 30,50 Q 40,20 60,30 Q 80,10 90,40 Q 100,50 90,60 Q 90,90 60,80 Q 40,90 20,70 Q 0,70 10,50 Z
+                                    // Scalable path is hard with raw string.
+                                    // We can use SVG path viewbox scaling, but Konva Path data is absolute.
+                                    // Let's use a normalized path and scale it with group or just approximated points relative to w/h.
+                                    // Or standard simple path:
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Path
+                                                data={`M ${w * 0.1} ${h * 0.6} Q ${w * 0.2} ${h * 0.4} ${w * 0.3} ${h * 0.5} Q ${w * 0.4} ${h * 0.2} ${w * 0.6} ${h * 0.3} Q ${w * 0.8} ${h * 0.1} ${w * 0.9} ${h * 0.4} Q ${w} ${h * 0.5} ${w * 0.9} ${h * 0.6} Q ${w * 0.9} ${h * 0.9} ${w * 0.6} ${h * 0.8} Q ${w * 0.4} ${h * 0.9} ${w * 0.2} ${h * 0.7} Q 0 ${h * 0.7} ${w * 0.1} ${h * 0.6} Z`}
+                                                fill={fill}
+                                                stroke={stroke}
+                                            />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                }
 
-                        {/* Temp Arrow Rendering during Drag */}
-                        {drawingArrow && (() => {
-                            const startNode = elements.find(e => e.id === drawingArrow.startId)
-                            if (!startNode) return null
-                            const startAnchor = getAnchorPoint(startNode, drawingArrow.endPos)
-                            return (
-                                <Arrow
-                                    points={[startAnchor.x, startAnchor.y, drawingArrow.endPos.x, drawingArrow.endPos.y]}
-                                    stroke={theme === 'dark' ? '#ffffff' : '#000000'}
-                                    strokeWidth={2}
-                                    dash={[5, 5]}
-                                    pointerLength={10}
-                                    pointerWidth={10}
-                                />
-                            )
-                        })()}
+                                else if (el.type === 'text') {
+                                    return editingId !== el.id ? <KonvaText
+                                        key={el.id}
+                                        {...commonProps}
+                                        x={el.x}
+                                        y={el.y}
+                                        text={el.text || "Text"}
+                                        fill={textColor}
+                                        fontSize={20}
+                                    /> : null
+                                }
+                                return null
+                            })}
 
-                        <Transformer ref={transformerRef} />
-                    </Layer>
-                </Stage>
+                            {/* Anchor Indicators during Drag */}
+                            {drawingArrow && elements.map((el) => {
+                                if (el.id === drawingArrow.startId || el.type === 'connection' || el.type === 'text') return null
+                                const anchors = getAllAnchors(el)
+                                return (
+                                    <Group key={`anchors-${el.id}`}>
+                                        {anchors.map((a, i) => {
+                                            const isSnapped = drawingArrow.snappedTo?.nodeId === el.id && drawingArrow.snappedTo?.side === a.side
+                                            return (
+                                                <Circle
+                                                    key={i}
+                                                    x={a.x} y={a.y}
+                                                    radius={isSnapped ? 6 : 4}
+                                                    fill={isSnapped ? '#3b82f6' : theme === 'dark' ? '#ffffff' : '#000000'}
+                                                    stroke={isSnapped ? '#3b82f6' : theme === 'dark' ? '#ffffff' : '#000000'}
+                                                    strokeWidth={isSnapped ? 0 : 1}
+                                                    opacity={isSnapped ? 1 : 0.5}
+                                                    shadowBlur={isSnapped ? 10 : 0}
+                                                    shadowColor="#3b82f6"
+                                                    listening={false}
+                                                />
+                                            )
+                                        })}
+                                    </Group>
+                                )
+                            })}
 
-                {/* Inline Editing Overlay */}
-                {editingId && (() => {
-                    const el = elements.find(e => e.id === editingId)
-                    if (!el) return null
+                            {/* Temp Arrow Rendering during Drag */}
+                            {drawingArrow && (() => {
+                                const startNode = elements.find(e => e.id === drawingArrow.startId)
+                                if (!startNode) return null
+                                const startAnchor = getAnchorPoint(startNode, drawingArrow.endPos)
+                                return (
+                                    <Arrow
+                                        points={[startAnchor.x, startAnchor.y, drawingArrow.endPos.x, drawingArrow.endPos.y]}
+                                        stroke={theme === 'dark' ? '#ffffff' : '#000000'}
+                                        strokeWidth={2}
+                                        dash={[5, 5]}
+                                        pointerLength={10}
+                                        pointerWidth={10}
+                                    />
+                                )
+                            })()}
 
-                    const isShape = el.type !== 'text' && el.type !== 'connection' && el.type !== 'arrow'
-                    const w = el.width || (el.type === 'text' ? 200 : 100)
-                    const h = el.height || (el.type === 'text' ? 40 : 60)
+                            <Transformer ref={transformerRef} />
+                        </Layer>
+                    </Stage>
 
-                    // Calculate Screen Coordinates for positioning the popup
-                    const screenX = (el.x || 0) * stageScale + stagePos.x
-                    const screenY = (el.y || 0) * stageScale + stagePos.y
-                    const screenW = w * stageScale
-                    const screenH = h * stageScale
+                    {/* Inline Editing Overlay */}
+                    {editingId && (() => {
+                        const el = elements.find(e => e.id === editingId)
+                        if (!el) return null
 
-                    // Position popup to the right of the element
-                    const popupLeft = screenX + screenW + 10
-                    const popupTop = screenY
+                        const isShape = el.type !== 'text' && el.type !== 'connection' && el.type !== 'arrow'
+                        const w = el.width || (el.type === 'text' ? 200 : 100)
+                        const h = el.height || (el.type === 'text' ? 40 : 60)
 
-                    return (
-                        <div
-                            className="absolute z-50 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xl rounded-lg p-3 min-w-[250px] animate-in fade-in zoom-in-95"
-                            style={{
-                                left: popupLeft,
-                                top: popupTop,
-                            }}
-                        >
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Edit Text</span>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 rounded-full"
-                                    onClick={() => setEditingId(null)}
-                                >
-                                    <span className="sr-only">Close</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                                </Button>
-                            </div>
-                            <textarea
-                                value={textInput}
-                                onChange={(e) => setTextInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault()
-                                        // Trigger Save
-                                        if (yElementsRef.current) {
-                                            const idx = elements.findIndex(e => e.id === editingId)
-                                            if (idx !== -1) {
-                                                const newAttrs = { ...elements[idx], text: textInput }
-                                                yElementsRef.current.delete(idx, 1)
-                                                yElementsRef.current.insert(idx, [newAttrs])
-                                            }
-                                        }
-                                        setEditingId(null)
-                                    }
-                                }}
-                                placeholder="Enter text..."
-                                autoFocus
-                                className="w-full min-h-[80px] p-2 text-sm rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y mb-2 text-slate-900 dark:text-slate-100"
-                            />
-                            <div className="flex justify-end gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs h-7"
-                                    onClick={() => setEditingId(null)}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    className="text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={() => {
-                                        if (yElementsRef.current) {
-                                            const idx = elements.findIndex(e => e.id === editingId)
-                                            if (idx !== -1) {
-                                                const newAttrs = { ...elements[idx], text: textInput }
-                                                yElementsRef.current.delete(idx, 1)
-                                                yElementsRef.current.insert(idx, [newAttrs])
-                                            }
-                                        }
-                                        setEditingId(null)
-                                    }}
-                                >
-                                    Save
-                                </Button>
-                            </div>
-                        </div>
-                    )
-                })()}
-                {/* Context Menu HTML Overlay */}
-                {contextMenu.visible && (
-                    <div
-                        className="fixed bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md py-1 z-50 text-sm min-w-[150px] animate-in fade-in zoom-in-95"
-                        style={{ top: contextMenu.y, left: contextMenu.x }}
-                    >
-                        <button
-                            className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 dark:text-zinc-200 flex items-center gap-2"
-                            onClick={handleInsertText}
-                        >
-                            <Pencil className="w-4 h-4" /> Insert Text
-                        </button>
-                        <button
-                            className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 dark:text-red-400 dark:hover:bg-red-900/20 flex items-center gap-2"
-                            onClick={handleDeleteElement}
-                        >
-                            <Trash2 className="w-4 h-4" /> Delete Component
-                        </button>
-                    </div>
-                )}
-                {/* Arrow Style Pad */}
-                {(() => {
-                    if (!selectedId) return null
-                    const el = elements.find(e => e.id === selectedId)
-                    if (el && (el.type === 'connection' || el.type === 'arrow')) {
-                        // Calculate position roughly near user selection or fixed corner. 
-                        // Fixed corner is safer for UI.
-                        // Or utilize the popup positioning logic?
-                        // Let's float it top-center or near toolbar.
+                        // Calculate Screen Coordinates for positioning the popup
+                        const screenX = (el.x || 0) * stageScale + stagePos.x
+                        const screenY = (el.y || 0) * stageScale + stagePos.y
+                        const screenW = w * stageScale
+                        const screenH = h * stageScale
+
+                        // Position popup to the right of the element
+                        const popupLeft = screenX + screenW + 10
+                        const popupTop = screenY
+
                         return (
-                            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-full p-2 flex gap-4 z-50 animate-in fade-in slide-in-from-top-5">
-                                <div className="flex items-center gap-2 border-r pr-4 dark:border-zinc-700">
-                                    <span className="text-xs font-semibold text-slate-500 uppercase">Style</span>
-                                    <div className="flex gap-1">
-                                        {(['solid', 'dashed', 'dotted'] as const).map((type) => (
-                                            <Button
-                                                key={type}
-                                                variant={el.lineType === type || (!el.lineType && type === 'solid') ? "default" : "ghost"}
-                                                size="icon"
-                                                className="h-8 w-8 rounded-full"
-                                                onClick={() => {
-                                                    if (yElementsRef.current) {
-                                                        const idx = elements.findIndex(e => e.id === selectedId)
-                                                        if (idx !== -1) {
-                                                            const newAttrs = { ...elements[idx], lineType: type }
-                                                            yElementsRef.current.delete(idx, 1)
-                                                            yElementsRef.current.insert(idx, [newAttrs])
-                                                        }
-                                                    }
-                                                }}
-                                                title={type}
-                                            >
-                                                {type === 'solid' && <Minus className="w-4 h-4" />}
-                                                {type === 'dashed' && <MoreHorizontal className="w-4 h-4" />}
-                                                {type === 'dotted' && <Dot className="w-4 h-4" />}
-                                            </Button>
-                                        ))}
-                                    </div>
+                            <div
+                                className="absolute z-50 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xl rounded-lg p-3 min-w-[250px] animate-in fade-in zoom-in-95"
+                                style={{
+                                    left: popupLeft,
+                                    top: popupTop,
+                                }}
+                            >
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Edit Text</span>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 rounded-full"
+                                        onClick={() => setEditingId(null)}
+                                    >
+                                        <span className="sr-only">Close</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                    </Button>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold text-slate-500 uppercase">Head</span>
-                                    <div className="flex gap-1">
-                                        {(['none', 'standard', 'sharp'] as const).map((type) => (
-                                            <Button
-                                                key={type}
-                                                variant={el.arrowType === type || (!el.arrowType && type === 'standard') ? "default" : "ghost"}
-                                                size="icon"
-                                                className="h-8 w-8 rounded-full"
-                                                onClick={() => {
-                                                    if (yElementsRef.current) {
-                                                        const idx = elements.findIndex(e => e.id === selectedId)
-                                                        if (idx !== -1) {
-                                                            const newAttrs = { ...elements[idx], arrowType: type }
-                                                            yElementsRef.current.delete(idx, 1)
-                                                            yElementsRef.current.insert(idx, [newAttrs])
-                                                        }
-                                                    }
-                                                }}
-                                                title={type}
-                                            >
-                                                {type === 'none' && <Minus className="w-4 h-4" />}
-                                                {type === 'standard' && <ChevronRight className="w-4 h-4" />}
-                                                {type === 'sharp' && <ArrowRight className="w-4 h-4" />}
-                                            </Button>
-                                        ))}
-                                    </div>
+                                <textarea
+                                    value={textInput}
+                                    onChange={(e) => setTextInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault()
+                                            // Trigger Save
+                                            if (yElementsRef.current) {
+                                                const idx = elements.findIndex(e => e.id === editingId)
+                                                if (idx !== -1) {
+                                                    const newAttrs = { ...elements[idx], text: textInput }
+                                                    yElementsRef.current.delete(idx, 1)
+                                                    yElementsRef.current.insert(idx, [newAttrs])
+                                                }
+                                            }
+                                            setEditingId(null)
+                                        }
+                                    }}
+                                    placeholder="Enter text..."
+                                    autoFocus
+                                    className="w-full min-h-[80px] p-2 text-sm rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y mb-2 text-slate-900 dark:text-slate-100"
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs h-7"
+                                        onClick={() => setEditingId(null)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
+                                        onClick={() => {
+                                            if (yElementsRef.current) {
+                                                const idx = elements.findIndex(e => e.id === editingId)
+                                                if (idx !== -1) {
+                                                    const newAttrs = { ...elements[idx], text: textInput }
+                                                    yElementsRef.current.delete(idx, 1)
+                                                    yElementsRef.current.insert(idx, [newAttrs])
+                                                }
+                                            }
+                                            setEditingId(null)
+                                        }}
+                                    >
+                                        Save
+                                    </Button>
                                 </div>
                             </div>
                         )
-                    }
-                    return null
-                })()}
-            </div>
+                    })()}
+                    {/* Context Menu HTML Overlay */}
+                    {contextMenu.visible && (
+                        <div
+                            className="fixed bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md py-1 z-50 text-sm min-w-[150px] animate-in fade-in zoom-in-95"
+                            style={{ top: contextMenu.y, left: contextMenu.x }}
+                        >
+                            <button
+                                className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 dark:text-zinc-200 flex items-center gap-2"
+                                onClick={handleInsertText}
+                            >
+                                <Pencil className="w-4 h-4" /> Insert Text
+                            </button>
+                            <button
+                                className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 dark:text-red-400 dark:hover:bg-red-900/20 flex items-center gap-2"
+                                onClick={handleDeleteElement}
+                            >
+                                <Trash2 className="w-4 h-4" /> Delete Component
+                            </button>
+                        </div>
+                    )}
+                    {/* Arrow Style Pad */}
+                    {(() => {
+                        if (!selectedId) return null
+                        const el = elements.find(e => e.id === selectedId)
+                        if (el && (el.type === 'connection' || el.type === 'arrow')) {
+                            // Calculate position roughly near user selection or fixed corner. 
+                            // Fixed corner is safer for UI.
+                            // Or utilize the popup positioning logic?
+                            // Let's float it top-center or near toolbar.
+                            return (
+                                <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-full p-2 flex gap-4 z-50 animate-in fade-in slide-in-from-top-5">
+                                    <div className="flex items-center gap-2 border-r pr-4 dark:border-zinc-700">
+                                        <span className="text-xs font-semibold text-slate-500 uppercase">Style</span>
+                                        <div className="flex gap-1">
+                                            {(['solid', 'dashed', 'dotted'] as const).map((type) => (
+                                                <Button
+                                                    key={type}
+                                                    variant={el.lineType === type || (!el.lineType && type === 'solid') ? "default" : "ghost"}
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-full"
+                                                    onClick={() => {
+                                                        if (yElementsRef.current) {
+                                                            const idx = elements.findIndex(e => e.id === selectedId)
+                                                            if (idx !== -1) {
+                                                                const newAttrs = { ...elements[idx], lineType: type }
+                                                                yElementsRef.current.delete(idx, 1)
+                                                                yElementsRef.current.insert(idx, [newAttrs])
+                                                            }
+                                                        }
+                                                    }}
+                                                    title={type}
+                                                >
+                                                    {type === 'solid' && <Minus className="w-4 h-4" />}
+                                                    {type === 'dashed' && <MoreHorizontal className="w-4 h-4" />}
+                                                    {type === 'dotted' && <Dot className="w-4 h-4" />}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-slate-500 uppercase">Head</span>
+                                        <div className="flex gap-1">
+                                            {(['none', 'standard', 'sharp'] as const).map((type) => (
+                                                <Button
+                                                    key={type}
+                                                    variant={el.arrowType === type || (!el.arrowType && type === 'standard') ? "default" : "ghost"}
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-full"
+                                                    onClick={() => {
+                                                        if (yElementsRef.current) {
+                                                            const idx = elements.findIndex(e => e.id === selectedId)
+                                                            if (idx !== -1) {
+                                                                const newAttrs = { ...elements[idx], arrowType: type }
+                                                                yElementsRef.current.delete(idx, 1)
+                                                                yElementsRef.current.insert(idx, [newAttrs])
+                                                            }
+                                                        }
+                                                    }}
+                                                    title={type}
+                                                >
+                                                    {type === 'none' && <Minus className="w-4 h-4" />}
+                                                    {type === 'standard' && <ChevronRight className="w-4 h-4" />}
+                                                    {type === 'sharp' && <ArrowRight className="w-4 h-4" />}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        }
+                        return null
+                    })()}
+                </div>
 
-            <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Text</DialogTitle>
-                        <DialogDescription>Enter text for this component.</DialogDescription>
-                    </DialogHeader>
-                    <Input value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Type here..." />
-                    <DialogFooter>
-                        <Button onClick={saveText}>Save</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div >
+                <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Edit Text</DialogTitle>
+                            <DialogDescription>Enter text for this component.</DialogDescription>
+                        </DialogHeader>
+                        <Input value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Type here..." />
+                        <DialogFooter>
+                            <Button onClick={saveText}>Save</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </div>
     )
 }
