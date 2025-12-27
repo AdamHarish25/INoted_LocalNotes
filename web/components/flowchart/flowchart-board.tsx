@@ -713,7 +713,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             This page is only for tablets or desktops. Please access this page from a larger screen to edit flowcharts.
                         </p>
                         <Button asChild className="w-full">
-                            <Link href="/dashboard">Back to Dashboard</Link>
+                            <Link href="../">Back to Dashboard</Link>
                         </Button>
                     </div>
                 </div>
