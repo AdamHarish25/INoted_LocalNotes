@@ -22,7 +22,7 @@ export default async function LoginPage(props: {
                 <div className="flex justify-center mb-8">
                     {/* Logo stays as is or can be inverted if needed, usually logo handles itself */}
                     <Link href="..">
-                        <img src="/logo.png" alt="Logo" className="h-6 cursor-pointer" />
+                        <img src="/logo.png" alt="Logo" className="h-6" />
                     </Link>
                 </div>
 
