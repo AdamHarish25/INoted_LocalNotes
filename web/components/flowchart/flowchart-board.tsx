@@ -5,12 +5,18 @@ import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, Regul
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon, MonitorOff } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon, MonitorOff, Download, Image as ImageIcon } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
 
 interface FlowchartElement {
@@ -646,6 +652,198 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`
     }
 
+    const handleExport = (format: 'png' | 'jpg' | 'svg') => {
+        if (!stageRef.current || elements.length === 0) return
+
+        // Calculate bounding box of all elements
+        let minX = Infinity
+        let minY = Infinity
+        let maxX = -Infinity
+        let maxY = -Infinity
+
+        elements.forEach(el => {
+            const x = el.x || 0
+            const y = el.y || 0
+            const w = el.width || 0
+            const h = el.height || 0
+
+            // For standard shapes
+            if (el.type !== 'connection') {
+                minX = Math.min(minX, x)
+                minY = Math.min(minY, y)
+                maxX = Math.max(maxX, x + w)
+                maxY = Math.max(maxY, y + h)
+            }
+
+            // Check line points for connection
+            if (el.type === 'connection') {
+                // Connections might not have x/y set correctly if points are used absolute
+                // But our orthgonal points are absolute coords
+                // We need to fetch points. If we can't easily get calculated points here without 'getOrthogonalPoints' re-run...
+                // We can re-run it.
+                if (el.startId && el.endId) {
+                    const startNode = elements.find(e => e.id === el.startId)
+                    const endNode = elements.find(e => e.id === el.endId)
+                    if (startNode && endNode) {
+                        const { points } = getOrthogonalPoints(startNode, endNode, el.manualPosition)
+                        for (let i = 0; i < points.length; i += 2) {
+                            minX = Math.min(minX, points[i])
+                            maxX = Math.max(maxX, points[i])
+                            minY = Math.min(minY, points[i + 1])
+                            maxY = Math.max(maxY, points[i + 1])
+                        }
+                    }
+                }
+            }
+        })
+
+        // Add padding
+        const PADDING = 50
+        if (minX === Infinity) { minX = 0; maxX = 100; minY = 0; maxY = 100; }
+
+        minX -= PADDING
+        minY -= PADDING
+        maxX += PADDING
+        maxY += PADDING
+
+        const width = maxX - minX
+        const height = maxY - minY
+
+        if (format === 'svg') {
+            let svgContent = `<svg width="${width}" height="${height}" viewBox="${minX} ${minY} ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`
+            // Background
+            svgContent += `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${theme === 'dark' ? '#000000' : '#ffffff'}"/>`
+
+            elements.forEach(el => {
+                const stroke = getRenderColor(el.stroke)
+                const fill = el.fill ? getRenderFill(el.fill) : (theme === 'dark' ? 'transparent' : '#ffffff')
+                const elX = el.x || 0
+                const elY = el.y || 0
+                const w = el.width || 100
+                const h = el.height || 100
+
+                // Text Helper
+                const addText = () => {
+                    if (el.text) {
+                        const textColor = el.type === 'text' ? getRenderColor(el.fill) : getContrastingTextColor(fill)
+                        // Simple approximation for text centering
+                        const cx = elX + w / 2
+                        const cy = elY + h / 2 + 5 // nudge
+                        const escaped = el.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                        // Using SVG text with middle anchor
+                        svgContent += `<text x="${cx}" y="${cy}" fill="${textColor}" font-family="sans-serif" font-size="20" text-anchor="middle" dominant-baseline="middle">${escaped}</text>`
+                    }
+                }
+
+                if (el.type === 'rectangle') {
+                    svgContent += `<rect x="${elX}" y="${elY}" width="${w}" height="${h}" stroke="${stroke}" stroke-width="2" fill="${fill}" rx="2"/>`
+                    addText()
+                } else if (el.type === 'rounded_rect') {
+                    svgContent += `<rect x="${elX}" y="${elY}" width="${w}" height="${h}" stroke="${stroke}" stroke-width="2" fill="${fill}" rx="10"/>`
+                    addText()
+                } else if (el.type === 'circle') {
+                    svgContent += `<ellipse cx="${elX + w / 2}" cy="${elY + h / 2}" rx="${w / 2}" ry="${h / 2}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'diamond') {
+                    const pts = `${elX + w / 2},${elY} ${elX + w},${elY + h / 2} ${elX + w / 2},${elY + h} ${elX},${elY + h / 2}`
+                    svgContent += `<polygon points="${pts}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'parallelogram') {
+                    // data={`M 0 ${el.height || 50} L ${el.width || 100} ${el.height || 50} L ${(el.width || 100) * 0.8} 0 L ${(el.width || 100) * 0.2} 0 Z`}
+                    // Need to translate path to elX, elY
+                    const path = `M ${elX} ${elY + h} L ${elX + w} ${elY + h} L ${elX + w * 0.8} ${elY} L ${elX + w * 0.2} ${elY} Z`
+                    svgContent += `<path d="${path}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'cylinder') {
+                    const ry = w / 4
+                    // Path data logic from render
+                    // M 0 ${ry} L 0 ${h - ry} A ${w / 2} ${ry} 0 0 0 ${w} ${h - ry} L ${w} ${ry} A ${w / 2} ${ry} 0 0 1 0 ${ry} Z
+                    // SVG Path A command: rx ry x-axis-rotation large-arc-flag sweep-flag x y
+                    // Translated:
+                    const d = `M ${elX} ${elY + ry} L ${elX} ${elY + h - ry} A ${w / 2} ${ry} 0 0 0 ${elX + w} ${elY + h - ry} L ${elX + w} ${elY + ry} A ${w / 2} ${ry} 0 0 1 ${elX} ${elY + ry} Z`
+                    // Top circle
+                    svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    svgContent += `<ellipse cx="${elX + w / 2}" cy="${elY + ry}" rx="${w / 2}" ry="${ry}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'triangle') {
+                    // RegularPolygon 3 sides. Center at elX + w/2, elY + h/2
+                    // Approximating with path M top-mid L bottom-right L bottom-left Z
+                    const d = `M ${elX + w / 2} ${elY} L ${elX + w} ${elY + h} L ${elX} ${elY + h} Z`
+                    svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'connection' && el.startId && el.endId) {
+                    const startNode = elements.find(e => e.id === el.startId)
+                    const endNode = elements.find(e => e.id === el.endId)
+                    if (startNode && endNode) {
+                        const res = getOrthogonalPoints(startNode, endNode, el.manualPosition)
+                        const pts = res.points
+                        let d = `M ${pts[0]} ${pts[1]}`
+                        for (let i = 2; i < pts.length; i += 2) {
+                            d += ` L ${pts[i]} ${pts[i + 1]}`
+                        }
+                        svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="none" stroke-linejoin="round"/>`
+                        // Handle simple arrow head at end
+                        const lastX = pts[pts.length - 2]
+                        const lastY = pts[pts.length - 1]
+                        const prevX = pts[pts.length - 4]
+                        const prevY = pts[pts.length - 3]
+                        const angle = Math.atan2(lastY - prevY, lastX - prevX)
+                        const headLen = 10
+                        if (el.arrowType !== 'none') {
+                            const x1 = lastX - headLen * Math.cos(angle - Math.PI / 6)
+                            const y1 = lastY - headLen * Math.sin(angle - Math.PI / 6)
+                            const x2 = lastX - headLen * Math.cos(angle + Math.PI / 6)
+                            const y2 = lastY - headLen * Math.sin(angle + Math.PI / 6)
+                            svgContent += `<path d="M ${lastX} ${lastY} L ${x1} ${y1} M ${lastX} ${lastY} L ${x2} ${y2}" stroke="${stroke}" stroke-width="2" fill="none"/>`
+                        }
+                    }
+                } else if (el.type === 'text') {
+                    const escaped = (el.text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                    const textColor = getRenderColor(el.fill)
+                    svgContent += `<text x="${elX}" y="${elY + 20}" fill="${textColor}" font-family="sans-serif" font-size="20">${escaped}</text>`
+                }
+
+                // Add more shapes as needed (trapezoid, hexagon, etc) strictly if requested or fallback to simple rect
+                // Hexagon
+                else if (el.type === 'hexagon') {
+                    // 6 sides
+                    const d = `M ${elX + w * 0.2} ${elY} L ${elX + w * 0.8} ${elY} L ${elX + w} ${elY + h / 2} L ${elX + w * 0.8} ${elY + h} L ${elX + w * 0.2} ${elY + h} L ${elX} ${elY + h / 2} Z`
+                    svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                }
+            })
+
+            svgContent += `</svg>`
+            const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+            const link = document.createElement('a')
+            link.download = `flowchart-${roomId}.svg`
+            link.href = URL.createObjectURL(blob)
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+
+        } else {
+            const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
+            // Konva toDataURL handles the viewport crop/scale
+            const dataUrl = stageRef.current.toDataURL({
+                x: minX,
+                y: minY,
+                width: width,
+                height: height,
+                pixelRatio: 2,
+                mimeType,
+                quality: 0.9 // for jpg
+            })
+
+            const link = document.createElement('a')
+            link.download = `flowchart-${roomId}.${format}`
+            link.href = dataUrl
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+        }
+    }
+
     const handleContextMenu = (e: any, id: string) => {
         e.evt.preventDefault()
         const stage = e.target.getStage()
@@ -765,6 +963,25 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     <div className="ml-auto flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.undo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => undoManagerRef.current?.redo()} className="dark:text-zinc-300 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></Button>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" title="Export" className="dark:text-zinc-300 dark:hover:bg-zinc-800">
+                                    <Download className="w-4 h-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleExport('png')}>
+                                    <ImageIcon className="w-4 h-4 mr-2" /> Export as PNG
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport('jpg')}>
+                                    <ImageIcon className="w-4 h-4 mr-2" /> Export as JPG
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport('svg')}>
+                                    <FileText className="w-4 h-4 mr-2" /> Export as SVG
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 

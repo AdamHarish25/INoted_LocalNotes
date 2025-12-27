@@ -40,7 +40,8 @@ import {
     ZoomIn,
     ZoomOut,
     Download,
-    Trash2
+    Trash2,
+    FileText
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -282,16 +283,65 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         setTimeout(() => setIsCopied(false), 2000)
     }
 
-    const handleExportImage = () => {
-        if (!canvasRef.current) return
+    const handleExportImage = (format: 'png' | 'jpg') => {
+        if (!elements.length) return
 
-        // Ensure everything is rendered cleanly
-        renderCanvas()
+        // Calculate Bounds
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        const updateBounds = (x: number, y: number) => {
+            minX = Math.min(minX, x)
+            minY = Math.min(minY, y)
+            maxX = Math.max(maxX, x)
+            maxY = Math.max(maxY, y)
+        }
 
-        // Create a temporary link
+        elements.forEach(el => {
+            updateBounds(el.x, el.y)
+            updateBounds(el.x + el.width, el.y + el.height)
+            if (el.points) {
+                el.points.forEach(p => updateBounds(p.x, p.y))
+            }
+        })
+
+        if (minX === Infinity) { minX = 0; minY = 0; maxX = 800; maxY = 600; }
+
+        const PADDING = 50
+        minX -= PADDING
+        minY -= PADDING
+        maxX += PADDING
+        maxY += PADDING
+
+        const width = maxX - minX
+        const height = maxY - minY
+
+        // Create Offscreen Canvas
+        const offCanvas = document.createElement('canvas')
+        offCanvas.width = width
+        offCanvas.height = height
+        const ctx = offCanvas.getContext('2d')
+        if (!ctx) return
+
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        ctx.font = '20px sans-serif'
+
+        // Fill Background
+        ctx.fillStyle = isDark ? '#000000' : '#ffffff'
+        ctx.fillRect(0, 0, width, height)
+
+        // Draw Elements (Translated)
+        ctx.translate(-minX, -minY)
+
+        elements.forEach(el => {
+            drawElement(ctx, el)
+        })
+
+        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
+        const dataUrl = offCanvas.toDataURL(mimeType, 0.9)
+
         const link = document.createElement('a')
-        link.download = `whiteboard-${roomId}.png`
-        link.href = canvasRef.current.toDataURL('image/png')
+        link.download = `whiteboard-${roomId}.${format}`
+        link.href = dataUrl
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -309,14 +359,34 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     }
 
     const handleExportSVG = () => {
-        if (!canvasRef.current) return
-        const width = canvasRef.current.width
-        const height = canvasRef.current.height
+        if (!elements.length) return
 
-        let svgContent = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        const updateBounds = (x: number, y: number) => {
+            minX = Math.min(minX, x)
+            minY = Math.min(minY, y)
+            maxX = Math.max(maxX, x)
+            maxY = Math.max(maxY, y)
+        }
+        elements.forEach(el => {
+            updateBounds(el.x, el.y)
+            updateBounds(el.x + el.width, el.y + el.height)
+            if (el.points) el.points.forEach(p => updateBounds(p.x, p.y))
+        })
+        if (minX === Infinity) { minX = 0; minY = 0; maxX = 800; maxY = 600; }
+
+        const PADDING = 50
+        minX -= PADDING
+        minY -= PADDING
+        maxX += PADDING
+        maxY += PADDING
+        const width = maxX - minX
+        const height = maxY - minY
+
+        let svgContent = `<svg width="${width}" height="${height}" viewBox="${minX} ${minY} ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`
 
         // Background
-        svgContent += `<rect width="100%" height="100%" fill="${isDark ? '#000000' : '#ffffff'}"/>`
+        svgContent += `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${isDark ? '#000000' : '#ffffff'}"/>`
 
         elements.forEach(el => {
             let stroke = el.strokeColor
@@ -1582,6 +1652,27 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                             {tool.icon}
                         </Button>
                     ))}
+
+                    <div className="w-px h-6 bg-slate-200 mx-1 shrink-0" />
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" title="Export">
+                                <Download className="w-5 h-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExportImage('png')}>
+                                <ImageIcon className="w-4 h-4 mr-2" /> Export as PNG
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExportImage('jpg')}>
+                                <ImageIcon className="w-4 h-4 mr-2" /> Export as JPG
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportSVG}>
+                                <FileText className="w-4 h-4 mr-2" /> Export as SVG
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 {/* Zoom Controls */}
