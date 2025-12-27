@@ -8,59 +8,79 @@ export async function GET(request: Request) {
     const next = searchParams.get("next") ?? "/dashboard";
     const origin = requestUrl.origin;
 
-    // --- CANONICAL URL ENFORCEMENT ---
-    // Ensure we are on the correct domain before exchanging code.
-    // This fixes issues where email links point to internal Netlify URLs (e.g. 6950...netlify.app)
-    // causing cookies to be set on the wrong domain.
-    let canonicalOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL;
+    // --- CLIENT-SIDE BOUNCE STRATEGY ---
+    // If user lands on an internal deployment URL (e.g. 6950...netlify.app),
+    // we MUST move them to the canonical domain (e.g. inoted-daily.netlify.app)
+    // BEFORE exchanging the code, otherwise cookies are set on the wrong domain.
+    // We use Client-Side redirect (HTML+JS) to avoid Server-Side Loop issues.
 
-    // Normalize canonical origin (remove trailing slash)
-    if (canonicalOrigin && canonicalOrigin.endsWith('/')) {
-        canonicalOrigin = canonicalOrigin.slice(0, -1);
-    }
+    let canonicalUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL;
 
-    // Determine protocol for comparison (ignore http/https mismatch on localhost usually, but important for prod)
-    if (canonicalOrigin) {
-        // Ensure protocol presence for the redirection URL construction
-        if (!canonicalOrigin.startsWith('http')) {
-            canonicalOrigin = `https://${canonicalOrigin}`;
+    if (canonicalUrl) {
+        // Normalized canonical handling
+        if (!canonicalUrl.startsWith('http')) {
+            canonicalUrl = `https://${canonicalUrl}`;
         }
 
-        let canonicalHost = new URL(canonicalOrigin).host;
-        let requestHost = requestUrl.host;
-
-        // Note: requestUrl.origin might report 'http' protocol on some platforms (like Vercel/Netlify) 
-        // even if served over https due to internal proxying. 
-        // So we strictly compare HOSTNAMES to avoid infinite redirect loops on protocol mismatch.
-
-        // If current host is different from canonical host (and not localhost)
+        const requestHost = requestUrl.host;
+        const canonicalHost = new URL(canonicalUrl).host;
         const isLocalhost = requestHost.includes('localhost') || requestHost.includes('127.0.0.1');
 
+        // If we are on the wrong domain (and not in dev), Bounce!
         if (!isLocalhost && requestHost !== canonicalHost) {
-            console.log(`Redirecting from host ${requestHost} to ${canonicalHost}`);
-            const redirectUrl = new URL(request.url);
-            redirectUrl.protocol = new URL(canonicalOrigin).protocol;
-            redirectUrl.host = canonicalHost;
-            redirectUrl.port = new URL(canonicalOrigin).port;
-            return NextResponse.redirect(redirectUrl);
+            const targetUrl = `${canonicalUrl}/auth/callback${requestUrl.search}`;
+
+            const html = `
+             <!DOCTYPE html>
+             <html>
+               <head>
+                 <meta charset="utf-8">
+                 <title>Redirecting...</title>
+                 <meta http-equiv="refresh" content="0;url=${targetUrl}">
+               </head>
+               <body style="background:#f9fafb; display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; color:#4b5563;">
+                 <div style="text-align:center;">
+                    <svg class="spinner" viewBox="0 0 50 50" style="width:50px; height:50px; margin-bottom:20px; animation: spin 1s linear infinite;">
+                        <circle cx="25" cy="25" r="20" fill="none" stroke="#3b82f6" stroke-width="5"></circle>
+                    </svg>
+                    <p>Securing your session...</p>
+                    <p style="font-size:0.8em; opacity:0.7;">Redirecting to ${canonicalHost}...</p>
+                 </div>
+                 <style>
+                    @keyframes spin { 100% { transform: rotate(360deg); } }
+                 </style>
+                 <script>
+                    window.location.href = "${targetUrl}";
+                 </script>
+               </body>
+             </html>`;
+
+            return new NextResponse(html, {
+                headers: { 'Content-Type': 'text/html' }
+            });
         }
     }
-    // --------------------------------
+    // ------------------------------------
+
+    // Use canonical URL for the final redirect destination if available
+    // But do NOT redirect the current request (avoids infinite loops on hosting platforms with internal proxying)
+    // This variable is now only used for the final redirect destination, not for the bounce check.
+    let finalRedirectOrigin = canonicalUrl || origin; // Use the already normalized canonicalUrl if it exists
 
     if (code) {
         const supabase = await createClient();
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
             // Using requestUrl.origin here is safe because we've already enforced canonical above (or we are on localhost/canonical already)
-            // But to be extra safe, use canonicalOrigin if available
-            const cleanOrigin = canonicalOrigin || origin;
+            // But to be extra safe, use finalRedirectOrigin if available
+            const cleanOrigin = finalRedirectOrigin || origin;
             return NextResponse.redirect(`${cleanOrigin}${next}`);
         }
         console.error("Auth Callback Error:", error);
-        const cleanOrigin = canonicalOrigin || origin;
+        const cleanOrigin = finalRedirectOrigin || origin;
         return NextResponse.redirect(`${cleanOrigin}/login?error=${encodeURIComponent(error.message)}`);
     }
 
-    const cleanOrigin = canonicalOrigin || origin;
+    const cleanOrigin = finalRedirectOrigin || origin;
     return NextResponse.redirect(`${cleanOrigin}/login?error=Could not authenticate user`);
 }
