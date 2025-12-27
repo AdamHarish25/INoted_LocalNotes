@@ -5,7 +5,7 @@ import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, Regul
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
@@ -15,7 +15,7 @@ import { useTheme } from "next-themes"
 
 interface FlowchartElement {
     id: string
-    type: 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'connection'
+    type: 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'connection' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud'
     x?: number
     y?: number
     width?: number
@@ -124,7 +124,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const [elements, setElements] = useState<FlowchartElement[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [editingId, setEditingId] = useState<string | null>(null) // Inline editing state
-    const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect'>('select')
+    const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud'>('select')
 
     // Viewport State
     const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
@@ -556,6 +556,16 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 newEl = { id, type: 'parallelogram', x: scenePos.x, y: scenePos.y, width: 120, height: 60, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'cylinder') {
                 newEl = { id, type: 'cylinder', x: scenePos.x, y: scenePos.y, width: 60, height: 80, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'triangle') {
+                newEl = { id, type: 'triangle', x: scenePos.x, y: scenePos.y, width: 80, height: 80, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'hexagon') {
+                newEl = { id, type: 'hexagon', x: scenePos.x, y: scenePos.y, width: 100, height: 80, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'trapezoid') {
+                newEl = { id, type: 'trapezoid', x: scenePos.x, y: scenePos.y, width: 100, height: 60, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'document') {
+                newEl = { id, type: 'document', x: scenePos.x, y: scenePos.y, width: 80, height: 100, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'cloud') {
+                newEl = { id, type: 'cloud', x: scenePos.x, y: scenePos.y, width: 100, height: 80, fill: defaultFill, stroke: defaultStroke }
             }
 
             if (newEl && yElementsRef.current) {
@@ -689,6 +699,13 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('diamond')} title="Decision" className={getToolClass('diamond')}><Diamond className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('parallelogram')} title="Data" className={getToolClass('parallelogram')}><Component className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('cylinder')} title="Database" className={getToolClass('cylinder')}><Database className="w-4 h-4" /></Button>
+                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('triangle')} title="Triangle (Merge)" className={getToolClass('triangle')}><Triangle className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('hexagon')} title="Hexagon (Preparation)" className={getToolClass('hexagon')}><Hexagon className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('trapezoid')} title="Trapezoid (Manual Op)" className={getToolClass('trapezoid')}><Hash className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('document')} title="Document" className={getToolClass('document')}><FileText className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveTool('cloud')} title="Cloud" className={getToolClass('cloud')}><CloudIcon className="w-4 h-4" /></Button>
+                <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('arrow')} title="Arrow" className={getToolClass('arrow')}><ArrowRight className="w-4 h-4" /></Button>
                 <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
                 <Button variant="ghost" size="icon" onClick={() => setActiveTool('text')} title="Text" className={getToolClass('text')}><Type className="w-4 h-4" /></Button>
@@ -944,6 +961,95 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                             listening={false}
                                         />
                                     </Group>
+                                )
+                            }
+
+                            else if (el.type === 'triangle') {
+                                return (
+                                    <RegularPolygon
+                                        key={el.id}
+                                        {...commonProps}
+                                        x={el.x! + (el.width || 80) / 2} // Center
+                                        y={el.y! + (el.height || 80) / 2 + 5} // Check visual center
+                                        sides={3}
+                                        radius={(el.width || 80) / 2}
+                                        fill={fill}
+                                        stroke={stroke}
+                                        rotation={el.rotation || 0}
+                                        scaleX={1}
+                                        scaleY={(el.height || 80) / (el.width || 80)} // Aspect ratio hack for RegularPolygon
+                                    />
+                                )
+                            } else if (el.type === 'hexagon') {
+                                return (
+                                    <RegularPolygon
+                                        key={el.id}
+                                        {...commonProps}
+                                        x={el.x! + (el.width || 100) / 2}
+                                        y={el.y! + (el.height || 80) / 2}
+                                        sides={6}
+                                        radius={(el.width || 100) / 2}
+                                        fill={fill}
+                                        stroke={stroke}
+                                        rotation={el.rotation || 0}
+                                        scaleX={1}
+                                        scaleY={(el.height || 80) / (el.width || 100)}
+                                    />
+                                )
+                            } else if (el.type === 'trapezoid') {
+                                const w = el.width || 100
+                                const h = el.height || 60
+                                return (
+                                    <Line
+                                        key={el.id}
+                                        {...commonProps}
+                                        x={el.x}
+                                        y={el.y}
+                                        points={[0, h, w * 0.2, 0, w * 0.8, 0, w, h]}
+                                        closed
+                                        fill={fill}
+                                        stroke={stroke}
+                                    />
+                                )
+                            } else if (el.type === 'document') {
+                                const w = el.width || 80
+                                const h = el.height || 100
+                                // Simple wave path at bottom
+                                // Start top-left
+                                // M 0 0 L w 0 L w h-20 Q w*0.75 h w*0.5 h-20 T 0 h-20 Z
+                                return (
+                                    <Path
+                                        key={el.id}
+                                        {...commonProps}
+                                        x={el.x}
+                                        y={el.y}
+                                        data={`M 0 0 L ${w} 0 L ${w} ${h - 15} Q ${w * 0.75} ${h} ${w * 0.5} ${h - 15} T 0 ${h - 15} Z`}
+                                        fill={fill}
+                                        stroke={stroke}
+                                        scaleX={1}
+                                        scaleY={1}
+                                    />
+                                )
+                            } else if (el.type === 'cloud') {
+                                const w = el.width || 100
+                                const h = el.height || 80
+                                // Simple cloud path
+                                // M 10,50 Q 20,40 30,50 Q 40,20 60,30 Q 80,10 90,40 Q 100,50 90,60 Q 90,90 60,80 Q 40,90 20,70 Q 0,70 10,50 Z
+                                // Scalable path is hard with raw string.
+                                // We can use SVG path viewbox scaling, but Konva Path data is absolute.
+                                // Let's use a normalized path and scale it with group or just approximated points relative to w/h.
+                                // Or standard simple path:
+                                return (
+                                    <Path
+                                        key={el.id}
+                                        {...commonProps}
+                                        x={el.x}
+                                        y={el.y}
+                                        // Simple approximation of a cloud shape
+                                        data={`M ${w * 0.1} ${h * 0.6} Q ${w * 0.2} ${h * 0.4} ${w * 0.3} ${h * 0.5} Q ${w * 0.4} ${h * 0.2} ${w * 0.6} ${h * 0.3} Q ${w * 0.8} ${h * 0.1} ${w * 0.9} ${h * 0.4} Q ${w} ${h * 0.5} ${w * 0.9} ${h * 0.6} Q ${w * 0.9} ${h * 0.9} ${w * 0.6} ${h * 0.8} Q ${w * 0.4} ${h * 0.9} ${w * 0.2} ${h * 0.7} Q 0 ${h * 0.7} ${w * 0.1} ${h * 0.6} Z`}
+                                        fill={fill}
+                                        stroke={stroke}
+                                    />
                                 )
                             }
 
