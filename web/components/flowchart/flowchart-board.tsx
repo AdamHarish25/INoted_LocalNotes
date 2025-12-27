@@ -966,50 +966,51 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
                             else if (el.type === 'triangle') {
                                 return (
-                                    <RegularPolygon
-                                        key={el.id}
-                                        {...commonProps}
-                                        x={el.x! + (el.width || 80) / 2} // Center
-                                        y={el.y! + (el.height || 80) / 2 + 5} // Check visual center
-                                        sides={3}
-                                        radius={(el.width || 80) / 2}
-                                        fill={fill}
-                                        stroke={stroke}
-                                        rotation={el.rotation || 0}
-                                        scaleX={1}
-                                        scaleY={(el.height || 80) / (el.width || 80)} // Aspect ratio hack for RegularPolygon
-                                    />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <RegularPolygon
+                                            x={(el.width || 80) / 2} // Center
+                                            y={(el.height || 80) / 2 + 5} // Check visual center
+                                            sides={3}
+                                            radius={(el.width || 80) / 2}
+                                            fill={fill}
+                                            stroke={stroke}
+                                            rotation={el.rotation || 0}
+                                            scaleX={1}
+                                            scaleY={(el.height || 80) / (el.width || 80)} // Aspect ratio hack for RegularPolygon
+                                        />
+                                        {renderText()}
+                                    </Group>
                                 )
                             } else if (el.type === 'hexagon') {
                                 return (
-                                    <RegularPolygon
-                                        key={el.id}
-                                        {...commonProps}
-                                        x={el.x! + (el.width || 100) / 2}
-                                        y={el.y! + (el.height || 80) / 2}
-                                        sides={6}
-                                        radius={(el.width || 100) / 2}
-                                        fill={fill}
-                                        stroke={stroke}
-                                        rotation={el.rotation || 0}
-                                        scaleX={1}
-                                        scaleY={(el.height || 80) / (el.width || 100)}
-                                    />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <RegularPolygon
+                                            x={(el.width || 100) / 2}
+                                            y={(el.height || 80) / 2}
+                                            sides={6}
+                                            radius={(el.width || 100) / 2}
+                                            fill={fill}
+                                            stroke={stroke}
+                                            rotation={el.rotation || 0}
+                                            scaleX={1}
+                                            scaleY={(el.height || 80) / (el.width || 100)}
+                                        />
+                                        {renderText()}
+                                    </Group>
                                 )
                             } else if (el.type === 'trapezoid') {
                                 const w = el.width || 100
                                 const h = el.height || 60
                                 return (
-                                    <Line
-                                        key={el.id}
-                                        {...commonProps}
-                                        x={el.x}
-                                        y={el.y}
-                                        points={[0, h, w * 0.2, 0, w * 0.8, 0, w, h]}
-                                        closed
-                                        fill={fill}
-                                        stroke={stroke}
-                                    />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Line
+                                            points={[0, h, w * 0.2, 0, w * 0.8, 0, w, h]}
+                                            closed
+                                            fill={fill}
+                                            stroke={stroke}
+                                        />
+                                        {renderText()}
+                                    </Group>
                                 )
                             } else if (el.type === 'document') {
                                 const w = el.width || 80
@@ -1018,17 +1019,16 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 // Start top-left
                                 // M 0 0 L w 0 L w h-20 Q w*0.75 h w*0.5 h-20 T 0 h-20 Z
                                 return (
-                                    <Path
-                                        key={el.id}
-                                        {...commonProps}
-                                        x={el.x}
-                                        y={el.y}
-                                        data={`M 0 0 L ${w} 0 L ${w} ${h - 15} Q ${w * 0.75} ${h} ${w * 0.5} ${h - 15} T 0 ${h - 15} Z`}
-                                        fill={fill}
-                                        stroke={stroke}
-                                        scaleX={1}
-                                        scaleY={1}
-                                    />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Path
+                                            data={`M 0 0 L ${w} 0 L ${w} ${h - 15} Q ${w * 0.75} ${h} ${w * 0.5} ${h - 15} T 0 ${h - 15} Z`}
+                                            fill={fill}
+                                            stroke={stroke}
+                                            scaleX={1}
+                                            scaleY={1}
+                                        />
+                                        {renderText()}
+                                    </Group>
                                 )
                             } else if (el.type === 'cloud') {
                                 const w = el.width || 100
@@ -1040,16 +1040,14 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 // Let's use a normalized path and scale it with group or just approximated points relative to w/h.
                                 // Or standard simple path:
                                 return (
-                                    <Path
-                                        key={el.id}
-                                        {...commonProps}
-                                        x={el.x}
-                                        y={el.y}
-                                        // Simple approximation of a cloud shape
-                                        data={`M ${w * 0.1} ${h * 0.6} Q ${w * 0.2} ${h * 0.4} ${w * 0.3} ${h * 0.5} Q ${w * 0.4} ${h * 0.2} ${w * 0.6} ${h * 0.3} Q ${w * 0.8} ${h * 0.1} ${w * 0.9} ${h * 0.4} Q ${w} ${h * 0.5} ${w * 0.9} ${h * 0.6} Q ${w * 0.9} ${h * 0.9} ${w * 0.6} ${h * 0.8} Q ${w * 0.4} ${h * 0.9} ${w * 0.2} ${h * 0.7} Q 0 ${h * 0.7} ${w * 0.1} ${h * 0.6} Z`}
-                                        fill={fill}
-                                        stroke={stroke}
-                                    />
+                                    <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                        <Path
+                                            data={`M ${w * 0.1} ${h * 0.6} Q ${w * 0.2} ${h * 0.4} ${w * 0.3} ${h * 0.5} Q ${w * 0.4} ${h * 0.2} ${w * 0.6} ${h * 0.3} Q ${w * 0.8} ${h * 0.1} ${w * 0.9} ${h * 0.4} Q ${w} ${h * 0.5} ${w * 0.9} ${h * 0.6} Q ${w * 0.9} ${h * 0.9} ${w * 0.6} ${h * 0.8} Q ${w * 0.4} ${h * 0.9} ${w * 0.2} ${h * 0.7} Q 0 ${h * 0.7} ${w * 0.1} ${h * 0.6} Z`}
+                                            fill={fill}
+                                            stroke={stroke}
+                                        />
+                                        {renderText()}
+                                    </Group>
                                 )
                             }
 
