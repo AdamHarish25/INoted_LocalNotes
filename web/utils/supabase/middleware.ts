@@ -58,6 +58,8 @@ export async function updateSession(request: NextRequest) {
         !hasNextAuthSession &&
         !request.nextUrl.pathname.startsWith('/login') &&
         !request.nextUrl.pathname.startsWith('/auth') &&
+        !request.nextUrl.pathname.startsWith('/forgot-password') &&
+        !request.nextUrl.pathname.startsWith('/update-password') &&
         !request.nextUrl.pathname.startsWith('/api') && // Allow API routes (including auth)
         request.nextUrl.pathname !== '/'
     ) {
