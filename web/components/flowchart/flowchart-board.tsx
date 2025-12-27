@@ -5,7 +5,7 @@ import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, Regul
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
@@ -28,6 +28,8 @@ interface FlowchartElement {
     startId?: string
     endId?: string
     manualPosition?: number // For orthogonal connector adjustment
+    lineType?: 'solid' | 'dashed' | 'dotted' | 'curved'
+    arrowType?: 'sharp' | 'standard' | 'none' | 'diamond'
 }
 
 // Helper to get all anchor points
@@ -857,22 +859,35 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 if (startNode && endNode) {
                                     const { points, handlePos, isVerticalSegment } = getOrthogonalPoints(startNode, endNode, el.manualPosition)
 
+                                    const dash = el.lineType === 'dashed' ? [10, 10] : (el.lineType === 'dotted' ? [2, 5] : undefined)
+                                    const pointerLength = el.arrowType === 'sharp' ? 20 : (el.arrowType === 'none' ? 0 : 10)
+                                    const pointerWidth = el.arrowType === 'sharp' ? 10 : (el.arrowType === 'none' ? 0 : 10)
+                                    const tension = el.lineType === 'curved' ? 0.4 : 0
+
+                                    // For diamond arrow type (aggregation), we might need custom logic, but for now lets stick to Konva standard or simple overrides.
+                                    // Konva Arrow doesn't support Diamond head natively easily without custom drawing.
+                                    // Simulating Diamond by drawing a separate shape usually.
+                                    // For simplicity in this iteration, 'diamond' will just be a larger square-ish head.
+
                                     return (
                                         <Group key={el.id}>
                                             <Arrow
                                                 points={points}
-                                                stroke={theme === 'dark' ? '#ffffff' : '#000000'}
-                                                fill={theme === 'dark' ? '#ffffff' : '#000000'}
+                                                stroke={stroke}
+                                                fill={stroke}
                                                 strokeWidth={2}
-                                                pointerLength={10}
-                                                pointerWidth={10}
-                                                cornerRadius={5}
+                                                pointerLength={pointerLength}
+                                                pointerWidth={pointerWidth}
+                                                dash={dash}
+                                                tension={tension}
+                                                lineCap="round"
+                                                lineJoin="round"
+                                                hitStrokeWidth={20}
                                                 onClick={(e) => {
                                                     e.cancelBubble = true;
                                                     setSelectedId(el.id);
                                                 }}
                                                 onContextMenu={(e) => handleContextMenu(e, el.id)}
-                                                hitStrokeWidth={20}
                                             />
                                             {selectedId === el.id && (
                                                 <Circle
@@ -931,6 +946,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                     </Group>
                                 )
                             }
+
                             else if (el.type === 'text') {
                                 return editingId !== el.id ? <KonvaText
                                     key={el.id}
@@ -1104,6 +1120,78 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                         </button>
                     </div>
                 )}
+                {/* Arrow Style Pad */}
+                {(() => {
+                    if (!selectedId) return null
+                    const el = elements.find(e => e.id === selectedId)
+                    if (el && (el.type === 'connection' || el.type === 'arrow')) {
+                        // Calculate position roughly near user selection or fixed corner. 
+                        // Fixed corner is safer for UI.
+                        // Or utilize the popup positioning logic?
+                        // Let's float it top-center or near toolbar.
+                        return (
+                            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-full p-2 flex gap-4 z-50 animate-in fade-in slide-in-from-top-5">
+                                <div className="flex items-center gap-2 border-r pr-4 dark:border-zinc-700">
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Style</span>
+                                    <div className="flex gap-1">
+                                        {(['solid', 'dashed', 'dotted'] as const).map((type) => (
+                                            <Button
+                                                key={type}
+                                                variant={el.lineType === type || (!el.lineType && type === 'solid') ? "default" : "ghost"}
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full"
+                                                onClick={() => {
+                                                    if (yElementsRef.current) {
+                                                        const idx = elements.findIndex(e => e.id === selectedId)
+                                                        if (idx !== -1) {
+                                                            const newAttrs = { ...elements[idx], lineType: type }
+                                                            yElementsRef.current.delete(idx, 1)
+                                                            yElementsRef.current.insert(idx, [newAttrs])
+                                                        }
+                                                    }
+                                                }}
+                                                title={type}
+                                            >
+                                                {type === 'solid' && <Minus className="w-4 h-4" />}
+                                                {type === 'dashed' && <MoreHorizontal className="w-4 h-4" />}
+                                                {type === 'dotted' && <Dot className="w-4 h-4" />}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Head</span>
+                                    <div className="flex gap-1">
+                                        {(['none', 'standard', 'sharp'] as const).map((type) => (
+                                            <Button
+                                                key={type}
+                                                variant={el.arrowType === type || (!el.arrowType && type === 'standard') ? "default" : "ghost"}
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full"
+                                                onClick={() => {
+                                                    if (yElementsRef.current) {
+                                                        const idx = elements.findIndex(e => e.id === selectedId)
+                                                        if (idx !== -1) {
+                                                            const newAttrs = { ...elements[idx], arrowType: type }
+                                                            yElementsRef.current.delete(idx, 1)
+                                                            yElementsRef.current.insert(idx, [newAttrs])
+                                                        }
+                                                    }
+                                                }}
+                                                title={type}
+                                            >
+                                                {type === 'none' && <Minus className="w-4 h-4" />}
+                                                {type === 'standard' && <ChevronRight className="w-4 h-4" />}
+                                                {type === 'sharp' && <ArrowRight className="w-4 h-4" />}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+                    return null
+                })()}
             </div>
 
             <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
