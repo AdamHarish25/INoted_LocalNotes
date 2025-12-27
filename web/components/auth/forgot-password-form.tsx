@@ -98,7 +98,7 @@ export function ForgotPasswordForm() {
 
             <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !captchaToken}
                 className="w-full rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white disabled:opacity-50"
             >
                 {isLoading ? "Sending..." : "Send Reset Link"}
