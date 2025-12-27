@@ -174,7 +174,7 @@ export function LoginContent() {
                             Password
                         </Label>
                         <div className="flex justify-end mt-1">
-                            <Link href="#" className="text-[10px] text-slate-300 hover:text-blue-500 underline">
+                            <Link href="/forgot-password" className="text-[10px] text-slate-300 hover:text-blue-500 underline">
                                 Forgot Password?
                             </Link>
                         </div>
