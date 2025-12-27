@@ -10,16 +10,15 @@ export async function forgotPassword(formData: FormData) {
     const captchaToken = formData.get("captchaToken") as string
 
     const headersList = await headers()
-    // 1. Prefer the request Origin header if present (browser automatically sends this on POST)
-    let origin = headersList.get("origin")
+    let origin: string | null = null;
 
-    // 2. If no Origin, check for explicit site URLs in environment variables
-    if (!origin) {
-        if (process.env.NEXT_PUBLIC_SITE_URL) {
-            origin = process.env.NEXT_PUBLIC_SITE_URL
-        } else if (process.env.NEXTAUTH_URL) {
-            origin = process.env.NEXTAUTH_URL
-        }
+    // 1. PRIORITY: Check explicit environment variables first
+    // This ensures production emails always point to the public domain (e.g., inoted-daily.netlify.app)
+    // instead of internal deployment URLs (e.g., 6950...netlify.app)
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+        origin = process.env.NEXT_PUBLIC_SITE_URL
+    } else if (process.env.NEXTAUTH_URL) {
+        origin = process.env.NEXTAUTH_URL
     }
 
     // Ensure origin has a protocol if pulled from env vars without one
@@ -27,11 +26,15 @@ export async function forgotPassword(formData: FormData) {
         origin = `https://${origin}`
     }
 
-    // 3. Fallback: Construct URL from Host header (Dynamic, works for localhost, Vercel previews, etc.)
+    // 2. Fallback: Prefer the request Origin header (Browser usually sends this)
+    if (!origin) {
+        origin = headersList.get("origin")
+    }
+
+    // 3. Last Resort: Construct URL from Host header
     if (!origin) {
         const host = headersList.get("host")
         if (host) {
-            // Determine protocol: HTTP for localhost, HTTPS for everything else (Production)
             const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https'
             origin = `${protocol}://${host}`
         }
