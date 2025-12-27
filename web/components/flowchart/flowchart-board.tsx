@@ -5,7 +5,7 @@ import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, Regul
 import { HocuspocusProvider } from "@hocuspocus/provider"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon, MonitorOff } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
@@ -137,6 +137,18 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     // Window Size State to prevent hydration mismatch
     const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 })
     const { theme } = useTheme()
+
+    // Mobile Detection
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768)
+        }
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
     // Context Menu State
     const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, elementId: string | null }>({ visible: false, x: 0, y: 0, elementId: null })
@@ -684,6 +696,27 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             }
         }
         setIsTextDialogOpen(false)
+    }
+
+    if (isMobile) {
+        return (
+            <div className="flex flex-col h-screen w-full items-center justify-center bg-slate-50 dark:bg-zinc-950 p-4 text-center">
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-zinc-800 max-w-md w-full flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400">
+                        <MonitorOff className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-zinc-100">
+                        Device Not Supported
+                    </h2>
+                    <p className="text-slate-600 dark:text-zinc-400 mb-8">
+                        This page is only for tablets or desktops. Please access this page from a larger screen to edit flowcharts.
+                    </p>
+                    <Button asChild className="w-full">
+                        <Link href="/dashboard">Back to Dashboard</Link>
+                    </Button>
+                </div>
+            </div>
+        )
     }
 
     return (
