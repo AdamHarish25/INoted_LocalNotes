@@ -314,30 +314,47 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         const width = maxX - minX
         const height = maxY - minY
 
-        // Create Offscreen Canvas
-        const offCanvas = document.createElement('canvas')
-        offCanvas.width = width
-        offCanvas.height = height
-        const ctx = offCanvas.getContext('2d')
-        if (!ctx) return
+        // 1. Create Transparent Content Layer
+        const contentCanvas = document.createElement('canvas')
+        contentCanvas.width = width
+        contentCanvas.height = height
+        const cCtx = contentCanvas.getContext('2d')
+        if (!cCtx) return
 
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
-        ctx.font = '20px sans-serif'
+        cCtx.lineCap = 'round'
+        cCtx.lineJoin = 'round'
+        cCtx.font = '20px sans-serif'
+        cCtx.translate(-minX, -minY)
 
-        // Fill Background
-        ctx.fillStyle = isDark ? '#000000' : '#ffffff'
-        ctx.fillRect(0, 0, width, height)
-
-        // Draw Elements (Translated)
-        ctx.translate(-minX, -minY)
-
+        // Draw all elements (Erasers will cut transparent holes in strokes)
+        // Draw all elements (Erasers will cut transparent holes in strokes)
         elements.forEach(el => {
-            drawElement(ctx, el)
+            // Re-use the existing draw logic which handles correct eraser composition (destination-out)
+            drawElement(cCtx, el, true)
         })
 
-        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
-        const dataUrl = offCanvas.toDataURL(mimeType, 0.9)
+        let dataUrl = ''
+
+        if (format === 'png') {
+            // Export Transparent Content Directly
+            dataUrl = contentCanvas.toDataURL('image/png')
+        } else {
+            // JPG requires a background
+            const bgCanvas = document.createElement('canvas')
+            bgCanvas.width = width
+            bgCanvas.height = height
+            const bCtx = bgCanvas.getContext('2d')
+            if (!bCtx) return
+
+            // Fill Background
+            bCtx.fillStyle = isDark ? '#000000' : '#ffffff'
+            bCtx.fillRect(0, 0, width, height)
+
+            // Composite Content on top
+            bCtx.drawImage(contentCanvas, 0, 0)
+
+            dataUrl = bgCanvas.toDataURL('image/jpeg', 0.9)
+        }
 
         const link = document.createElement('a')
         link.download = `whiteboard-${roomId}.${format}`
@@ -383,19 +400,41 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         const width = maxX - minX
         const height = maxY - minY
 
+        // SVG Construction
         let svgContent = `<svg width="${width}" height="${height}" viewBox="${minX} ${minY} ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`
 
-        // Background
-        svgContent += `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${isDark ? '#000000' : '#ffffff'}"/>`
+        // --- 1. Define Mask for Erasers ---
+        // Used to create true transparency where erasers are
+        svgContent += `<defs><mask id="eraserMask">`
+        // White rect reveals everything
+        svgContent += `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="white"/>`
 
-        elements.forEach(el => {
-            let stroke = el.strokeColor
-            if (isDark) {
-                if (stroke === 'black' || stroke === '#000000') stroke = 'white'
-                else if (stroke === 'white' || stroke === '#ffffff') stroke = 'black'
-            } else {
-                if (stroke === 'white' || stroke === '#ffffff') stroke = 'black'
+        // Draw erasers as black strokes (hiding content)
+        const erasers = elements.filter(el => el.type === 'eraser')
+        erasers.forEach(el => {
+            const sw = el.strokeWidth || 2
+            if (el.points && el.points.length > 0) {
+                const d = el.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+                svgContent += `<path d="${d}" stroke="black" stroke-width="${sw * 2.5}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
             }
+        })
+        svgContent += `</mask></defs>`
+
+        // --- 2. Group for Content (Apply Mask) ---
+        svgContent += `<g mask="url(#eraserMask)">`
+
+        // NO Background Rect -> Transparent Output
+
+        const contentElements = elements.filter(el => el.type !== 'eraser')
+
+        contentElements.forEach(el => {
+            let stroke = el.strokeColor
+
+            // Force Black for export (User Request)
+            if (stroke === 'white' || stroke === '#ffffff' || stroke === 'black' || stroke === '#000000') {
+                stroke = 'black'
+            }
+            // Keep other colors (red, blue, etc) as is
 
             const sw = el.strokeWidth || 2
 
@@ -404,18 +443,15 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                     svgContent += `<rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" stroke="${stroke}" stroke-width="${sw}" fill="none"/>`
                     break
                 case 'circle':
-                    // el.x/y is top-left, width is width. ellipse cx = x + w/2
                     svgContent += `<ellipse cx="${el.x + el.width / 2}" cy="${el.y + el.height / 2}" rx="${Math.abs(el.width / 2)}" ry="${Math.abs(el.height / 2)}" stroke="${stroke}" stroke-width="${sw}" fill="none"/>`
                     break
                 case 'line':
                     svgContent += `<line x1="${el.x}" y1="${el.y}" x2="${el.x + el.width}" y2="${el.y + el.height}" stroke="${stroke}" stroke-width="${sw}"/>`
                     break
                 case 'arrow':
-                    // Main line
                     const endX = el.x + el.width
                     const endY = el.y + el.height
                     svgContent += `<line x1="${el.x}" y1="${el.y}" x2="${endX}" y2="${endY}" stroke="${stroke}" stroke-width="${sw}"/>`
-                    // Arrowhead
                     const angle = Math.atan2(endY - el.y, endX - el.x)
                     const headLen = 10 + sw
                     const x1 = endX - headLen * Math.cos(angle - Math.PI / 6)
@@ -425,19 +461,13 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                     svgContent += `<path d="M ${endX} ${endY} L ${x1} ${y1} M ${endX} ${endY} L ${x2} ${y2}" stroke="${stroke}" stroke-width="${sw}" fill="none"/>`
                     break
                 case 'pencil':
-                case 'eraser':
                     if (el.points && el.points.length > 0) {
                         const d = el.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-                        // For eraser, we might want to mask? SVG doesn't do 'destination-out' easily without masks.
-                        // For now, if eraser, we just paint background color line?
-                        const finalS = el.type === 'eraser' ? (isDark ? 'black' : 'white') : stroke
-                        const finalW = el.type === 'eraser' ? (sw * 2.5) : sw
-                        svgContent += `<path d="${d}" stroke="${finalS}" stroke-width="${finalW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+                        svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
                     }
                     break
                 case 'text':
                     if (el.text) {
-                        // Escape text
                         const escaped = el.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
                         svgContent += `<text x="${el.x}" y="${el.y + 20}" fill="${stroke}" font-family="${el.fontFamily || 'sans-serif'}" font-size="20" text-anchor="${(el.textAlign === 'center' ? 'middle' : (el.textAlign === 'right' ? 'end' : 'start'))}">${escaped}</text>`
                     }
@@ -450,7 +480,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
             }
         })
 
-        svgContent += `</svg>`
+        svgContent += `</g></svg>`
 
         const blob = new Blob([svgContent], { type: 'image/svg+xml' })
         const link = document.createElement('a')
@@ -728,22 +758,33 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     }, [elements, currentElement, context, panOffset, zoom, isDark])
 
     // Helper to draw a single element
-    const drawElement = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
+    const drawElement = (ctx: CanvasRenderingContext2D, element: CanvasElement, exportMode: boolean = false) => {
         const { type, x, y, width, height, strokeColor, points, text, strokeWidth } = element
 
-        // Invert colors for Dark Mode
+        // Logic for Export: Force 'Default' Black vectors
+        // If exportMode is true, we want standard "Light Mode" appearance usually, 
+        // but specifically the user asked "vector made black only".
+        // This means we should treat the primary stroke as Black regardless of what it is stored as, if it is a contrast color.
+
         let finalColor = strokeColor
-        if (isDark) {
-            if (strokeColor === 'black' || strokeColor === '#000000') finalColor = 'white'
-            else if (strokeColor === 'white' || strokeColor === '#ffffff') finalColor = 'black'
+
+        if (exportMode) {
+            // Force Black for contrast colors
+            if (strokeColor === 'white' || strokeColor === '#ffffff' || strokeColor === 'black' || strokeColor === '#000000') {
+                finalColor = 'black'
+            }
+            // If it's another color (red, blue), keep it? 
+            // "vector nya dibuat hitam saja" -> "vector made black only" could mean MONOCHROME?
+            // "Default vector" might mean the standard drawing lines.
+            // Let's assume they mean standard contrast lines.
         } else {
-            // In light mode, if something was saved as 'white' (from dark mode creation maybe?), it should be black?
-            // The prompt implies content created in light mode (black) should become white in dark mode.
-            // Implies we store 'black' and render 'white'.
-            // Conversely, if we create in Dark Mode, do we store 'white'?
-            // If we store 'white', then in Light Mode it should be 'black'.
-            // So: Black <-> White inversion.
-            if (strokeColor === 'white' || strokeColor === '#ffffff') finalColor = 'black'
+            // Invert colors for Dark Mode (Display logic)
+            if (isDark) {
+                if (strokeColor === 'black' || strokeColor === '#000000') finalColor = 'white'
+                else if (strokeColor === 'white' || strokeColor === '#ffffff') finalColor = 'black'
+            } else {
+                if (strokeColor === 'white' || strokeColor === '#ffffff') finalColor = 'black'
+            }
         }
 
         // Don't apply styles for image (except maybe selection border later)
