@@ -1001,52 +1001,87 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     const isShape = el.type !== 'text' && el.type !== 'connection' && el.type !== 'arrow'
                     const w = el.width || (el.type === 'text' ? 200 : 100)
                     const h = el.height || (el.type === 'text' ? 40 : 60)
-                    const bgFill = el.fill ? getRenderFill(el.fill) : (theme === 'dark' ? 'transparent' : '#ffffff')
 
-                    // Approximate centering for textarea padding if it's a shape
-                    const paddingTop = isShape ? Math.max(0, (h / 2) - 10) : 0
+                    // Calculate Screen Coordinates for positioning the popup
+                    const screenX = (el.x || 0) * stageScale + stagePos.x
+                    const screenY = (el.y || 0) * stageScale + stagePos.y
+                    const screenW = w * stageScale
+                    const screenH = h * stageScale
+
+                    // Position popup to the right of the element
+                    const popupLeft = screenX + screenW + 10
+                    const popupTop = screenY
 
                     return (
-                        <textarea
-                            value={textInput}
-                            onChange={(e) => setTextInput(e.target.value)}
-                            onBlur={() => {
-                                if (yElementsRef.current) {
-                                    const idx = elements.findIndex(e => e.id === editingId)
-                                    if (idx !== -1) {
-                                        const newAttrs = { ...elements[idx], text: textInput }
-                                        yElementsRef.current.delete(idx, 1)
-                                        yElementsRef.current.insert(idx, [newAttrs])
-                                    }
-                                }
-                                setEditingId(null)
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault()
-                                    e.currentTarget.blur()
-                                }
-                            }}
-                            autoFocus
+                        <div
+                            className="absolute z-50 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xl rounded-lg p-3 min-w-[250px] animate-in fade-in zoom-in-95"
                             style={{
-                                position: 'absolute',
-                                top: el.y,
-                                left: el.x,
-                                width: w,
-                                height: h,
-                                color: isShape ? getContrastingTextColor(bgFill) : (theme === 'dark' ? '#fff' : '#000'),
-                                background: 'transparent',
-                                border: '1px dashed #3b82f6',
-                                textAlign: 'center',
-                                resize: 'none',
-                                outline: 'none',
-                                paddingTop: `${paddingTop}px`,
-                                fontSize: '14px',
-                                fontFamily: 'sans-serif',
-                                lineHeight: '1.2'
+                                left: popupLeft,
+                                top: popupTop,
                             }}
-                            className="z-50 bg-transparent focus:ring-0"
-                        />
+                        >
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Edit Text</span>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 rounded-full"
+                                    onClick={() => setEditingId(null)}
+                                >
+                                    <span className="sr-only">Close</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                </Button>
+                            </div>
+                            <textarea
+                                value={textInput}
+                                onChange={(e) => setTextInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault()
+                                        // Trigger Save
+                                        if (yElementsRef.current) {
+                                            const idx = elements.findIndex(e => e.id === editingId)
+                                            if (idx !== -1) {
+                                                const newAttrs = { ...elements[idx], text: textInput }
+                                                yElementsRef.current.delete(idx, 1)
+                                                yElementsRef.current.insert(idx, [newAttrs])
+                                            }
+                                        }
+                                        setEditingId(null)
+                                    }
+                                }}
+                                placeholder="Enter text..."
+                                autoFocus
+                                className="w-full min-h-[80px] p-2 text-sm rounded border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y mb-2 text-slate-900 dark:text-slate-100"
+                            />
+                            <div className="flex justify-end gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs h-7"
+                                    onClick={() => setEditingId(null)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={() => {
+                                        if (yElementsRef.current) {
+                                            const idx = elements.findIndex(e => e.id === editingId)
+                                            if (idx !== -1) {
+                                                const newAttrs = { ...elements[idx], text: textInput }
+                                                yElementsRef.current.delete(idx, 1)
+                                                yElementsRef.current.insert(idx, [newAttrs])
+                                            }
+                                        }
+                                        setEditingId(null)
+                                    }}
+                                >
+                                    Save
+                                </Button>
+                            </div>
+                        </div>
                     )
                 })()}
                 {/* Context Menu HTML Overlay */}
