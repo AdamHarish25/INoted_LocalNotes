@@ -98,6 +98,7 @@ export default async function WorkspaceDashboardPage(props: {
     const { data: workspaces } = await supabase
         .from("workspaces")
         .select("*")
+        .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
 
     return (
