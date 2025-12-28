@@ -979,20 +979,8 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
                     addText()
                 } else if (el.type === 'cloud') {
-                    // Cloud path approximation
-                    // Simple series of arcs. 
-                    // M 20 60 A 20 20 0 0 1 50 40 A 30 30 0 0 1 110 50 A 25 25 0 0 1 120 80 A 20 20 0 0 1 90 100 Q 50 110 20 90 A 20 20 0 0 1 20 60
-                    // Scaled logic is hard. Using a simple elliptical path or rect-like cloud. 
-                    // Let's rely on a simplified path relative to bbox.
-                    // Or reuse the Konva path data if we knew it?
-                    // Approximating with 4 arcs?
-                    // Let's use a path that looks 'cloudy'.
-                    const p = `M ${elX + w * 0.2} ${elY + h * 0.8} 
-                               A ${w * 0.15} ${h * 0.3} 0 0 1 ${elX + w * 0.3} ${elY + h * 0.3}
-                               A ${w * 0.3} ${h * 0.5} 0 0 1 ${elX + w * 0.7} ${elY + h * 0.3}
-                               A ${w * 0.15} ${h * 0.3} 0 0 1 ${elX + w * 0.8} ${elY + h * 0.8}
-                               Q ${elX + w * 0.5} ${elY + h * 1.1} ${elX + w * 0.2} ${elY + h * 0.8} Z`
-                    svgContent += `<path d="${p}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    const d = `M ${w * 0.1} ${h * 0.6} Q ${w * 0.2} ${h * 0.4} ${w * 0.3} ${h * 0.5} Q ${w * 0.4} ${h * 0.2} ${w * 0.6} ${h * 0.3} Q ${w * 0.8} ${h * 0.1} ${w * 0.9} ${h * 0.4} Q ${w} ${h * 0.5} ${w * 0.9} ${h * 0.6} Q ${w * 0.9} ${h * 0.9} ${w * 0.6} ${h * 0.8} Q ${w * 0.4} ${h * 0.9} ${w * 0.2} ${h * 0.7} Q 0 ${h * 0.7} ${w * 0.1} ${h * 0.6} Z`
+                    svgContent += `<g transform="translate(${elX}, ${elY})"><path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/></g>`
                     addText()
                 } else if (el.type === 'hexagon') {
                     const d = `M ${elX + w * 0.2} ${elY} L ${elX + w * 0.8} ${elY} L ${elX + w} ${elY + h / 2} L ${elX + w * 0.8} ${elY + h} L ${elX + w * 0.2} ${elY + h} L ${elX} ${elY + h / 2} Z`
