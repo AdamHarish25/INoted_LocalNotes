@@ -21,7 +21,7 @@ export default async function NoteDashboardPage(props: { searchParams?: Promise<
     const isGuest = user?.is_anonymous ?? false;
 
     if (!user) {
-        redirect("/login")
+        redirect("/login?next=/notes")
     }
 
     // Fetch Notes

@@ -5,23 +5,24 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Check, Github, Twitter, Menu, X, Play, Code, Cloud, Share2, GitBranch, RefreshCw, PenTool, LayoutDashboard, FileText, Network, Settings, Folder, MousePointer2 } from "lucide-react"
-import { useState, useLayoutEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { useState, useLayoutEffect, useEffect, useRef } from "react"
 import { ModeToggle } from "@/components/mode-toggle"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 
 export default function LandingPage() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const router = useRouter()
     const mainRef = useRef(null)
 
     // Redirection Logic: If user visits landing page while logged in, redirect to dashboard
-    useLayoutEffect(() => {
+    useEffect(() => {
         const checkSession = async () => {
             const { getAuthenticatedUser } = await import("@/app/actions")
             const user = await getAuthenticatedUser()
             if (user) {
-                // Use native browser redirect properly
-                window.location.href = "/dashboard"
+                router.push("/dashboard")
             }
         }
         checkSession()
