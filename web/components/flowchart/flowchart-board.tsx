@@ -964,8 +964,38 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     addText()
                 } else if (el.type === 'triangle') {
                     // RegularPolygon 3 sides. Center at elX + w/2, elY + h/2
-                    // Approximating with path M top-mid L bottom-right L bottom-left Z
                     const d = `M ${elX + w / 2} ${elY} L ${elX + w} ${elY + h} L ${elX} ${elY + h} Z`
+                    svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'trapezoid') {
+                    const d = `M ${elX + w * 0.2} ${elY} L ${elX + w * 0.8} ${elY} L ${elX + w} ${elY + h} L ${elX} ${elY + h} Z`
+                    svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'document') {
+                    // Document shape with wave bottom
+                    // M 0 0 L w 0 L w h-10 Q w/2 h+10 0 h-10 Z (approx)
+                    // translated:
+                    const d = `M ${elX} ${elY} L ${elX + w} ${elY} L ${elX + w} ${elY + h - 10} Q ${elX + w / 2} ${elY + h + 10} ${elX} ${elY + h - 10} Z`
+                    svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'cloud') {
+                    // Cloud path approximation
+                    // Simple series of arcs. 
+                    // M 20 60 A 20 20 0 0 1 50 40 A 30 30 0 0 1 110 50 A 25 25 0 0 1 120 80 A 20 20 0 0 1 90 100 Q 50 110 20 90 A 20 20 0 0 1 20 60
+                    // Scaled logic is hard. Using a simple elliptical path or rect-like cloud. 
+                    // Let's rely on a simplified path relative to bbox.
+                    // Or reuse the Konva path data if we knew it?
+                    // Approximating with 4 arcs?
+                    // Let's use a path that looks 'cloudy'.
+                    const p = `M ${elX + w * 0.2} ${elY + h * 0.8} 
+                               A ${w * 0.15} ${h * 0.3} 0 0 1 ${elX + w * 0.3} ${elY + h * 0.3}
+                               A ${w * 0.3} ${h * 0.5} 0 0 1 ${elX + w * 0.7} ${elY + h * 0.3}
+                               A ${w * 0.15} ${h * 0.3} 0 0 1 ${elX + w * 0.8} ${elY + h * 0.8}
+                               Q ${elX + w * 0.5} ${elY + h * 1.1} ${elX + w * 0.2} ${elY + h * 0.8} Z`
+                    svgContent += `<path d="${p}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
+                    addText()
+                } else if (el.type === 'hexagon') {
+                    const d = `M ${elX + w * 0.2} ${elY} L ${elX + w * 0.8} ${elY} L ${elX + w} ${elY + h / 2} L ${elX + w * 0.8} ${elY + h} L ${elX + w * 0.2} ${elY + h} L ${elX} ${elY + h / 2} Z`
                     svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
                     addText()
                 } else if (el.type === 'connection' && el.startId && el.endId) {
@@ -978,7 +1008,13 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                         for (let i = 2; i < pts.length; i += 2) {
                             d += ` L ${pts[i]} ${pts[i + 1]}`
                         }
-                        svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="none" stroke-linejoin="round"/>`
+
+                        let dashArray = ''
+                        if (el.lineType === 'dashed') dashArray = 'stroke-dasharray="10,10"'
+                        else if (el.lineType === 'dotted') dashArray = 'stroke-dasharray="3,3"'
+
+                        svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="none" stroke-linejoin="round" ${dashArray} />`
+
                         // Handle simple arrow head at end
                         const lastX = pts[pts.length - 2]
                         const lastY = pts[pts.length - 1]
@@ -1001,13 +1037,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 }
 
                 // Add more shapes as needed (trapezoid, hexagon, etc) strictly if requested or fallback to simple rect
-                // Hexagon
-                else if (el.type === 'hexagon') {
-                    // 6 sides
-                    const d = `M ${elX + w * 0.2} ${elY} L ${elX + w * 0.8} ${elY} L ${elX + w} ${elY + h / 2} L ${elX + w * 0.8} ${elY + h} L ${elX + w * 0.2} ${elY + h} L ${elX} ${elY + h / 2} Z`
-                    svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
-                    addText()
-                }
+
             })
 
             svgContent += `</svg>`
