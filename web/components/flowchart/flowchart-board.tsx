@@ -128,7 +128,15 @@ const COLORS = ['#ef4444', '#3b82f6', '#22c5e', '#eab308', '#a855f7', '#000000',
 
 export default function FlowchartBoard({ roomId, initialData }: { roomId: string, initialData?: any[] }) {
     const [elements, setElements] = useState<FlowchartElement[]>([])
-    const [selectedId, setSelectedId] = useState<string | null>(null)
+    // Multi-Selection State
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    // Backward compatibility for single select (derived or legacy)
+    const selectedId = selectedIds.length > 0 ? selectedIds[selectedIds.length - 1] : null
+    const setSelectedId = (id: string | null) => {
+        if (id) setSelectedIds([id])
+        else setSelectedIds([])
+    }
+
     const [editingId, setEditingId] = useState<string | null>(null) // Inline editing state
     const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud'>('select')
 
@@ -140,7 +148,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     // Drag-to-connect state
     const [drawingArrow, setDrawingArrow] = useState<{ startId: string, endPos: { x: number, y: number }, snappedTo?: { nodeId: string, side: string } } | null>(null)
 
-    // Window Size State to prevent hydration mismatch
+    // Window Size State
     const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 })
     const { theme } = useTheme()
 
@@ -170,15 +178,11 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const stageRef = useRef<any>(null)
     const transformerRef = useRef<any>(null)
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
-    // const supabase = createClient()
 
     // Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space' && !editingId) {
-                // Prevent scrolling page when pressing space
-                // e.preventDefault() // Might block other native things? Use carefully.
-                // Actually, only preventing if we are focusing the body, otherwise text inputs need space.
                 if (document.activeElement === document.body) {
                     e.preventDefault()
                     setIsSpacePressed(true)
@@ -190,12 +194,33 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             }
             if ((e.ctrlKey || e.metaKey) && e.key === '-') {
                 e.preventDefault()
-                handleZoom(0.9) // 1/1.1 approx 0.9
+                handleZoom(0.9)
             }
             if ((e.ctrlKey || e.metaKey) && e.key === '0') {
                 e.preventDefault()
                 setStageScale(1)
                 setStagePos({ x: 0, y: 0 })
+            }
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement === document.body && !editingId) {
+                    // Trigger delete
+                    // We can't call handleDeleteElement directly if it relies on contextMenu state which might be empty
+                    // But we have selectedIds
+                    if (selectedIds.length > 0 && yElementsRef.current) {
+                        const indices: number[] = []
+                        selectedIds.forEach(id => {
+                            const idx = elements.findIndex(el => el.id === id)
+                            if (idx !== -1) indices.push(idx)
+                        })
+                        indices.sort((a, b) => b - a)
+                        ydocRef.current?.transact(() => {
+                            indices.forEach(idx => {
+                                yElementsRef.current?.delete(idx, 1)
+                            })
+                        })
+                        setSelectedIds([])
+                    }
+                }
             }
         }
 
@@ -211,7 +236,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             window.removeEventListener('keydown', handleKeyDown)
             window.removeEventListener('keyup', handleKeyUp)
         }
-    }, [editingId, stageScale]) // Depend on stageScale for zoom handler closure if needed (or use functional update)
+    }, [editingId, stageScale, selectedIds, elements])
 
     // Handle Window Resize
     useEffect(() => {
@@ -226,13 +251,10 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }, [])
 
     // Helper: Dark Mode Color Adapter
-    // If the saved stroke is black (default), and we are in dark mode, render it white.
-    // And vice-versa, or keep it consistent? 
-    // Usually, users want "default ink" to contrast with background.
     const getRenderColor = (color: string | undefined) => {
-        if (!color) return theme === 'dark' ? '#ffffff' : '#000000' // default
+        if (!color) return theme === 'dark' ? '#ffffff' : '#000000'
         if (color === '#000000' && theme === 'dark') return '#ffffff'
-        if (color === '#ffffff' && theme === 'dark') return '#000000' // rare but possible
+        if (color === '#ffffff' && theme === 'dark') return '#000000'
         return color
     }
 
@@ -266,21 +288,15 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             setSaveStatus('saving')
             try {
                 const { updateFlowchart } = await import("@/app/actions")
-                // Sanitize elements
                 const sanitizedElements = JSON.parse(JSON.stringify(elements))
-
                 const result = await updateFlowchart(roomId, { content: sanitizedElements })
-
-                if (result.error) {
-                    console.error("Supabase Save Error:", result.error)
-                }
+                if (result.error) console.error("Supabase Save Error:", result.error)
             } catch (err) {
                 console.error("Save failed:", err)
             } finally {
                 setSaveStatus('saved')
             }
         }
-
         const timeoutId = setTimeout(saveToDb, 2000)
         return () => clearTimeout(timeoutId)
     }, [elements, roomId])
@@ -317,47 +333,27 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
     // Update Transformer
     useEffect(() => {
-        if (selectedId && transformerRef.current && stageRef.current) {
-            const node = stageRef.current.findOne('#' + selectedId)
-            if (node) {
-                transformerRef.current.nodes([node])
-                transformerRef.current.getLayer().batchDraw()
-            } else {
-                transformerRef.current.nodes([])
-            }
+        if (selectedIds.length > 0 && transformerRef.current && stageRef.current) {
+            const nodes = selectedIds.map(id => stageRef.current.findOne('#' + id)).filter(Boolean)
+            transformerRef.current.nodes(nodes)
+            transformerRef.current.getLayer().batchDraw()
         } else if (transformerRef.current) {
             transformerRef.current.nodes([])
         }
-    }, [selectedId, elements])
+    }, [selectedIds, elements])
 
     const handleZoom = (factor: number, center?: { x: number, y: number }) => {
         setStageScale(oldScale => {
             const newScale = oldScale * factor
-            // Clamp zoom
             if (newScale < 0.1 || newScale > 5) return oldScale
-
-            // If center provided, zoom towards it (mouse position)
-            // Logic handled in wheel event usually, but for buttons we zoom center screen
             if (!center && stageRef.current) {
-                // Center of viewport
                 const stage = stageRef.current
-                const viewCenter = {
-                    x: stage.width() / 2,
-                    y: stage.height() / 2
-                }
+                const viewCenter = { x: stage.width() / 2, y: stage.height() / 2 }
                 const oldPos = stage.position()
-                const mousePointTo = {
-                    x: (viewCenter.x - oldPos.x) / oldScale,
-                    y: (viewCenter.y - oldPos.y) / oldScale,
-                }
-
-                const newPos = {
-                    x: viewCenter.x - mousePointTo.x * newScale,
-                    y: viewCenter.y - mousePointTo.y * newScale,
-                }
+                const mousePointTo = { x: (viewCenter.x - oldPos.x) / oldScale, y: (viewCenter.y - oldPos.y) / oldScale }
+                const newPos = { x: viewCenter.x - mousePointTo.x * newScale, y: viewCenter.y - mousePointTo.y * newScale }
                 setStagePos(newPos)
             }
-
             return newScale
         })
     }
@@ -366,87 +362,109 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         e.evt.preventDefault()
         const stage = stageRef.current
         if (!stage) return
-
-        // 1. Zoom (Ctrl + Wheel)
         if (e.evt.ctrlKey || e.evt.metaKey) {
             const oldScale = stage.scaleX()
             const pointer = stage.getPointerPosition()
-
-            const mousePointTo = {
-                x: (pointer.x - stage.x()) / oldScale,
-                y: (pointer.y - stage.y()) / oldScale,
-            }
-
-            // Normal scroll is usually 100 per tick. Normalize direction.
-            // e.evt.deltaY > 0 -> Scroll Down -> Zoom Out
+            const mousePointTo = { x: (pointer.x - stage.x()) / oldScale, y: (pointer.y - stage.y()) / oldScale }
             const direction = e.evt.deltaY > 0 ? -1 : 1
             const scaleBy = 1.1
             const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy
-
-            // Limit bounds
             if (newScale < 0.1 || newScale > 10) return
-
             setStageScale(newScale)
-
-            const newPos = {
-                x: pointer.x - mousePointTo.x * newScale,
-                y: pointer.y - mousePointTo.y * newScale,
-            }
-            setStagePos(newPos)
+            setStagePos({ x: pointer.x - mousePointTo.x * newScale, y: pointer.y - mousePointTo.y * newScale })
         } else {
-            // 2. Panning (Touchpad scroll or Shift+Scroll)
-            // On trackpad, deltaX and deltaY act as panning
             const dx = -e.evt.deltaX
             const dy = -e.evt.deltaY
-
-            setStagePos(prev => ({
-                x: prev.x + dx,
-                y: prev.y + dy
-            }))
+            setStagePos(prev => ({ x: prev.x + dx, y: prev.y + dy }))
         }
     }
 
+    // Selection Box Layer
+    const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null)
+
+    // Selection Handling
     const handleStageMouseDown = (e: any) => {
-        // If Spacebar is pressed, we are dragging the stage, bubbling is fine (konva handles drag)
-        // If Hand Tool is active, same.
-
         const stage = e.target.getStage()
-        const pos = stage.getPointerPosition() // This is relative to stage top-left, adjusted by transform?
-        // Actually getPointerPosition gives {x, y} coordinate relative to the container (screen pixels on canvas), 
-        // regardless of scale/pos, but mapped? No, wait. 
-        // getPointerPosition returns the position on the STAGE content, i.e., after inverse transform?
-        // Docs: "Returns pointer position relative to the stage container" -> Screen pixels relative to top-left of canvas DOM.
-
-        // We need "Scene Coordinates" (world) for creating elements:
-        // transform: (screen - stagePos) / scale
+        const pos = stage.getPointerPosition()
         const transformToScene = (screen: { x: number, y: number }) => {
             return {
                 x: (screen.x - stagePos.x) / stageScale,
                 y: (screen.y - stagePos.y) / stageScale
             }
         }
-
         const scenePos = pos ? transformToScene(pos) : { x: 0, y: 0 }
 
-        // Handle Arrow Creation (Drag start)
-        if (activeTool === 'arrow') {
-            const clickedId = e.target.id() || e.target.parent?.id()
-            const clickedElement = elements.find(el => el.id === clickedId)
+        // 1. Tool Creation (Arrow/Shapes) logic...
+        if (activeTool !== 'select' && activeTool !== 'hand') {
+            // ... existing tool creation logic ...
+            // Copy formatting logic for brevity or re-implement here? 
+            // Better to keep existing tool creation logic but ensure it sets selectedIds
+            // But wait, the original function body for creation is large.
+            // Let's defer tool creation to handleStageClick or check if we can reuse.
+            // Actually original code did creation in handleStageClick. 
+            // In MouseDown it only handled Arrow drag.
 
-            if (clickedElement && clickedElement.type !== 'connection') {
-                setDrawingArrow({
-                    startId: clickedId,
-                    endPos: scenePos
+            // Handle Arrow Creation (Drag start)
+            if (activeTool === 'arrow') {
+                const clickedId = e.target.id() || e.target.parent?.id()
+                const clickedElement = elements.find(el => el.id === clickedId)
+                if (clickedElement && clickedElement.type !== 'connection') {
+                    setDrawingArrow({
+                        startId: clickedId,
+                        endPos: scenePos
+                    })
+                    return
+                }
+            }
+            return
+        }
+
+        // 2. Selection Logic
+        if (activeTool === 'select' && !activeTool.includes('hand') && !isSpacePressed) {
+            const clickedOnEmpty = e.target === stage
+            const clickedId = e.target.id() || e.target.parent?.id()
+
+            if (clickedOnEmpty) {
+                // Determine modifier for multi-select (Shift/Ctrl)
+                const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey
+                if (!isMulti) {
+                    setSelectedIds([])
+                }
+                // Start Selection Box
+                setSelectionBox({
+                    x: scenePos.x,
+                    y: scenePos.y,
+                    width: 0,
+                    height: 0,
+                    startX: scenePos.x,
+                    startY: scenePos.y
                 })
-                return
+            } else {
+                // Clicked on an element
+                const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey
+                if (clickedId) {
+                    if (isMulti) {
+                        // Toggle selection
+                        if (selectedIds.includes(clickedId)) {
+                            setSelectedIds(prev => prev.filter(id => id !== clickedId))
+                        } else {
+                            setSelectedIds(prev => [...prev, clickedId])
+                        }
+                    } else {
+                        // If clicking an unselected element, select ONLY it.
+                        // If clicking a selected element (part of group), keep group selected (to allow drag).
+                        if (!selectedIds.includes(clickedId)) {
+                            setSelectedIds([clickedId])
+                        }
+                    }
+                }
             }
         }
     }
 
     const handleStageMouseMove = (e: any) => {
-        const stage = e.target.getStage() // Can be undefined during rapid unmount
+        const stage = e.target.getStage()
         if (!stage) return
-
         const pos = stage.getPointerPosition()
         if (!pos) return
 
@@ -458,17 +476,28 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         }
         const scenePos = transformToScene(pos)
 
+        // Update Selection Box
+        if (selectionBox) {
+            const newWidth = scenePos.x - selectionBox.startX
+            const newHeight = scenePos.y - selectionBox.startY
+            setSelectionBox({
+                ...selectionBox,
+                x: newWidth < 0 ? scenePos.x : selectionBox.startX,
+                y: newHeight < 0 ? scenePos.y : selectionBox.startY,
+                width: Math.abs(newWidth),
+                height: Math.abs(newHeight)
+            })
+            return
+        }
+
+        // Existing Arrow Drag Logic
         if (drawingArrow) {
             let snapPos = scenePos
             let snappedTo = undefined
-
-            // Find closest anchor on other nodes
-            // Using a simple efficient loop
-            let closestDist = 400 // 20px squared
+            let closestDist = 400
 
             for (const el of elements) {
                 if (el.id === drawingArrow.startId || el.type === 'connection' || el.type === 'text') continue
-
                 const anchors = getAllAnchors(el)
                 for (const anchor of anchors) {
                     const dist = Math.pow(anchor.x - scenePos.x, 2) + Math.pow(anchor.y - scenePos.y, 2)
@@ -479,27 +508,52 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     }
                 }
             }
-
             setDrawingArrow(prev => prev ? { ...prev, endPos: snapPos, snappedTo } : null)
         }
     }
 
     const handleStageMouseUp = (e: any) => {
+        // Finalize Selection Box
+        if (selectionBox) {
+            // Find intersecting elements
+            const box = selectionBox
+            const selected = elements.filter(el => {
+                const elX = el.x || 0
+                const elY = el.y || 0
+                const elW = el.width || 100
+                const elH = el.height || 100
+                // Simple box intersection
+                return (
+                    elX < box.x + box.width &&
+                    elX + elW > box.x &&
+                    elY < box.y + box.height &&
+                    elY + elH > box.y
+                )
+            }).map(el => el.id)
+
+            // Merge with existing if shift? Usually box selection replaces unless shift.
+            const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey
+            if (isMulti) {
+                // Add unique
+                const newSet = new Set([...selectedIds, ...selected])
+                setSelectedIds(Array.from(newSet))
+            } else {
+                setSelectedIds(selected)
+            }
+            setSelectionBox(null)
+        }
+
+        // Existing Arrow Creation Logic
         if (drawingArrow) {
             let targetId = null
-
-            // Prefer snapped target
             if (drawingArrow.snappedTo) {
                 targetId = drawingArrow.snappedTo.nodeId
             } else {
-                // Fallback to what we are dropping on
                 targetId = e.target.id() || e.target.parent?.id()
             }
-
             const targetElement = elements.find(el => el.id === targetId)
 
             if (targetElement && targetId !== drawingArrow.startId && targetElement.type !== 'connection') {
-                // Create Connection
                 const newConn: FlowchartElement = {
                     id: crypto.randomUUID(),
                     type: 'connection',
@@ -518,30 +572,19 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleStageClick = (e: any) => {
-        // Close context menu if visible
         if (contextMenu.visible) {
             setContextMenu({ ...contextMenu, visible: false })
             return
         }
-
-        // If drawing an arrow, click should not create a new shape or select
         if (activeTool === 'arrow') return
+        if (selectionBox) return // Handled in Up
 
-        const stage = e.target.getStage()
-        const clickedOnEmpty = e.target === stage
-
-        // Robustly find the clicked element's ID (Group ID)
-        let clickedId = e.target.id()
-        if (!clickedId) {
-            const group = e.target.findAncestor('Group')
-            if (group) {
-                clickedId = group.id()
-            }
-        }
-
-        // Handle Tool Creation
-        // Handle Tool Creation
+        // Tool Creation Logic (only if NOT selecting)
         if (activeTool !== 'select' && activeTool !== 'hand') {
+            // ... existing creation logic copy ... 
+            // We need to re-implement creation logic here because we replaced the function
+            // that contained it.
+            const stage = e.target.getStage()
             const pos = stage.getPointerPosition()
             if (!pos) return
 
@@ -553,10 +596,8 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             }
             const scenePos = transformToScene(pos)
 
-            // Standard Shape Creation
             const id = crypto.randomUUID()
             let newEl: FlowchartElement | null = null
-
             const defaultFill = '#ffffff'
             const defaultStroke = '#000000'
 
@@ -589,59 +630,215 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             if (newEl && yElementsRef.current) {
                 yElementsRef.current.push([newEl])
                 setActiveTool('select')
-                setSelectedId(id)
+                setSelectedIds([id])
             }
-            return
         }
+    }
 
-        if (clickedOnEmpty) {
-            setSelectedId(null)
-        } else {
-            if (clickedId) setSelectedId(clickedId)
+    // Bulk Move Logic
+    // Tracking drag start positions for group Move
+    const dragStartPosRef = useRef<Map<string, { x: number, y: number }>>(new Map())
+
+    const handleElementDragStart = (e: any, id: string) => {
+        // Capture start positions of ALL selected elements
+        if (selectedIds.includes(id)) {
+            const map = new Map()
+            selectedIds.forEach(selectedId => {
+                const el = elements.find(e => e.id === selectedId)
+                if (el) {
+                    // We can't rely on elements state for live drag start if we want to be precise, 
+                    // but using current state is usually fine.
+                    // Better: use the Konva Node position which might be authoritative for the start of the gesture.
+                    // But we can't easily access other nodes here without stage ref lookup.
+                    // State is sufficient.
+                    map.set(selectedId, { x: el.x || 0, y: el.y || 0 })
+                }
+            })
+            dragStartPosRef.current = map
+        }
+    }
+
+    const handleElementDragMove = (e: any, id: string) => {
+        // If dragging a selected item, move all others
+        if (selectedIds.includes(id) && selectedIds.length > 1) {
+            const startPos = dragStartPosRef.current.get(id)
+            if (!startPos) return
+
+            const dx = e.target.x() - startPos.x
+            const dy = e.target.y() - startPos.y
+
+            selectedIds.forEach(otherId => {
+                if (otherId !== id) {
+                    const node = stageRef.current.findOne('#' + otherId)
+                    if (node) {
+                        const otherStart = dragStartPosRef.current.get(otherId)
+                        if (otherStart) {
+                            node.position({
+                                x: otherStart.x + dx,
+                                y: otherStart.y + dy
+                            })
+                        }
+                    }
+                }
+            })
         }
     }
 
     const handleElementDragEnd = (e: any, id: string) => {
-        const idx = elements.findIndex(el => el.id === id)
-        if (idx !== -1 && yElementsRef.current) {
-            const newAttrs = {
-                ...elements[idx],
-                x: e.target.x(),
-                y: e.target.y()
+        if (!yElementsRef.current) return
+
+        // If part of selection, update ALL selected
+        if (selectedIds.includes(id)) {
+            selectedIds.forEach(selectedId => {
+                const idx = elements.findIndex(el => el.id === selectedId)
+                if (idx !== -1) {
+                    // Read strict position from Konva Node
+                    const node = stageRef.current.findOne('#' + selectedId)
+                    if (node) {
+                        const newAttrs = {
+                            ...elements[idx],
+                            x: node.x(),
+                            y: node.y()
+                        }
+                        yElementsRef.current?.delete(idx, 1)
+                        yElementsRef.current?.insert(idx, [newAttrs])
+                    }
+                }
+            })
+        } else {
+            // Fallback for single drag (should be covered above if selectedIds is handled correctly)
+            const idx = elements.findIndex(el => el.id === id)
+            if (idx !== -1) {
+                const newAttrs = {
+                    ...elements[idx],
+                    x: e.target.x(),
+                    y: e.target.y()
+                }
+                yElementsRef.current.delete(idx, 1)
+                yElementsRef.current.insert(idx, [newAttrs])
             }
-            yElementsRef.current.delete(idx, 1)
-            yElementsRef.current.insert(idx, [newAttrs])
         }
+        dragStartPosRef.current.clear()
     }
 
     const handleTransformEnd = (e: any) => {
-        if (!selectedId) return
-        const idx = elements.findIndex(el => el.id === selectedId)
-        if (idx !== -1 && yElementsRef.current) {
-            const node = e.target
-            const scaleX = node.scaleX()
-            const scaleY = node.scaleY()
+        if (selectedIds.length === 0) return
 
-            // Reset scale to 1 so we can update the actual width/height
-            node.scaleX(1)
-            node.scaleY(1)
+        // If transforming multiple, we iterate all selectedIds
+        // However, Konva Transformer usually operates on the nodes directly in the DOM
+        // We need to read their new attributes and sync to Yjs
 
-            const currentWidth = elements[idx].width || 100
-            const currentHeight = elements[idx].height || 100
+        if (yElementsRef.current) {
+            ydocRef.current?.transact(() => {
+                selectedIds.forEach(id => {
+                    const idx = elements.findIndex(el => el.id === id)
+                    if (idx !== -1) {
+                        // Find the node
+                        const node = stageRef.current.findOne('#' + id)
+                        if (node) {
+                            const scaleX = node.scaleX()
+                            const scaleY = node.scaleY()
 
-            const newAttrs = {
-                ...elements[idx],
-                x: node.x(),
-                y: node.y(),
-                // Use the element's previous dimensions * scale factor
-                width: Math.max(5, currentWidth * scaleX),
-                height: Math.max(5, currentHeight * scaleY),
-                rotation: node.rotation()
+                            // Reset scale to 1 for shape (standardize width/height instead of scale)
+                            node.scaleX(1)
+                            node.scaleY(1)
+
+                            const currentWidth = elements[idx].width || 100
+                            const currentHeight = elements[idx].height || 100
+
+                            const newAttrs = {
+                                ...elements[idx],
+                                x: node.x(),
+                                y: node.y(),
+                                width: Math.max(5, currentWidth * scaleX),
+                                height: Math.max(5, currentHeight * scaleY),
+                                rotation: node.rotation()
+                            }
+
+                            // Update in YArray
+                            yElementsRef.current?.delete(idx, 1)
+                            yElementsRef.current?.insert(idx, [newAttrs])
+                        }
+                    }
+                })
+            })
+        }
+    }
+
+    const handleInsertText = () => {
+        if (contextMenu.elementId) {
+            const el = elements.find(e => e.id === contextMenu.elementId)
+            if (el) {
+                setTextInput(el.text || "")
+                setIsTextDialogOpen(true)
+            }
+        }
+        setContextMenu(prev => ({ ...prev, visible: false }))
+    }
+
+    const saveText = () => {
+        if (contextMenu.elementId && yElementsRef.current) {
+            const idx = elements.findIndex(el => el.id === contextMenu.elementId)
+            if (idx !== -1) {
+                const newAttrs = { ...elements[idx], text: textInput }
+                yElementsRef.current.delete(idx, 1)
+                yElementsRef.current.insert(idx, [newAttrs])
+            }
+        }
+        setIsTextDialogOpen(false)
+    }
+
+    const handleDeleteElement = () => {
+        if (contextMenu.elementId) {
+            // If context menu was opened on an item, delete that (and maybe others if selected?)
+            // Usually user expects the item they right-clicked to be deleted.
+            // If they right-clicked a selection, delete all?
+            // Let's assume right-click target is the primary target.
+            // If target is in selectedIds, delete all selectedIds.
+            // If not, delete just target.
+
+            let idsToDelete = [contextMenu.elementId]
+            if (selectedIds.includes(contextMenu.elementId)) {
+                idsToDelete = [...selectedIds] // Copy
+            } else {
+                // Should we select it? maybe.
             }
 
-            yElementsRef.current.delete(idx, 1)
-            yElementsRef.current.insert(idx, [newAttrs])
+            if (yElementsRef.current) {
+                const indices: number[] = []
+                idsToDelete.forEach(id => {
+                    const idx = elements.findIndex(e => e.id === id)
+                    if (idx !== -1) indices.push(idx)
+                })
+                // Sort descending to avoid index shift
+                indices.sort((a, b) => b - a)
+
+                ydocRef.current?.transact(() => {
+                    indices.forEach(idx => {
+                        yElementsRef.current?.delete(idx, 1)
+                    })
+                })
+                setSelectedIds([])
+            }
+        } else if (selectedIds.length > 0) {
+            // Fallback for keyboard delete (future proof)
+            if (yElementsRef.current) {
+                const indices: number[] = []
+                selectedIds.forEach(id => {
+                    const idx = elements.findIndex(e => e.id === id)
+                    if (idx !== -1) indices.push(idx)
+                })
+                indices.sort((a, b) => b - a)
+
+                ydocRef.current?.transact(() => {
+                    indices.forEach(idx => {
+                        yElementsRef.current?.delete(idx, 1)
+                    })
+                })
+                setSelectedIds([])
+            }
         }
+        setContextMenu(prev => ({ ...prev, visible: false }))
     }
 
     // Helper for active tool styling
@@ -876,39 +1073,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
         }
     }
 
-    const handleDeleteElement = () => {
-        if (contextMenu.elementId && yElementsRef.current) {
-            const idx = elements.findIndex(el => el.id === contextMenu.elementId)
-            if (idx !== -1) {
-                yElementsRef.current.delete(idx, 1)
-                if (selectedId === contextMenu.elementId) setSelectedId(null)
-            }
-        }
-        setContextMenu({ ...contextMenu, visible: false })
-    }
 
-    const handleInsertText = () => {
-        if (contextMenu.elementId) {
-            const el = elements.find(e => e.id === contextMenu.elementId)
-            if (el) {
-                setTextInput(el.text || "")
-                setIsTextDialogOpen(true)
-            }
-        }
-        setContextMenu({ ...contextMenu, visible: false })
-    }
-
-    const saveText = () => {
-        if (contextMenu.elementId && yElementsRef.current) {
-            const idx = elements.findIndex(el => el.id === contextMenu.elementId)
-            if (idx !== -1) {
-                const newAttrs = { ...elements[idx], text: textInput }
-                yElementsRef.current.delete(idx, 1)
-                yElementsRef.current.insert(idx, [newAttrs])
-            }
-        }
-        setIsTextDialogOpen(false)
-    }
 
     return (
         <div className="relative h-screen w-full bg-slate-50 dark:bg-zinc-950 overflow-hidden">
@@ -1039,11 +1204,26 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 if (!el.type) return null
 
                                 // Common props for interactivity
-                                const isSelected = selectedId === el.id
+                                const isSelected = selectedIds.includes(el.id)
                                 const commonProps = {
                                     id: el.id,
                                     draggable: (activeTool === 'select' && editingId !== el.id),
-                                    onClick: (e: any) => { e.cancelBubble = true; setSelectedId(el.id); },
+                                    onClick: (e: any) => {
+                                        e.cancelBubble = true;
+                                        const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+                                        if (isMulti) {
+                                            if (selectedIds.includes(el.id)) {
+                                                setSelectedIds(prev => prev.filter(i => i !== el.id))
+                                            } else {
+                                                setSelectedIds(prev => [...prev, el.id])
+                                            }
+                                        } else {
+                                            if (!selectedIds.includes(el.id)) {
+                                                setSelectedIds([el.id]);
+                                            }
+                                            // If already selected, do nothing (preserve group selection for drag)
+                                        }
+                                    },
                                     onDblClick: (e: any) => {
                                         e.cancelBubble = true;
                                         if (activeTool === 'select' && el.type !== 'connection') {
@@ -1051,9 +1231,14 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                             setTextInput(el.text || "");
                                         }
                                     },
+                                    onDragStart: (e: any) => handleElementDragStart(e, el.id),
+                                    onDragMove: (e: any) => handleElementDragMove(e, el.id),
                                     onDragEnd: (e: any) => handleElementDragEnd(e, el.id),
                                     onTransformEnd: handleTransformEnd,
-                                    onContextMenu: (e: any) => handleContextMenu(e, el.id),
+                                    onContextMenu: (e: any) => {
+                                        if (!selectedIds.includes(el.id)) setSelectedIds([el.id]);
+                                        handleContextMenu(e, el.id)
+                                    },
                                     strokeWidth: 2,
                                     shadowColor: 'cyan',
                                     shadowBlur: (isSelected && theme === 'dark') ? 0 : (isSelected ? 10 : 0),
@@ -1165,11 +1350,18 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                                     hitStrokeWidth={20}
                                                     onClick={(e) => {
                                                         e.cancelBubble = true;
-                                                        setSelectedId(el.id);
+                                                        // Arrow Selection Logic (Simpler for now)
+                                                        const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+                                                        if (isMulti) {
+                                                            if (selectedIds.includes(el.id)) setSelectedIds(prev => prev.filter(i => i !== el.id))
+                                                            else setSelectedIds(prev => [...prev, el.id])
+                                                        } else {
+                                                            setSelectedIds([el.id]);
+                                                        }
                                                     }}
                                                     onContextMenu={(e) => handleContextMenu(e, el.id)}
                                                 />
-                                                {selectedId === el.id && (
+                                                {selectedIds.includes(el.id) && (
                                                     <Circle
                                                         x={handlePos.x}
                                                         y={handlePos.y}
@@ -1372,6 +1564,20 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                 )
                             })()}
 
+                            {/* Selection Box */}
+                            {selectionBox && (
+                                <Rect
+                                    x={selectionBox.x}
+                                    y={selectionBox.y}
+                                    width={selectionBox.width}
+                                    height={selectionBox.height}
+                                    fill="rgba(59, 130, 246, 0.2)"
+                                    stroke="#3b82f6"
+                                    dash={[5, 5]}
+                                    strokeWidth={1}
+                                    listening={false}
+                                />
+                            )}
                             <Transformer ref={transformerRef} />
                         </Layer>
                     </Stage>
