@@ -21,7 +21,7 @@ import { useTheme } from "next-themes"
 
 interface FlowchartElement {
     id: string
-    type: 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'connection' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud'
+    type: 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'connection' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud' | 'terminator'
     x?: number
     y?: number
     width?: number
@@ -138,7 +138,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const [editingId, setEditingId] = useState<string | null>(null) // Inline editing state
-    const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud'>('select')
+    const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud' | 'terminator'>('select')
 
     // Viewport State
     const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
@@ -625,6 +625,8 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                 newEl = { id, type: 'document', x: scenePos.x, y: scenePos.y, width: 80, height: 100, fill: defaultFill, stroke: defaultStroke }
             } else if (activeTool === 'cloud') {
                 newEl = { id, type: 'cloud', x: scenePos.x, y: scenePos.y, width: 100, height: 80, fill: defaultFill, stroke: defaultStroke }
+            } else if (activeTool === 'terminator') {
+                newEl = { id, type: 'terminator', x: scenePos.x, y: scenePos.y, width: 100, height: 50, fill: defaultFill, stroke: defaultStroke }
             }
 
             if (newEl && yElementsRef.current) {
@@ -986,6 +988,10 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     const d = `M ${elX + w * 0.2} ${elY} L ${elX + w * 0.8} ${elY} L ${elX + w} ${elY + h / 2} L ${elX + w * 0.8} ${elY + h} L ${elX + w * 0.2} ${elY + h} L ${elX} ${elY + h / 2} Z`
                     svgContent += `<path d="${d}" stroke="${stroke}" stroke-width="2" fill="${fill}"/>`
                     addText()
+                } else if (el.type === 'terminator') {
+                    // Pill shape, rx = height / 2
+                    svgContent += `<rect x="0" y="0" width="${w}" height="${h}" stroke="${stroke}" stroke-width="2" fill="${fill}" rx="${h / 2}"/>`
+                    addText()
                 } else if (el.type === 'connection' && el.startId && el.endId) {
                     const startNode = elements.find(e => e.id === el.startId)
                     const endNode = elements.find(e => e.id === el.endId)
@@ -1016,6 +1022,36 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             const x2 = lastX - headLen * Math.cos(angle + Math.PI / 6)
                             const y2 = lastY - headLen * Math.sin(angle + Math.PI / 6)
                             svgContent += `<path d="M ${lastX} ${lastY} L ${x1} ${y1} M ${lastX} ${lastY} L ${x2} ${y2}" stroke="${stroke}" stroke-width="2" fill="none"/>`
+                        }
+
+                        // Text for connection
+                        if (el.text) {
+                            // Calculate midpoint for text
+                            let totalLen = 0
+                            for (let i = 0; i < pts.length - 2; i += 2) {
+                                totalLen += Math.sqrt(Math.pow(pts[i + 2] - pts[i], 2) + Math.pow(pts[i + 3] - pts[i + 1], 2))
+                            }
+                            let targetLen = totalLen / 2
+                            let currentLen = 0
+                            let midX = pts[0]
+                            let midY = pts[1]
+                            for (let i = 0; i < pts.length - 2; i += 2) {
+                                const segLen = Math.sqrt(Math.pow(pts[i + 2] - pts[i], 2) + Math.pow(pts[i + 3] - pts[i + 1], 2))
+                                if (currentLen + segLen >= targetLen) {
+                                    const ratio = (targetLen - currentLen) / segLen
+                                    midX = pts[i] + (pts[i + 2] - pts[i]) * ratio
+                                    midY = pts[i + 1] + (pts[i + 3] - pts[i + 1]) * ratio
+                                    break
+                                }
+                                currentLen += segLen
+                            }
+
+                            const escaped = el.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                            const textColor = getRenderColor(el.stroke) // Use stroke color for text text
+                            // White background for text readability on line
+                            // Improve visibility: add a small rect background or just stroke? 
+                            // SVG filters are hard. Let's just draw text.
+                            svgContent += `<text x="${midX}" y="${midY - 10}" fill="${textColor}" font-family="sans-serif" font-size="16" text-anchor="middle" dominant-baseline="middle">${escaped}</text>`
                         }
                     }
                 } else if (el.type === 'text') {
@@ -1130,6 +1166,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                     <Button variant="ghost" size="icon" onClick={() => setActiveTool('triangle')} title="Triangle (Merge)" className={getToolClass('triangle')}><Triangle className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => setActiveTool('hexagon')} title="Hexagon (Preparation)" className={getToolClass('hexagon')}><Hexagon className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => setActiveTool('trapezoid')} title="Trapezoid (Manual Op)" className={getToolClass('trapezoid')}><Hash className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setActiveTool('terminator')} title="Terminator (Start/End)" className={getToolClass('terminator')}><RectangleHorizontal className="w-4 h-4 rounded-full" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => setActiveTool('document')} title="Document" className={getToolClass('document')}><FileText className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => setActiveTool('cloud')} title="Cloud" className={getToolClass('cloud')}><CloudIcon className="w-4 h-4" /></Button>
                     <div className="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 shrink-0" />
@@ -1244,7 +1281,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                     },
                                     onDblClick: (e: any) => {
                                         e.cancelBubble = true;
-                                        if (activeTool === 'select' && el.type !== 'connection') {
+                                        if (activeTool === 'select') {
                                             setEditingId(el.id);
                                             setTextInput(el.text || "");
                                         }
@@ -1307,6 +1344,13 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                     return (
                                         <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
                                             <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={10} />
+                                            {renderText()}
+                                        </Group>
+                                    )
+                                } else if (el.type === 'terminator') {
+                                    return (
+                                        <Group key={el.id} {...commonProps} x={el.x} y={el.y}>
+                                            <Rect width={el.width} height={el.height} fill={fill} stroke={stroke} cornerRadius={Math.min(el.width || 100, el.height || 100) / 2} />
                                             {renderText()}
                                         </Group>
                                     )
@@ -1404,7 +1448,52 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                                                             }
                                                         }}
                                                     />
+
                                                 )}
+                                                {el.text && editingId !== el.id && (() => {
+                                                    // Calculate midpoint
+                                                    let totalLen = 0
+                                                    for (let i = 0; i < points.length - 2; i += 2) {
+                                                        totalLen += Math.sqrt(Math.pow(points[i + 2] - points[i], 2) + Math.pow(points[i + 3] - points[i + 1], 2))
+                                                    }
+                                                    let targetLen = totalLen / 2
+                                                    let currentLen = 0
+                                                    let midX = points[0]
+                                                    let midY = points[1]
+                                                    for (let i = 0; i < points.length - 2; i += 2) {
+                                                        const segLen = Math.sqrt(Math.pow(points[i + 2] - points[i], 2) + Math.pow(points[i + 3] - points[i + 1], 2))
+                                                        if (currentLen + segLen >= targetLen) {
+                                                            const ratio = (targetLen - currentLen) / segLen
+                                                            midX = points[i] + (points[i + 2] - points[i]) * ratio
+                                                            midY = points[i + 1] + (points[i + 3] - points[i + 1]) * ratio
+                                                            break
+                                                        }
+                                                        currentLen += segLen
+                                                    }
+
+                                                    return (
+                                                        <Group x={midX} y={midY}>
+                                                            <Rect
+                                                                x={-((el.text.length * 8) / 2) - 4} // Approx width
+                                                                y={-14}
+                                                                width={(el.text.length * 8) + 8}
+                                                                height={20}
+                                                                fill={theme === 'dark' ? '#000' : '#fff'}
+                                                                opacity={0.8}
+                                                                cornerRadius={4}
+                                                            />
+                                                            <KonvaText
+                                                                text={el.text}
+                                                                x={-100}
+                                                                y={-10}
+                                                                width={200}
+                                                                align="center"
+                                                                fill={stroke}
+                                                                fontSize={14}
+                                                            />
+                                                        </Group>
+                                                    )
+                                                })()}
                                             </Group>
                                         )
                                     }
