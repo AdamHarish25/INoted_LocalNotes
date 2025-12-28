@@ -187,11 +187,24 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         },
     }, [provider, isReadOnly]) // Re-run if provider or readOnly changes
 
-    // HYDRATION LOGIC:
-    // If the Yjs document is empty (because server has no data),
-    // and we have initial content from DB, force set the content.
+    // Sync Status State
+    const [isSynced, setIsSynced] = useState(false)
+
     useEffect(() => {
-        if (editor && !editor.isDestroyed && initialContent) {
+        if (provider) {
+            const handleSync = () => setIsSynced(true)
+            provider.on('synced', handleSync)
+            return () => {
+                provider.off('synced', handleSync)
+            }
+        }
+    }, [provider])
+
+    // HYDRATION LOGIC:
+    // Only hydration when we are fully synced with the server to avoid overwriting/duplicating content.
+    // If we insert content before sync, Yjs treats it as new unique content and merges it (duplication).
+    useEffect(() => {
+        if (isSynced && editor && !editor.isDestroyed && initialContent) {
             const fragment = ydoc.getXmlFragment('default')
 
             // Check if Yjs is effectively empty.
@@ -201,7 +214,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 editor.commands.setContent(initialContent)
             }
         }
-    }, [editor, initialContent, ydoc])
+    }, [isSynced, editor, initialContent, ydoc])
 
     // Force save on checkbox toggle (TaskItem)
     // Tiptap's onUpdate sometimes misses attribute changes in collaborative environments
