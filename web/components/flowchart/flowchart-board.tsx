@@ -824,16 +824,30 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
         } else {
             const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
-            // Konva toDataURL handles the viewport crop/scale
+
+            // 1. Save current stage state
+            const oldScale = stageRef.current.scaleX()
+            const oldPos = stageRef.current.position()
+
+            // 2. Reset stage to fit all content at 1:1 scale
+            // We shift the stage so that the content (minX, minY) moves to (PADDING, PADDING)
+            stageRef.current.scale({ x: 1, y: 1 })
+            stageRef.current.position({ x: -minX + PADDING, y: -minY + PADDING })
+
+            // 3. Export
             const dataUrl = stageRef.current.toDataURL({
-                x: minX,
-                y: minY,
+                x: 0,
+                y: 0,
                 width: width,
                 height: height,
-                pixelRatio: 2,
+                pixelRatio: 2, // High resolution
                 mimeType,
-                quality: 0.9 // for jpg
+                quality: 0.9
             })
+
+            // 4. Restore stage state
+            stageRef.current.position(oldPos)
+            stageRef.current.scale({ x: oldScale, y: oldScale })
 
             const link = document.createElement('a')
             link.download = `flowchart-${roomId}.${format}`
