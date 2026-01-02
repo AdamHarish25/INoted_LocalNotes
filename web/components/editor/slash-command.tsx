@@ -16,7 +16,9 @@ import {
     Table,
     Bold,
     Italic,
-    LayoutDashboard
+    LayoutDashboard,
+    FileCode,
+    Server,
 } from 'lucide-react'
 
 // 1. Definition of commands
@@ -59,6 +61,53 @@ const getSuggestionItems = ({ query }: { query: string }) => {
             icon: Code,
             command: ({ editor, range }: { editor: Editor; range: Range }) => {
                 editor.chain().focus().deleteRange(range).toggleCodeBlock().run()
+            },
+        },
+        {
+            title: 'API Design',
+            description: 'Insert API endpoint template',
+            icon: FileCode,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range)
+                    .insertContent([
+                        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '📍 API Endpoint: GET /resource' }] },
+                        { type: 'paragraph', content: [{ type: 'text', text: 'Description: Retrieve details about a specific resource.' }] },
+                        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Request Parameters' }] },
+                        {
+                            type: 'bulletList', content: [
+                                { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'id (string): The unique identifier.' }] }] },
+                                { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'limit (number): Max records to return.' }] }] }
+                            ]
+                        },
+                        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Request Body' }] },
+                        { type: 'codeBlock', attrs: { language: 'json' }, content: [{ type: 'text', text: '// No body for GET requests' }] },
+                        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Response (200 OK)' }] },
+                        { type: 'codeBlock', attrs: { language: 'json' }, content: [{ type: 'text', text: '{\n  "data": {\n    "id": "123",\n    "name": "Sample Resource"\n  },\n  "status": "success"\n}' }] },
+                    ]).run()
+            },
+        },
+        {
+            title: 'System Architecture',
+            description: 'Insert system design template',
+            icon: Server,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range)
+                    .insertContent([
+                        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '🏗️ System Architecture Design' }] },
+                        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: '1. Requirements' }] },
+                        {
+                            type: 'bulletList', content: [
+                                { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Functional: ' }] }] },
+                                { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Non-Functional (Scalability, Latency): ' }] }] }
+                            ]
+                        },
+                        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: '2. High-Level Design' }] },
+                        { type: 'paragraph', content: [{ type: 'text', text: '[Insert Diagram Here]' }] },
+                        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: '3. Data Model' }] },
+                        { type: 'codeBlock', attrs: { language: 'sql' }, content: [{ type: 'text', text: 'CREATE TABLE users (\n  id UUID PRIMARY KEY,\n  username VARCHAR(50)\n);' }] },
+                        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: '4. API Definition' }] },
+                        { type: 'paragraph', content: [{ type: 'text', text: 'Define key endpoints here.' }] },
+                    ]).run()
             },
         },
         {

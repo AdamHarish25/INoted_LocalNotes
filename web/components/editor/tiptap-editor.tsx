@@ -20,7 +20,7 @@ const lowlight = createLowlight(all)
 
 // Imports for Header UI
 import { Button } from "@/components/ui/button"
-import { Share, Cloud, Globe, Copy, Check, CircleDashed } from "lucide-react"
+import { Share, Cloud, Globe, Copy, Check, CircleDashed, Github } from "lucide-react"
 import { WorkspaceSelector } from "@/components/workspace-selector"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -408,8 +408,187 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         window.print()
     }
 
+    // Git Dialog State
+    const [isGitDialogOpen, setIsGitDialogOpen] = useState(false)
+    const [gitRepoUrl, setGitRepoUrl] = useState('')
+    const [gitToken, setGitToken] = useState('')
+    const [gitExportType, setGitExportType] = useState<'markdown' | 'gist'>('markdown')
+    const [gitStatus, setGitStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+
+    const jsonToMarkdown = (json: any): string => {
+        if (!json || !json.content) return ''
+
+        const processNode = (node: any): string => {
+            if (node.type === 'text') {
+                let text = node.text || ''
+                if (node.marks) {
+                    node.marks.forEach((mark: any) => {
+                        if (mark.type === 'bold') text = `**${text}**`
+                        else if (mark.type === 'italic') text = `*${text}*`
+                        else if (mark.type === 'strike') text = `~~${text}~~`
+                        else if (mark.type === 'code') text = `\`${text}\``
+                    })
+                }
+                return text
+            }
+
+            const children = node.content ? node.content.map(processNode).join('') : ''
+
+            switch (node.type) {
+                case 'heading':
+                    return '#'.repeat(node.attrs?.level || 1) + ' ' + children + '\n\n'
+                case 'paragraph':
+                    return children + '\n\n'
+                case 'codeBlock':
+                    return '```' + (node.attrs?.language || '') + '\n' + children + '\n```\n\n'
+                case 'bulletList':
+                    return node.content.map((li: any) => '- ' + (li.content ? li.content.map(processNode).join('').trim() : '')).join('\n') + '\n\n'
+                case 'orderedList':
+                    return node.content.map((li: any, i: number) => `${i + 1}. ` + (li.content ? li.content.map(processNode).join('').trim() : '')).join('\n') + '\n\n'
+                case 'listItem':
+                    return children // Handled by parent
+                case 'taskItem':
+                    return `- [${node.attrs?.checked ? 'x' : ' '}] ` + children + '\n'
+                case 'taskList':
+                    return children + '\n'
+                case 'table':
+                    // Basic table support - simplified
+                    return '\n[Table]\n' + children + '\n'
+                case 'tableRow':
+                    return '| ' + (node.content ? node.content.map((c: any) => processNode(c).trim()).join(' | ') : '') + ' |\n'
+                case 'tableCell':
+                case 'tableHeader':
+                    return children
+                default:
+                    return children
+            }
+        }
+
+        return json.content.map(processNode).join('').trim()
+    }
+
+    const handleGitAction = async () => {
+        setGitStatus('loading')
+
+        try {
+            const markdown = jsonToMarkdown(editor?.getJSON())
+
+            if (gitExportType === 'markdown') {
+                navigator.clipboard.writeText(markdown)
+                setGitStatus('success')
+                setTimeout(() => setGitStatus('idle'), 2000)
+            } else if (gitExportType === 'gist') {
+                if (!gitToken) {
+                    alert("Please enter a GitHub Personal Access Token.")
+                    setGitStatus('idle')
+                    return
+                }
+
+                // POST to GitHub Gist
+                const response = await fetch('https://api.github.com/gists', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${gitToken}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        description: `Note: ${title}`,
+                        public: false,
+                        files: {
+                            [`${title.replace(/\s+/g, '_') || 'note'}.md`]: {
+                                content: markdown
+                            }
+                        }
+                    })
+                })
+
+                if (response.ok) {
+                    setGitStatus('success')
+                    setTimeout(() => {
+                        setGitStatus('idle')
+                        setIsGitDialogOpen(false)
+                    }, 1500)
+                } else {
+                    const err = await response.json()
+                    console.error('Gist Error:', err)
+                    setGitStatus('error')
+                }
+            }
+        } catch (e) {
+            console.error(e)
+            setGitStatus('error')
+        }
+    }
+
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-background">
+            {/* Git Integration Dialog */}
+            <Dialog open={isGitDialogOpen} onOpenChange={setIsGitDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Github className="w-5 h-5" />
+                            Git Integration
+                        </DialogTitle>
+                        <DialogDescription>
+                            Sync your notes with GitHub or export as Markdown.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex gap-4 border-b border-gray-200 dark:border-gray-700 mb-4">
+                        <button
+                            onClick={() => setGitExportType('markdown')}
+                            className={`pb-2 text-sm font-medium transition-colors ${gitExportType === 'markdown' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Copy Markdown
+                        </button>
+                        <button
+                            onClick={() => setGitExportType('gist')}
+                            className={`pb-2 text-sm font-medium transition-colors ${gitExportType === 'gist' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Post to Gist
+                        </button>
+                    </div>
+
+                    <div className="space-y-4 py-2">
+                        {gitExportType === 'markdown' && (
+                            <div className="p-4 bg-muted rounded-md border text-sm text-muted-foreground">
+                                <p>Clicking "Copy" will convert this note to Markdown and copy it to your clipboard, ready to be pasted into any Git repository.</p>
+                            </div>
+                        )}
+
+                        {gitExportType === 'gist' && (
+                            <div className="space-y-3">
+                                <div className="space-y-1">
+                                    <Label>GitHub Personal Access Token</Label>
+                                    <Input
+                                        type="password"
+                                        value={gitToken}
+                                        onChange={(e) => setGitToken(e.target.value)}
+                                        placeholder="ghp_..."
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">Token needs 'gist' scope permissions.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="sm:justify-between items-center">
+                        <div className="text-sm">
+                            {gitStatus === 'success' && <span className="text-green-600 flex items-center gap-1"><Check className="w-4 h-4" /> Done!</span>}
+                            {gitStatus === 'error' && <span className="text-red-600">Failed. Check console/token.</span>}
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="secondary" onClick={() => setIsGitDialogOpen(false)}>Close</Button>
+                            <Button onClick={handleGitAction} disabled={gitStatus === 'loading'}>
+                                {gitStatus === 'loading' ? 'Processing...' : (gitExportType === 'markdown' ? 'Copy to Clipboard' : 'Create Secret Gist')}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Table Configuration Dialog */}
             <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
                 <DialogContent>
@@ -539,12 +718,23 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setIsGitDialogOpen(true)}
+                        title="Git Integration"
+                        className="text-slate-500 hover:text-slate-700 dark:text-muted-foreground dark:hover:text-primary"
+                    >
+                        <Github className="w-4 h-4" />
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={handleExportPDF}
                         title="Export to PDF"
                         className="text-slate-500 hover:text-slate-700 dark:text-muted-foreground dark:hover:text-primary"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     </Button>
+
 
                     {!isReadOnly && <WorkspaceSelector noteId={noteId} initialWorkspaceName={initialWorkspace} />}
 
