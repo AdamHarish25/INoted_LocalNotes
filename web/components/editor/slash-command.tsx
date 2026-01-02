@@ -260,7 +260,7 @@ const CommandList = React.forwardRef((props: any, ref) => {
     }))
 
     return (
-        <div className="z-50 min-w-[300px] h-auto rounded-md border bg-popover dark:bg-zinc-950 dark:border-zinc-800 p-1 shadow-md animate-in fade-in zoom-in duration-200">
+        <div className="z-50 min-w-[300px] max-h-[200px] overflow-y-scroll rounded-md border bg-popover dark:bg-zinc-950 dark:border-zinc-800 p-1 shadow-md animate-in fade-in zoom-in duration-200">
             <div className="flex flex-col overflow-hidden rounded-sm bg-white dark:bg-zinc-950 p-1">
                 {props.items.length ? (
                     props.items.map((item: CommandItemProps, index: number) => (
