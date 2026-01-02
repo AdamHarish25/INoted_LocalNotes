@@ -19,6 +19,7 @@ import {
     LayoutDashboard,
     FileCode,
     Server,
+    Network
 } from 'lucide-react'
 
 // 1. Definition of commands
@@ -108,6 +109,26 @@ const getSuggestionItems = ({ query }: { query: string }) => {
                         { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: '4. API Definition' }] },
                         { type: 'paragraph', content: [{ type: 'text', text: 'Define key endpoints here.' }] },
                     ]).run()
+            },
+        },
+        {
+            title: 'Whiteboard',
+            description: 'Insert an interactive whiteboard',
+            icon: LayoutDashboard,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range).run()
+                const event = new CustomEvent('insert-whiteboard', { detail: { pos: range.from } })
+                window.dispatchEvent(event)
+            },
+        },
+        {
+            title: 'Flowchart',
+            description: 'Insert a flowchart diagram',
+            icon: Network,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range).run()
+                const event = new CustomEvent('insert-flowchart', { detail: { pos: range.from } })
+                window.dispatchEvent(event)
             },
         },
         {

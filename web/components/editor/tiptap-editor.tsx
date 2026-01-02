@@ -20,13 +20,15 @@ const lowlight = createLowlight(all)
 
 // Imports for Header UI
 import { Button } from "@/components/ui/button"
-import { Share, Cloud, Globe, Copy, Check, CircleDashed, Github } from "lucide-react"
+import { Share, Cloud, Globe, Copy, Check, CircleDashed, Github, Network } from "lucide-react"
 import { WorkspaceSelector } from "@/components/workspace-selector"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { WhiteboardExtension } from "./whiteboard-extension"
+import { FlowchartExtension } from "./flowchart-extension"
+
 
 import { SlashCommand, suggestion } from "./slash-command"
 
@@ -166,6 +168,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             TableHeader,
             TableCell,
             WhiteboardExtension,
+            FlowchartExtension,
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
             }),
@@ -342,6 +345,60 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         }
     }, [isWhiteboardDialogOpen, wbTab])
 
+    // Flowchart Dialog State
+    const [isFlowchartDialogOpen, setIsFlowchartDialogOpen] = useState(false)
+    const [fcTab, setFcTab] = useState<'list' | 'link'>('list')
+    const [flowcharts, setFlowcharts] = useState<any[]>([])
+    const [selectedFlowchart, setSelectedFlowchart] = useState<any | null>(null)
+    const [fcLinkInput, setFcLinkInput] = useState('')
+    const [isLoadingFlowcharts, setIsLoadingFlowcharts] = useState(false)
+
+    // Fetch Flowcharts
+    useEffect(() => {
+        if (isFlowchartDialogOpen && fcTab === 'list') {
+            setIsLoadingFlowcharts(true)
+            import("@/app/actions").then(({ getFlowcharts }) => {
+                getFlowcharts().then(res => {
+                    if (res.success && res.data) setFlowcharts(res.data)
+                    setIsLoadingFlowcharts(false)
+                })
+            })
+        }
+    }, [isFlowchartDialogOpen, fcTab])
+
+    const handleConfirmInsertFlowchart = () => {
+        let finalId = null
+        let preview = null
+        let title = "Untitled Flowchart"
+
+        if (fcTab === 'list' && selectedFlowchart) {
+            finalId = selectedFlowchart.id
+            preview = selectedFlowchart.preview_img
+            title = selectedFlowchart.title
+        } else {
+            if (fcLinkInput.includes('/flowchart/')) {
+                finalId = fcLinkInput.split('/flowchart/')[1].split('?')[0]
+            } else {
+                finalId = fcLinkInput
+            }
+        }
+
+        if (finalId && finalId.trim() !== '' && editor && !isReadOnly) {
+            const chain = editor.chain().focus()
+            if (pendingPos !== null) {
+                chain.setTextSelection(pendingPos)
+            }
+            chain.insertContent({
+                type: 'flowchart',
+                attrs: { id: finalId, preview, title }
+            }).run()
+        }
+        setIsFlowchartDialogOpen(false)
+        setSelectedFlowchart(null)
+        setFcLinkInput('')
+    }
+
+
     const handleConfirmInsertWhiteboard = () => {
         let finalId = null
         if (wbTab === 'list') {
@@ -384,12 +441,20 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             setIsWhiteboardDialogOpen(true)
         }
 
+        const handleInsertFlowchart = (e: Event) => {
+            const detail = (e as CustomEvent).detail
+            setPendingPos(detail.pos)
+            setIsFlowchartDialogOpen(true)
+        }
+
         window.addEventListener('open-table-dialog', handleOpenTableDialog)
         window.addEventListener('insert-whiteboard', handleInsertWhiteboard)
+        window.addEventListener('insert-flowchart', handleInsertFlowchart)
 
         return () => {
             window.removeEventListener('open-table-dialog', handleOpenTableDialog)
             window.removeEventListener('insert-whiteboard', handleInsertWhiteboard)
+            window.removeEventListener('insert-flowchart', handleInsertFlowchart)
         }
     }, [editor, isReadOnly])
 
@@ -694,6 +759,80 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsWhiteboardDialogOpen(false)}>Cancel</Button>
                         <Button onClick={handleConfirmInsertWhiteboard} disabled={(wbTab === 'list' && !selectedWhiteboardId) || (wbTab === 'link' && !linkInput.trim())}>Insert Whiteboard</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Flowchart Insertion Dialog */}
+            <Dialog open={isFlowchartDialogOpen} onOpenChange={setIsFlowchartDialogOpen}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Insert Flowchart</DialogTitle>
+                        <DialogDescription>Select an existing flowchart or paste a link.</DialogDescription>
+                        <div className="flex gap-4 mt-4 border-b border-gray-200 dark:border-gray-700">
+                            <button onClick={() => setFcTab('list')} className={`pb-2 px-2 text-sm transition-colors ${fcTab === 'list' ? 'border-b-2 border-blue-500 font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}>My Flowcharts</button>
+                            <button onClick={() => setFcTab('link')} className={`pb-2 px-2 text-sm transition-colors ${fcTab === 'link' ? 'border-b-2 border-blue-500 font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}>Link</button>
+                        </div>
+                    </DialogHeader>
+
+                    {fcTab === 'list' && (
+                        <div className="min-h-[200px] border rounded-md p-0 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                            <ScrollArea className="h-[250px] p-2">
+                                {isLoadingFlowcharts ? (
+                                    <div className="flex items-center justify-center h-full py-10 text-gray-400">Loading your flowcharts...</div>
+                                ) : flowcharts.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-10 text-gray-500 gap-2">
+                                        <Network className="w-8 h-8 opacity-50" />
+                                        <p>No flowcharts found.</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        {flowcharts.map(fc => (
+                                            <button
+                                                key={fc.id}
+                                                className={`flex items-start w-full text-left p-2 rounded-md border transition-all gap-3 ${selectedFlowchart?.id === fc.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500/50' : 'border-transparent bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700'}`}
+                                                onClick={() => setSelectedFlowchart(fc)}
+                                            >
+                                                {fc.preview_img ? (
+                                                    <div className="w-16 h-12 rounded bg-slate-200 overflow-hidden border">
+                                                        <img src={fc.preview_img} className="w-full h-full object-cover" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-16 h-12 rounded bg-slate-100 dark:bg-slate-900 flex items-center justify-center border">
+                                                        <Network className="w-6 h-6 text-slate-300" />
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-sm text-slate-800 dark:text-slate-200">{fc.title || "Untitled Flowchart"}</span>
+                                                    <span className="text-xs text-gray-400">Last updated: {new Date(fc.updated_at).toLocaleDateString()}</span>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        </div>
+                    )}
+
+                    {fcTab === 'link' && (
+                        <div className="py-8 space-y-4">
+                            <div className="space-y-2">
+                                <Label>Flowchart Link</Label>
+                                <Input
+                                    placeholder="Paste flowchart URL here..."
+                                    value={fcLinkInput}
+                                    onChange={e => setFcLinkInput(e.target.value)}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                You can create a new flowchart, copy its link, and paste it here.
+                            </p>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsFlowchartDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirmInsertFlowchart} disabled={(fcTab === 'list' && !selectedFlowchart) || (fcTab === 'link' && !fcLinkInput.trim())}>Insert Flowchart</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

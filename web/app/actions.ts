@@ -330,12 +330,13 @@ export async function createFlowchart(formData: FormData | { title: string, work
     }
 }
 
-export async function updateFlowchart(id: string, data: { content?: any, title?: string }) {
+export async function updateFlowchart(id: string, data: { content?: any, title?: string, preview?: string }) {
     const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const updates: any = { updated_at: new Date().toISOString() }
     if (data.content !== undefined) updates.content = data.content
+    if (data.preview !== undefined) updates.preview_img = data.preview
 
     if (data.title !== undefined) {
         const exists = await checkTitleExists(supabase, "flowcharts", "title", data.title, user.id, id)
@@ -405,7 +406,7 @@ export async function getFlowcharts() {
 
     const { data, error } = await supabase
         .from("flowcharts")
-        .select("id, title, updated_at")
+        .select("id, title, updated_at, preview_img")
         .eq("owner_id", user.id)
         .order("updated_at", { ascending: false })
 

@@ -1,0 +1,1 @@
+ALTER TABLE flowcharts ADD COLUMN IF NOT EXISTS preview_img TEXT;

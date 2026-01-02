@@ -289,7 +289,18 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             try {
                 const { updateFlowchart } = await import("@/app/actions")
                 const sanitizedElements = JSON.parse(JSON.stringify(elements))
-                const result = await updateFlowchart(roomId, { content: sanitizedElements })
+
+                let preview = undefined
+                if (stageRef.current) {
+                    // Generate Preview Image (reduced quality/size for storage)
+                    preview = stageRef.current.toDataURL({
+                        pixelRatio: 0.5,
+                        mimeType: 'image/jpeg',
+                        quality: 0.7
+                    })
+                }
+
+                const result = await updateFlowchart(roomId, { content: sanitizedElements, preview })
                 if (result.error) console.error("Supabase Save Error:", result.error)
             } catch (err) {
                 console.error("Save failed:", err)
