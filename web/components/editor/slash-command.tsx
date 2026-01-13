@@ -19,7 +19,8 @@ import {
     LayoutDashboard,
     FileCode,
     Server,
-    Network
+    Network,
+    Image as ImageIcon
 } from 'lucide-react'
 
 // 1. Definition of commands
@@ -190,6 +191,16 @@ const getSuggestionItems = ({ query }: { query: string }) => {
             command: ({ editor, range }: { editor: Editor; range: Range }) => {
                 editor.chain().focus().deleteRange(range).run()
                 const event = new CustomEvent('insert-whiteboard', { detail: { pos: range.from } })
+                window.dispatchEvent(event)
+            },
+        },
+        {
+            title: 'Image',
+            description: 'Insert an image from your device',
+            icon: ImageIcon,
+            command: ({ editor, range }: { editor: Editor; range: Range }) => {
+                editor.chain().focus().deleteRange(range).run()
+                const event = new CustomEvent('insert-image', { detail: { pos: range.from } })
                 window.dispatchEvent(event)
             },
         },

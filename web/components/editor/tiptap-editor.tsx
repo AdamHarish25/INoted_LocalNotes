@@ -28,6 +28,8 @@ import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { WhiteboardExtension } from "./whiteboard-extension"
 import { FlowchartExtension } from "./flowchart-extension"
+import { ResizableImageExtension } from "./image-extension"
+import { createClient } from "@/utils/supabase/client"
 
 
 import { SlashCommand, suggestion } from "./slash-command"
@@ -169,8 +171,9 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             TableCell,
             WhiteboardExtension,
             FlowchartExtension,
+            ResizableImageExtension,
             TextAlign.configure({
-                types: ['heading', 'paragraph'],
+                types: ['heading', 'paragraph', 'image'],
             }),
             BubbleMenuExtension.configure({
                 pluginKey: 'bubbleMenu', // Optional
@@ -366,6 +369,58 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         }
     }, [isFlowchartDialogOpen, fcTab])
 
+    const [isUploadingImage, setIsUploadingImage] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+            alert("Please upload an image file.")
+            return
+        }
+
+        setIsUploadingImage(true)
+
+        try {
+            const supabase = createClient()
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${noteId}/${Date.now()}.${fileExt}`
+            const filePath = `${fileName}`
+            const bucketName = 'images'
+
+            const { error: uploadError } = await supabase.storage.from(bucketName).upload(filePath, file)
+
+            if (uploadError) {
+                console.error("Upload error", uploadError)
+                alert(`Failed to upload image: ${uploadError.message}. Ensure 'images' bucket exists and is public.`)
+                setIsUploadingImage(false)
+                return
+            }
+
+            const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath)
+
+            if (editor && !isReadOnly) {
+                const chain = editor.chain().focus()
+                if (pendingPos !== null) {
+                    chain.setTextSelection(pendingPos)
+                }
+                chain.insertContent({
+                    type: 'image',
+                    attrs: { src: publicUrl }
+                }).run()
+            }
+
+        } catch (e) {
+            console.error(e)
+            alert("An error occurred during upload.")
+        } finally {
+            setIsUploadingImage(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
     const handleConfirmInsertFlowchart = () => {
         let finalId = null
         let preview = null
@@ -447,14 +502,22 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             setIsFlowchartDialogOpen(true)
         }
 
+        const handleInsertImage = (e: Event) => {
+            const detail = (e as CustomEvent).detail
+            setPendingPos(detail.pos)
+            fileInputRef.current?.click()
+        }
+
         window.addEventListener('open-table-dialog', handleOpenTableDialog)
         window.addEventListener('insert-whiteboard', handleInsertWhiteboard)
         window.addEventListener('insert-flowchart', handleInsertFlowchart)
+        window.addEventListener('insert-image', handleInsertImage)
 
         return () => {
             window.removeEventListener('open-table-dialog', handleOpenTableDialog)
             window.removeEventListener('insert-whiteboard', handleInsertWhiteboard)
             window.removeEventListener('insert-flowchart', handleInsertFlowchart)
+            window.removeEventListener('insert-image', handleInsertImage)
         }
     }, [editor, isReadOnly])
 
@@ -588,6 +651,13 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-background">
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+            />
             {/* Git Integration Dialog */}
             <Dialog open={isGitDialogOpen} onOpenChange={setIsGitDialogOpen}>
                 <DialogContent className="sm:max-w-md">
