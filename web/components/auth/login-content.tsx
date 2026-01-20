@@ -43,6 +43,7 @@ export function LoginContent() {
             if (error) throw error
 
             router.push(next || "/")
+            setIsLoading(false)
             router.refresh()
         } catch (error) {
             console.error("Guest login failed", error)
@@ -97,6 +98,8 @@ export function LoginContent() {
         setIsLoading(true)
         await signup(formData)
     }
+
+
 
     return (
         <>
