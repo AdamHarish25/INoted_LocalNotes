@@ -212,7 +212,7 @@ export function LoginContent() {
                             disabled={isLoading}
                             className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white disabled:opacity-50"
                         >
-                            {isLoading && !isSignup ? "Processing..." : "Login"}
+                            {!isLoading && !isSignup ? "Processing..." : "Login"}
                         </Button>
                         <Button
                             onClick={() => {
@@ -224,7 +224,7 @@ export function LoginContent() {
                             disabled={isLoading}
                             className="flex-1 rounded-full h-11 border-blue-200 dark:border-zinc-700 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-900 bg-white dark:bg-black disabled:opacity-50"
                         >
-                            {isLoading && isSignup ? "Processing..." : "Sign Up"}
+                            {!isLoading && isSignup ? "Processing..." : "Sign Up"}
                         </Button>
                     </div>
                 </div>
