@@ -207,27 +207,49 @@ export function LoginContent() {
 
                     <div className="flex gap-2">
                         <Button
-                            onClick={() => {
-                                setIsSignup(false);
-                                handleLoginSubmission
+                            onClick={(e) => {
+                                e.preventDefault()
+                                setIsSignup(false)
+                                // Handle manual submission
+                                const form = e.currentTarget.closest('form')
+                                if (form?.checkValidity()) {
+                                    handleLoginSubmission(new FormData(form))
+                                } else {
+                                    form?.reportValidity()
+                                }
                             }}
-                            formAction={handleLoginSubmission}
                             disabled={isLoading}
                             className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white disabled:opacity-50"
                         >
-                            {isLoading && !isSignup ? "Processing..." : "Login"}
+                            {isLoading && !isSignup ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : "Login"}
                         </Button>
                         <Button
-                            onClick={() => {
-                                setIsSignup(true);
-                                handleSignupSubmission
+                            onClick={(e) => {
+                                e.preventDefault()
+                                setIsSignup(true)
+                                // Handle manual submission
+                                const form = e.currentTarget.closest('form')
+                                if (form?.checkValidity()) {
+                                    handleSignupSubmission(new FormData(form))
+                                } else {
+                                    form?.reportValidity()
+                                }
                             }}
-                            formAction={handleSignupSubmission}
                             variant="outline"
                             disabled={isLoading}
                             className="flex-1 rounded-full h-11 border-blue-200 dark:border-zinc-700 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-900 bg-white dark:bg-black disabled:opacity-50"
                         >
-                            {isLoading && isSignup ? "Processing..." : "Sign Up"}
+                            {isLoading && isSignup ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : "Sign Up"}
                         </Button>
                     </div>
                 </div>
