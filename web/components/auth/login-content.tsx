@@ -204,7 +204,10 @@ export function LoginContent() {
 
                     <div className="flex gap-2">
                         <Button
-                            onClick={() => setIsSignup(false)}
+                            onClick={() => {
+                                setIsSignup(false);
+                                handleLoginSubmission
+                            }}
                             formAction={handleLoginSubmission}
                             disabled={isLoading}
                             className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white disabled:opacity-50"
@@ -212,7 +215,10 @@ export function LoginContent() {
                             {isLoading && !isSignup ? "Processing..." : "Login"}
                         </Button>
                         <Button
-                            onClick={() => setIsSignup(true)}
+                            onClick={() => {
+                                setIsSignup(true);
+                                handleSignupSubmission
+                            }}
                             formAction={handleSignupSubmission}
                             variant="outline"
                             disabled={isLoading}
