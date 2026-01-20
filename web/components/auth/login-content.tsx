@@ -88,6 +88,16 @@ export function LoginContent() {
         }
     }, [searchParams, router])
 
+    const handleLoginSubmission = async (formData: FormData) => {
+        setIsLoading(true)
+        await login(formData)
+    }
+
+    const handleSignupSubmission = async (formData: FormData) => {
+        setIsLoading(true)
+        await signup(formData)
+    }
+
     return (
         <>
             <div className="text-center mb-8">
@@ -195,20 +205,20 @@ export function LoginContent() {
                     <div className="flex gap-2">
                         <Button
                             onClick={() => setIsSignup(false)}
-                            formAction={login}
+                            formAction={handleLoginSubmission}
                             disabled={isLoading}
                             className="flex-1 rounded-full h-11 bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none text-white disabled:opacity-50"
                         >
-                            Login
+                            {isLoading && !isSignup ? "Processing..." : "Login"}
                         </Button>
                         <Button
                             onClick={() => setIsSignup(true)}
-                            formAction={signup}
+                            formAction={handleSignupSubmission}
                             variant="outline"
                             disabled={isLoading}
                             className="flex-1 rounded-full h-11 border-blue-200 dark:border-zinc-700 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-900 bg-white dark:bg-black disabled:opacity-50"
                         >
-                            Sign Up
+                            {isLoading && isSignup ? "Processing..." : "Sign Up"}
                         </Button>
                     </div>
                 </div>

@@ -210,7 +210,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     // Only hydration when we are fully synced with the server to avoid overwriting/duplicating content.
     // If we insert content before sync, Yjs treats it as new unique content and merges it (duplication).
     useEffect(() => {
-        if (isSynced && editor && !editor.isDestroyed && initialContent) {
+        if (isSynced && editor && !editor.isDestroyed && initialContent && !isReadOnly) {
             const fragment = ydoc.getXmlFragment('default')
 
             // Check if Yjs is effectively empty.
@@ -220,7 +220,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 editor.commands.setContent(initialContent)
             }
         }
-    }, [isSynced, editor, initialContent, ydoc])
+    }, [isSynced, editor, initialContent, ydoc, isReadOnly])
 
     // Force save on checkbox toggle (TaskItem)
     // Tiptap's onUpdate sometimes misses attribute changes in collaborative environments
