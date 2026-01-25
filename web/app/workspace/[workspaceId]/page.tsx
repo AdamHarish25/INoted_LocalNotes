@@ -172,18 +172,20 @@ export default async function WorkspaceDashboardPage(props: {
                     })}
 
                     {/* New Note Button */}
-                    <CreateResourceModal type="note" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
-                        <button className="w-full h-full">
-                            <Card className="h-48 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 group transition-all duration-200 flex items-center justify-center hover:shadow-md cursor-pointer group border-dashed">
-                                <div className="flex flex-col items-center">
-                                    <div className="w-12 h-12 bg-blue-500 rounded-full group-hover:shadow-md shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform mb-2">
-                                        <Plus className="text-white w-6 h-6" />
+                    <div className="relative group block h-48">
+                        <CreateResourceModal type="note" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
+                            <button className="w-full h-full">
+                                <Card className="h-48 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 group transition-all duration-200 flex items-center justify-center hover:shadow-md cursor-pointer group border-dashed">
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-12 h-12 bg-blue-500 rounded-full group-hover:shadow-md shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform mb-2">
+                                            <Plus className="text-white w-6 h-6" />
+                                        </div>
+                                        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">New Note +</span>
                                     </div>
-                                    <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">New Note +</span>
-                                </div>
-                            </Card>
-                        </button>
-                    </CreateResourceModal>
+                                </Card>
+                            </button>
+                        </CreateResourceModal>
+                    </div>
                 </div>
             </section>
 
