@@ -179,7 +179,7 @@ export default async function WorkspaceDashboardPage(props: {
                                     <div className="w-12 h-12 bg-blue-500 rounded-full group-hover:shadow-md shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform mb-2">
                                         <Plus className="text-white w-6 h-6" />
                                     </div>
-                                    <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">New Note</span>
+                                    <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">New Note +</span>
                                 </div>
                             </Card>
                         </button>
