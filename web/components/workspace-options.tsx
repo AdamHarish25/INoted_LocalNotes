@@ -41,6 +41,8 @@ export function WorkspaceOptions({ workspaceId, workspaceName }: WorkspaceOption
         if (res.success) {
             setIsRenameOpen(false)
             router.refresh()
+        } else {
+            alert(res.error || "Failed to rename workspace")
         }
     }
 

@@ -497,7 +497,7 @@ export async function updateWorkspace(id: string, name: string) {
 
     const { error } = await supabase
         .from("workspaces")
-        .update({ name, updated_at: new Date().toISOString() })
+        .update({ name })
         .eq("id", id)
         .eq("owner_id", user.id)
 
