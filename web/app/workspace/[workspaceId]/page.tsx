@@ -138,54 +138,54 @@ export default async function WorkspaceDashboardPage(props: {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Notes List */}
-                    {notes?.map((note) => {
-                        const previewText = getPreviewText(note.content);
-                        const words = previewText.split(/\s+/).filter(w => w.length > 0);
-                        const truncatedPreview = words.slice(0, 5).join(" ") + (words.length > 5 ? "..." : "");
+                    {/* Notes List & New Note Button Combined */}
+                    {[
+                        ...(notes || []).map((note) => {
+                            const previewText = getPreviewText(note.content);
+                            const words = previewText.split(/\s+/).filter(w => w.length > 0);
+                            const truncatedPreview = words.slice(0, 5).join(" ") + (words.length > 5 ? "..." : "");
 
-                        return (
-                            <div key={note.id} className="relative group">
-                                <Link href={`/notes/${note.id}`}>
-                                    <Card className="h-48 py-4 hover:shadow-md hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all duration-200 cursor-pointer border-slate-200 dark:border-zinc-800 bg-white dark:bg-black flex flex-col group/card">
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-sm font-medium group-hover/card:text-blue-600 dark:group-hover/card:text-blue-400 text-slate-700 dark:text-zinc-200 truncate mr-6">{note.title || "Untitled"}</CardTitle>
-                                            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-                                                {new Date(note.created_at).toLocaleDateString()}
-                                            </p>
-                                        </CardHeader>
-                                        <CardContent className="flex-1 overflow-hidden flex items-center justify-center p-4">
-                                            <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium text-center break-all italic">
-                                                {truncatedPreview || "No content"}
-                                            </p>
-                                        </CardContent>
-                                        <CardFooter className="pt-2 pb-4 flex justify-end">
-                                            <span className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500 text-[10px] px-3 py-1 rounded-full font-medium shadow-sm truncate max-w-[100px] border border-yellow-200 dark:border-yellow-900/50">
-                                                {currentWorkspace.name}
-                                            </span>
-                                        </CardFooter>
-                                    </Card>
-                                </Link>
-                                <ResourceOptions id={note.id} title={note.title || "Untitled"} type="note" />
-                            </div>
-                        )
-                    })}
-
-                    {/* New Note Button */}
-                    <div className="relative group block h-48">
-                        <CreateResourceModal type="note" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
-                            <button className="w-full h-full">
-                                <Card className="h-48 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 group transition-all duration-200 flex items-center justify-center hover:shadow-md cursor-pointer group border-dashed">
-                                    <div className="flex flex-col items-center">
-                                        <div className="w-12 h-12 bg-blue-500 rounded-full group-hover:shadow-md shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform mb-2">
-                                            <Plus className="text-white w-6 h-6" />
+                            return (
+                                <div key={note.id} className="relative group">
+                                    <Link href={`/notes/${note.id}`}>
+                                        <Card className="h-48 py-4 hover:shadow-md hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all duration-200 cursor-pointer border-slate-200 dark:border-zinc-800 bg-white dark:bg-black flex flex-col group/card">
+                                            <CardHeader className="pb-2">
+                                                <CardTitle className="text-sm font-medium group-hover/card:text-blue-600 dark:group-hover/card:text-blue-400 text-slate-700 dark:text-zinc-200 truncate mr-6">{note.title || "Untitled"}</CardTitle>
+                                                <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                                                    {new Date(note.created_at).toLocaleDateString()}
+                                                </p>
+                                            </CardHeader>
+                                            <CardContent className="flex-1 overflow-hidden flex items-center justify-center p-4">
+                                                <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium text-center break-all italic">
+                                                    {truncatedPreview || "No content"}
+                                                </p>
+                                            </CardContent>
+                                            <CardFooter className="pt-2 pb-4 flex justify-end">
+                                                <span className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500 text-[10px] px-3 py-1 rounded-full font-medium shadow-sm truncate max-w-[100px] border border-yellow-200 dark:border-yellow-900/50">
+                                                    {currentWorkspace.name}
+                                                </span>
+                                            </CardFooter>
+                                        </Card>
+                                    </Link>
+                                    <ResourceOptions id={note.id} title={note.title || "Untitled"} type="note" />
+                                </div>
+                            )
+                        }),
+                        <div key="new-note-btn" className="relative group block h-48">
+                            <CreateResourceModal type="note" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
+                                <button className="w-full h-full">
+                                    <Card className="h-48 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 group transition-all duration-200 flex items-center justify-center hover:shadow-md cursor-pointer group border-dashed">
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-12 h-12 bg-blue-500 rounded-full group-hover:shadow-md shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform mb-2">
+                                                <Plus className="text-white w-6 h-6" />
+                                            </div>
+                                            <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">New Note +</span>
                                         </div>
-                                        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">New Note +</span>
-                                    </div>
-                                </Card>
-                            </button>
-                        </CreateResourceModal>
-                    </div>
+                                    </Card>
+                                </button>
+                            </CreateResourceModal>
+                        </div>
+                    ]}
                 </div>
             </section>
 
