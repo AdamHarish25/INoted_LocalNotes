@@ -89,6 +89,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     const [title, setTitle] = useState(initialTitle || "Untitled Note")
     const [isPublic, setIsPublic] = useState(initialIsPublic || false)
     const [isCopied, setIsCopied] = useState(false)
+    const hasHydrated = useRef(false)
 
     const handleShareToggle = async () => {
         if (isReadOnly) return
@@ -210,7 +211,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     // Only hydration when we are fully synced with the server to avoid overwriting/duplicating content.
     // If we insert content before sync, Yjs treats it as new unique content and merges it (duplication).
     useEffect(() => {
-        if (isSynced && editor && !editor.isDestroyed && initialContent && !isReadOnly) {
+        if (isSynced && editor && !editor.isDestroyed && initialContent && !hasHydrated.current) {
             const fragment = ydoc.getXmlFragment('default')
 
             // Check if Yjs is effectively empty.
@@ -218,9 +219,10 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 // Prevent duplicate hydration if yjs already has sync going on
                 // but here we assume if XML is empty, we must be the first.
                 editor.commands.setContent(initialContent)
+                hasHydrated.current = true
             }
         }
-    }, [isSynced, editor, initialContent, ydoc, isReadOnly])
+    }, [isSynced, editor, initialContent, ydoc])
 
     // Force save on checkbox toggle (TaskItem)
     // Tiptap's onUpdate sometimes misses attribute changes in collaborative environments
