@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import SupabaseProvider from 'y-supabase'
+import SupabaseProvider from "@/lib/y-supabase"
 import { createClient } from "@/utils/supabase/client"
 import * as Y from 'yjs'
 
@@ -79,6 +79,9 @@ export function useYjsStore({ roomId, initialData }: UseWhiteboardStoreProps): U
 
         const provider = new SupabaseProvider(ydoc, supabase, {
             channel: `whiteboard-${roomId}`,
+            id: roomId,
+            tableName: 'whiteboards',
+            columnName: 'content',
         } as any)
         providerRef.current = provider
 

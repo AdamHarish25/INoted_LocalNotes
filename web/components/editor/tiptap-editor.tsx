@@ -5,7 +5,7 @@ import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Collaboration from "@tiptap/extension-collaboration"
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor"
-import SupabaseProvider from "y-supabase"
+import SupabaseProvider from "@/lib/y-supabase"
 import { EditorToolbar } from "./toolbar"
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -59,6 +59,9 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
         // 2. Pass dokumen yang kita buat ke provider
         const newProvider = new SupabaseProvider(ydoc, supabase, {
             channel: `note-collab-${noteId}`,
+            id: noteId,
+            tableName: 'notes',
+            columnName: 'content'
         } as any)
 
         setProvider(newProvider)

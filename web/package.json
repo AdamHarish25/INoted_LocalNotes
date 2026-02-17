@@ -56,7 +56,6 @@
     "tailwindcss-animate": "^1.0.7",
     "tippy.js": "^6.3.7",
     "y-protocols": "^1.0.6",
-    "y-supabase": "^0.0.4-7-alpha",
     "yjs": "^13.6.27"
   },
   "devDependencies": {

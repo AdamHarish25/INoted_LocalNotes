@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, RegularPolygon, Path, Group, Arrow } from "react-konva"
-import SupabaseProvider from "y-supabase"
+import SupabaseProvider from "@/lib/y-supabase"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
 import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon, MonitorOff, Download, Image as ImageIcon } from "lucide-react"
@@ -326,6 +326,9 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
         const provider = new SupabaseProvider(ydoc, supabase, {
             channel: `flowchart-${roomId}`,
+            id: roomId,
+            tableName: 'flowcharts',
+            columnName: 'content',
         } as any)
         providerRef.current = provider
 

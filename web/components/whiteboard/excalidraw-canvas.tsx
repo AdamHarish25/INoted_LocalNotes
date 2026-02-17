@@ -1,7 +1,7 @@
 "use client"
 import dynamic from "next/dynamic"
 import { useEffect, useState, useRef } from "react"
-import SupabaseProvider from "y-supabase"
+import SupabaseProvider from "@/lib/y-supabase"
 import { createClient } from "@/utils/supabase/client"
 import * as Y from "yjs"
 // import { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types/types"
@@ -42,6 +42,9 @@ export default function ExcalidrawCanvas({ roomId }: { roomId: string }) {
         const supabase = createClient()
         const provider = new SupabaseProvider(ydoc, supabase, {
             channel: `excalidraw-${roomId}`,
+            id: roomId,
+            tableName: 'whiteboards', // Excalidraw uses same table or separate? Assuming whiteboards or similar logic. Let's use whiteboards for now.
+            columnName: 'content',
         } as any)
 
         const yElements = ydoc.getArray("excalidraw-elements")

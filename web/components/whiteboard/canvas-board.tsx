@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import SupabaseProvider from "y-supabase"
+import SupabaseProvider from "@/lib/y-supabase"
 import * as Y from "yjs"
 import { useTheme } from "next-themes"
 import { createClient } from "@/utils/supabase/client"
@@ -568,6 +568,9 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         const provider = new SupabaseProvider(ydoc, supabase, {
             channel: `whiteboard-${roomId}`,
+            id: roomId,
+            tableName: 'whiteboards',
+            columnName: 'content',
         } as any)
         providerRef.current = provider
 
