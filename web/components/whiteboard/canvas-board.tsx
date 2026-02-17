@@ -621,12 +621,15 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
         provider.on('status', (event: any) => {
             console.log('Hocuspocus Connection Status:', event.status)
+            setConnectionStatus(event.status)
         })
         provider.on('synced', () => {
             console.log('Hocuspocus Synced! Document State:', ydoc.getArray("elements").toArray())
+            setConnectionStatus('connected')
         })
         provider.on('disconnect', () => {
             console.log('Hocuspocus Disconnected')
+            setConnectionStatus('disconnected')
         })
 
         // Sync Listener
@@ -635,10 +638,6 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         }
 
         // Initial Load (if not hydrated above, checking again)
-        if (yArray.length > 0) {
-            setElements(yArray.toArray())
-        }
-
         if (yArray.length > 0) {
             setElements(yArray.toArray())
         }

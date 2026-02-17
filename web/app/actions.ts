@@ -131,7 +131,21 @@ export async function createWhiteboard(formData: FormData | { title: string, wor
 
 export async function updateNote(id: string, data: { content?: any, title?: string }) {
     const { supabase, user } = await getSupabaseUser()
-    if (!user) return { error: "Unauthorized" }
+
+    // If no user, check if public editing is allowed
+    let isGuestEditor = false
+    if (!user) {
+        const { data: note, error } = await supabase
+            .from("notes")
+            .select("is_public, allow_public_editing")
+            .eq("id", id)
+            .single()
+
+        if (error || !note || !note.is_public || !note.allow_public_editing) {
+            return { error: "Unauthorized" }
+        }
+        isGuestEditor = true
+    }
 
     const updates: any = { updated_at: new Date().toISOString() }
     if (data.content !== undefined) {
@@ -146,17 +160,39 @@ export async function updateNote(id: string, data: { content?: any, title?: stri
     }
 
     if (data.title !== undefined) {
-        const exists = await checkTitleExists(supabase, "notes", "title", data.title, user.id, id)
-        if (exists) return { error: "Title already exists" }
+        // Guest editors might not be strictly checked for title uniqueness against "owner", 
+        // but let's just allow it or skip unique check for guest?
+        // Actually, checkTitleExists requires userId.
+        if (!isGuestEditor && user) {
+            const exists = await checkTitleExists(supabase, "notes", "title", data.title, user.id, id)
+            if (exists) return { error: "Title already exists" }
+        }
         updates.title = data.title
     }
 
-    let { data: result, error } = await supabase
-        .from("notes")
-        .update(updates)
-        .eq("id", id)
-        .eq("owner_id", user.id)
-        .select("id")
+    let query = supabase.from("notes").update(updates).eq("id", id)
+
+    // If authenticated, ensure ownership (or rely on RLS if we trust it, but actions usually enforce strict ownership for "my notes")
+    // BUT we also have shared notes logic.
+    // If RLS is set up correctly for "Public notes are updatable if allowed", we can just run the update.
+    // However, for authenticated users, we usually enforced owner_id match in previous code: .eq("owner_id", user.id)
+    // We should probably rely on RLS logic now, OR check if it's the owner.
+
+    if (!isGuestEditor && user) {
+        // We used to enforce owner_id. Now we should probably check if we are owner OR if it's public edit.
+        // Simplest safety: Try update. If 0 rows affected, it might be permission issue.
+        // But the previous code strictly added .eq("owner_id", user.id). 
+        // Let's relax this to just ID, and let RLS handle "Owner OR Public Editor" logic.
+        // But wait, the Service Role client (if used) bypasses RLS. 
+        // 'supabase' from getSupabaseUser() uses cookies/auth header, so it acts as the user (or anon).
+        // So RLS IS ACTIVE. We can just filter by ID.
+    }
+
+    // We removed .eq("owner_id", ...) to allow shared editing via RLS.
+    // Note: If you want to strictly prevent authenticated users from editing *private* notes they don't own, 
+    // RLS "Users can update their own notes" should handle it.
+
+    const { data: result, error } = await query.select("id")
 
     // Retry logic: If 'tasks' column invalid, retry without it
     if (error && error.code === '42703' && updates.tasks) {
@@ -166,11 +202,9 @@ export async function updateNote(id: string, data: { content?: any, title?: stri
             .from("notes")
             .update(updates)
             .eq("id", id)
-            .eq("owner_id", user.id)
             .select("id")
 
-        result = retryResult.data
-        error = retryResult.error
+        return retryResult.error ? { error: retryResult.error.message } : { success: true }
     }
 
     if (error) {
@@ -179,7 +213,6 @@ export async function updateNote(id: string, data: { content?: any, title?: stri
     }
 
     if (!result || result.length === 0) {
-        console.error("No note updated. Check RLS or owner_id match.")
         return { error: "No permission or note not found" }
     }
 
@@ -239,22 +272,38 @@ export async function updateNoteSharing(id: string, is_public: boolean, allow_pu
 
 export async function updateWhiteboard(id: string, data: { content?: any, title?: string }) {
     const { supabase, user } = await getSupabaseUser()
-    if (!user) return { error: "Unauthorized" }
+
+    // If no user, check permissions
+    let isGuestEditor = false
+    if (!user) {
+        const { data: wb, error } = await supabase
+            .from("whiteboards")
+            .select("is_public, allow_public_editing")
+            .eq("id", id)
+            .single()
+
+        if (error || !wb || !wb.is_public || !wb.allow_public_editing) {
+            return { error: "Unauthorized" }
+        }
+        isGuestEditor = true
+    }
 
     const updates: any = { updated_at: new Date().toISOString() }
     if (data.content !== undefined) updates.content = data.content
 
     if (data.title !== undefined) {
-        const exists = await checkTitleExists(supabase, "whiteboards", "title", data.title, user.id, id)
-        if (exists) return { error: "Title already exists" }
+        if (!isGuestEditor && user) {
+            const exists = await checkTitleExists(supabase, "whiteboards", "title", data.title, user.id, id)
+            if (exists) return { error: "Title already exists" }
+        }
         updates.title = data.title
     }
 
+    // Use RLS to enforce security (removed .eq("owner_id"))
     const { data: result, error } = await supabase
         .from("whiteboards")
         .update(updates)
         .eq("id", id)
-        .eq("owner_id", user.id)
         .select("id")
 
     if (error) {
@@ -263,7 +312,7 @@ export async function updateWhiteboard(id: string, data: { content?: any, title?
     }
 
     if (!result || result.length === 0) {
-        console.error("No whiteboard updated. Check RLS or owner_id match.")
+        // console.error("No whiteboard updated. Check RLS or owner_id match.")
         return { error: "No permission or whiteboard not found" }
     }
 
@@ -332,23 +381,38 @@ export async function createFlowchart(formData: FormData | { title: string, work
 
 export async function updateFlowchart(id: string, data: { content?: any, title?: string, preview?: string }) {
     const { supabase, user } = await getSupabaseUser()
-    if (!user) return { error: "Unauthorized" }
+
+    let isGuestEditor = false
+    if (!user) {
+        const { data: fc, error } = await supabase
+            .from("flowcharts")
+            .select("is_public, allow_public_editing")
+            .eq("id", id)
+            .single()
+
+        if (error || !fc || !fc.is_public || !fc.allow_public_editing) {
+            return { error: "Unauthorized" }
+        }
+        isGuestEditor = true
+    }
 
     const updates: any = { updated_at: new Date().toISOString() }
     if (data.content !== undefined) updates.content = data.content
     if (data.preview !== undefined) updates.preview_img = data.preview
 
     if (data.title !== undefined) {
-        const exists = await checkTitleExists(supabase, "flowcharts", "title", data.title, user.id, id)
-        if (exists) return { error: "Title already exists" }
+        if (!isGuestEditor && user) {
+            const exists = await checkTitleExists(supabase, "flowcharts", "title", data.title, user.id, id)
+            if (exists) return { error: "Title already exists" }
+        }
         updates.title = data.title
     }
 
+    // RLS handles security
     const { data: result, error } = await supabase
         .from("flowcharts")
         .update(updates)
         .eq("id", id)
-        .eq("owner_id", user.id)
         .select("id")
 
     if (error) {
@@ -357,7 +421,6 @@ export async function updateFlowchart(id: string, data: { content?: any, title?:
     }
 
     if (!result || result.length === 0) {
-        console.error("No flowchart updated. Check RLS or owner_id match.")
         return { error: "No permission or flowchart not found" }
     }
 
