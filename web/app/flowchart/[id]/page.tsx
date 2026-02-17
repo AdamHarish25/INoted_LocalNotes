@@ -9,21 +9,28 @@ export default async function FlowchartPage({ params }: { params: Promise<{ id: 
 
     const { data: flowchart } = await supabase
         .from("flowcharts")
-        .select("content")
+        .select("content, is_public, allow_public_editing, owner_id")
         .eq("id", id)
         .single()
 
-    // We allow access even if not in DB? No, usually we need the record.
-    // But for 'new' flowcharts, we might want to handle it. 
-    // For now, fail if not found, consistent with whiteboard page.
     if (!flowchart) {
-        // notFound() 
-        // actually for testing lets allow empty
+        notFound()
     }
+
+    const isOwner = user?.id === flowchart?.owner_id
+    const isAllowedPublicEdit = flowchart?.is_public && (flowchart as any)?.allow_public_editing
+    const isReadOnly = !isOwner && !isAllowedPublicEdit
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-white">
-            <FlowchartBoard roomId={id} initialData={flowchart?.content || []} />
+            <FlowchartBoard
+                roomId={id}
+                initialData={flowchart?.content || []}
+                initialIsPublic={flowchart?.is_public}
+                initialAllowPublicEditing={(flowchart as any)?.allow_public_editing}
+                isReadOnly={isReadOnly}
+                currentUser={user}
+            />
         </div>
     )
 }

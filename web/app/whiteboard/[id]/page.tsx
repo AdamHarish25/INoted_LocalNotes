@@ -12,7 +12,7 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ id:
 
     const { data: whiteboard } = await supabase
         .from("whiteboards")
-        .select("content, is_public")
+        .select("content, is_public, allow_public_editing, owner_id")
         .eq("id", id)
         .single()
 
@@ -20,9 +20,20 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ id:
         notFound()
     }
 
+    const isOwner = user?.id === whiteboard?.owner_id
+    const isAllowedPublicEdit = whiteboard?.is_public && (whiteboard as any)?.allow_public_editing
+    const isReadOnly = !isOwner && !isAllowedPublicEdit
+
     return (
         <div className="relative w-full h-screen overflow-hidden bg-white">
-            <CanvasBoard roomId={id} initialData={whiteboard?.content || []} initialIsPublic={whiteboard?.is_public} currentUser={user} />
+            <CanvasBoard
+                roomId={id}
+                initialData={whiteboard?.content || []}
+                initialIsPublic={whiteboard?.is_public}
+                initialAllowPublicEditing={(whiteboard as any)?.allow_public_editing}
+                currentUser={user}
+                isReadOnly={isReadOnly}
+            />
         </div>
     )
 }

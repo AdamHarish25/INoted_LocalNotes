@@ -219,13 +219,13 @@ function extractTasks(content: any): any[] {
     return tasks
 }
 
-export async function updateNoteSharing(id: string, is_public: boolean) {
+export async function updateNoteSharing(id: string, is_public: boolean, allow_public_editing: boolean = false) {
     const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
         .from("notes")
-        .update({ is_public })
+        .update({ is_public, allow_public_editing })
         .eq("id", id)
         .eq("owner_id", user.id)
 
@@ -270,13 +270,13 @@ export async function updateWhiteboard(id: string, data: { content?: any, title?
     return { success: true }
 }
 
-export async function updateWhiteboardSharing(id: string, is_public: boolean) {
+export async function updateWhiteboardSharing(id: string, is_public: boolean, allow_public_editing: boolean = false) {
     const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
         .from("whiteboards")
-        .update({ is_public })
+        .update({ is_public, allow_public_editing })
         .eq("id", id)
         .eq("owner_id", user.id)
 
@@ -364,13 +364,13 @@ export async function updateFlowchart(id: string, data: { content?: any, title?:
     return { success: true }
 }
 
-export async function updateFlowchartSharing(id: string, is_public: boolean) {
+export async function updateFlowchartSharing(id: string, is_public: boolean, allow_public_editing: boolean = false) {
     const { supabase, user } = await getSupabaseUser()
     if (!user) return { error: "Unauthorized" }
 
     const { error } = await supabase
         .from("flowcharts")
-        .update({ is_public })
+        .update({ is_public, allow_public_editing })
         .eq("id", id)
         .eq("owner_id", user.id)
 

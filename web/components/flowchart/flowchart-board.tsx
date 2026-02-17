@@ -5,11 +5,11 @@ import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, Regul
 import SupabaseProvider from "@/lib/y-supabase"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
-import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon, MonitorOff, Download, Image as ImageIcon } from "lucide-react"
+import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon, MonitorOff, Download, Image as ImageIcon, Share, Globe, Check, Copy } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2, Cloud } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
     DropdownMenu,
@@ -126,7 +126,7 @@ const getOrthogonalPoints = (startNode: FlowchartElement, endNode: FlowchartElem
 
 const COLORS = ['#ef4444', '#3b82f6', '#22c5e', '#eab308', '#a855f7', '#000000', '#ffffff']
 
-export default function FlowchartBoard({ roomId, initialData }: { roomId: string, initialData?: any[] }) {
+export default function FlowchartBoard({ roomId, initialData, initialIsPublic = false, initialAllowPublicEditing = false, isReadOnly = false, currentUser }: { roomId: string, initialData?: any[], initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, isReadOnly?: boolean, currentUser?: any }) {
     const [elements, setElements] = useState<FlowchartElement[]>([])
     // Multi-Selection State
     const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -139,6 +139,26 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
     const [editingId, setEditingId] = useState<string | null>(null) // Inline editing state
     const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'diamond' | 'cylinder' | 'parallelogram' | 'rounded_rect' | 'triangle' | 'hexagon' | 'trapezoid' | 'document' | 'cloud' | 'terminator'>('select')
+
+    // Share State
+    const [isPublic, setIsPublic] = useState(initialIsPublic)
+    const [allowPublicEditing, setAllowPublicEditing] = useState(initialAllowPublicEditing)
+    const [isCopied, setIsCopied] = useState(false)
+
+    // Helper for Sharing
+    const handleUpdateSharing = async (newIsPublic: boolean, newAllowEditing: boolean) => {
+        setIsPublic(newIsPublic)
+        setAllowPublicEditing(newAllowEditing)
+        const { updateFlowchartSharing } = await import("@/app/actions")
+        await updateFlowchartSharing(roomId, newIsPublic, newAllowEditing)
+    }
+
+    const copyLink = () => {
+        const url = `${window.location.origin}/flowchart/${roomId}`
+        navigator.clipboard.writeText(url)
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+    }
 
     // Viewport State
     const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
@@ -182,6 +202,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     // Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (isReadOnly) return
             if (e.code === 'Space' && !editingId) {
                 if (document.activeElement === document.body) {
                     e.preventDefault()
@@ -398,6 +419,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
 
     // Selection Handling
     const handleStageMouseDown = (e: any) => {
+        if (isReadOnly && activeTool !== 'hand' && !isSpacePressed) return
         const stage = e.target.getStage()
         const pos = stage.getPointerPosition()
         const transformToScene = (screen: { x: number, y: number }) => {
@@ -477,6 +499,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleStageMouseMove = (e: any) => {
+        if (isReadOnly && !isSpacePressed && activeTool !== 'hand') return
         const stage = e.target.getStage()
         if (!stage) return
         const pos = stage.getPointerPosition()
@@ -527,6 +550,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleStageMouseUp = (e: any) => {
+        if (isReadOnly && activeTool !== 'hand' && !isSpacePressed) return
         // Finalize Selection Box
         if (selectionBox) {
             // Find intersecting elements
@@ -586,6 +610,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleStageClick = (e: any) => {
+        if (isReadOnly) return
         if (contextMenu.visible) {
             setContextMenu({ ...contextMenu, visible: false })
             return
@@ -656,6 +681,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const dragStartPosRef = useRef<Map<string, { x: number, y: number }>>(new Map())
 
     const handleElementDragStart = (e: any, id: string) => {
+        if (isReadOnly) return
         // Capture start positions of ALL selected elements
         if (selectedIds.includes(id)) {
             const map = new Map()
@@ -675,6 +701,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleElementDragMove = (e: any, id: string) => {
+        if (isReadOnly) return
         // If dragging a selected item, move all others
         if (selectedIds.includes(id) && selectedIds.length > 1) {
             const startPos = dragStartPosRef.current.get(id)
@@ -701,6 +728,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleElementDragEnd = (e: any, id: string) => {
+        if (isReadOnly) return
         if (!yElementsRef.current) return
 
         // If part of selection, update ALL selected
@@ -738,6 +766,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleTransformEnd = (e: any) => {
+        if (isReadOnly) return
         if (selectedIds.length === 0) return
 
         // If transforming multiple, we iterate all selectedIds
@@ -782,6 +811,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleInsertText = () => {
+        if (isReadOnly) return
         if (contextMenu.elementId) {
             const el = elements.find(e => e.id === contextMenu.elementId)
             if (el) {
@@ -793,6 +823,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const saveText = () => {
+        if (isReadOnly) return
         if (contextMenu.elementId && yElementsRef.current) {
             const idx = elements.findIndex(el => el.id === contextMenu.elementId)
             if (idx !== -1) {
@@ -805,6 +836,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleDeleteElement = () => {
+        if (isReadOnly) return
         if (contextMenu.elementId) {
             // If context menu was opened on an item, delete that (and maybe others if selected?)
             // Usually user expects the item they right-clicked to be deleted.
@@ -1124,6 +1156,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     }
 
     const handleContextMenu = (e: any, id: string) => {
+        if (isReadOnly) return
         e.evt.preventDefault()
         const stage = e.target.getStage()
         // Use page coordinates for fixed menu (more reliable than stage pointer + container rect in some cases)
@@ -1231,6 +1264,80 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
+
+                    {!isReadOnly && (
+                        <>
+                            <div className="flex-1" />
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50">
+                                        <Share className="w-4 h-4" />
+                                        Share
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Share Flowchart</DialogTitle>
+                                        <DialogDescription>
+                                            Collaborate with others in real-time.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-muted/50">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2 font-medium">
+                                                    <Globe className="w-4 h-4 text-slate-500" />
+                                                    General Access
+                                                </div>
+                                                <p className="text-xs text-slate-500">
+                                                    {isPublic ? "Anyone with the link can access" : "Only invited people can access"}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    className="text-xs border rounded p-1 bg-white dark:bg-zinc-800"
+                                                    value={!isPublic ? 'off' : (allowPublicEditing ? 'editor' : 'viewer')}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value
+                                                        if (val === 'off') {
+                                                            // Restricted
+                                                            handleUpdateSharing(false, false)
+                                                        } else if (val === 'viewer') {
+                                                            // Viewer
+                                                            handleUpdateSharing(true, false)
+                                                        } else if (val === 'editor') {
+                                                            // Editor
+                                                            handleUpdateSharing(true, true)
+                                                        }
+                                                    }}
+                                                >
+                                                    <option value="off">Restricted</option>
+                                                    <option value="viewer">Viewer</option>
+                                                    <option value="editor">Editor</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {isPublic && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-muted border rounded-md overflow-hidden">
+                                                    <input
+                                                        className="flex-1 text-xs bg-transparent outline-none truncate"
+                                                        readOnly
+                                                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/flowchart/${roomId}`}
+                                                    />
+                                                </div>
+                                                <Button size="icon" variant="outline" onClick={copyLink}>
+                                                    {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        </>
+                    )}
                 </div>
 
                 <div className="flex-1 relative w-full bg-white dark:bg-zinc-950 overflow-hidden">

@@ -141,7 +141,7 @@ const getRandomColor = () => {
     return colors[Math.floor(Math.random() * colors.length)]
 }
 
-export default function CanvasBoard({ roomId, initialData, initialIsPublic = false, currentUser }: { roomId: string, initialData?: any[], initialIsPublic?: boolean, currentUser?: any }) {
+export default function CanvasBoard({ roomId, initialData, initialIsPublic = false, initialAllowPublicEditing = false, currentUser, isReadOnly = false }: { roomId: string, initialData?: any[], initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, currentUser?: any, isReadOnly?: boolean }) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null)
@@ -200,10 +200,11 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     // const supabase = createClient()
 
     // Save Status State
-    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
+    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'readonly'>(isReadOnly ? 'readonly' : 'saved')
 
     // Share State
     const [isPublic, setIsPublic] = useState(initialIsPublic)
+    const [allowPublicEditing, setAllowPublicEditing] = useState(initialAllowPublicEditing)
     const [isCopied, setIsCopied] = useState(false)
 
     // Sharing Permission Role
@@ -216,6 +217,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     const [connectionStatus, setConnectionStatus] = useState('disconnected')
 
     const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (isReadOnly) return
         e.preventDefault()
         if (!context || !canvasRef.current) return
 
@@ -244,6 +246,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
     }
 
     const handleDeleteComponent = () => {
+        if (isReadOnly) return
         if (!contextMenu) return
 
         // Remove from local state and Yjs
@@ -267,13 +270,11 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         return () => window.removeEventListener('click', handleClick)
     }, [])
 
-
-
-    const handleShareToggle = async () => {
-        const newStatus = !isPublic
-        setIsPublic(newStatus)
+    const handleUpdateSharing = async (newIsPublic: boolean, newAllowEditing: boolean) => {
+        setIsPublic(newIsPublic)
+        setAllowPublicEditing(newAllowEditing)
         const { updateWhiteboardSharing } = await import("@/app/actions")
-        await updateWhiteboardSharing(roomId, newStatus)
+        await updateWhiteboardSharing(roomId, newIsPublic, newAllowEditing)
     }
 
     const copyLink = () => {
@@ -574,30 +575,14 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         } as any)
         providerRef.current = provider
 
-        // Observer for public role changes
-        yMap.observe(() => {
-            const remotePublicRole = yMap.get('publicRole') as string
-            if (remotePublicRole && !currentUser?.id && isPublic) {
-                setAccessRole(remotePublicRole as any)
-                if (provider.awareness) {
-                    const current = provider.awareness.getLocalState()
-                    provider.awareness.setLocalStateField('user', { ...current?.user, role: remotePublicRole })
-                }
-            }
-        })
 
-        // Awareness Setup
         const myColor = getRandomColor()
         const myName = currentUser?.user_metadata?.display_name || currentUser?.email || "Guest " + Math.floor(Math.random() * 1000)
         const myAvatar = currentUser?.user_metadata?.avatar_url || currentUser?.user_metadata?.picture || null
-        // Determine role: Owner is always editor. For others, it depends on the public setting (simulated for now)
-        // In a real app, we'd fetch the specific permission. 
-        // For this demo, we assume if it's public, it's 'editor' if the toggle is set to 'editor', otherwise 'viewer'.
-        // logic: owner ? editor : (sharedAsEditor ? editor : viewer). 
-        // We need a state for 'sharedAsEditor'. Let's assume it's stored in the whiteboard content or separate.
-        // For passed props, let's treat currentUser presence as 'editor' if logged in and owner.
-        const myRole = currentUser?.id ? 'editor' : (isPublic ? (yMap.get('publicRole') as string || 'viewer') : 'viewer')
-        setAccessRole(myRole as any)
+
+        // Determine role based on isReadOnly prop
+        const myRole = isReadOnly ? 'viewer' : 'editor'
+        setAccessRole(myRole)
 
 
         if (provider.awareness) {
@@ -1524,21 +1509,23 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
                                     <div className="flex items-center gap-2">
                                         <select
                                             className="text-xs border rounded p-1 bg-white dark:bg-zinc-800"
-                                            value={isPublic ? (accessRole) : 'off'}
+                                            value={!isPublic ? 'off' : (allowPublicEditing ? 'editor' : 'viewer')}
                                             onChange={(e) => {
-                                                if (e.target.value === 'off') {
-                                                    // Turn off public
-                                                    if (isPublic) handleShareToggle()
-                                                } else {
-                                                    // Turn on public if was off
-                                                    if (!isPublic) handleShareToggle()
-                                                    setAccessRole(e.target.value as any)
+                                                const val = e.target.value
+                                                if (val === 'off') {
+                                                    // Restricted
+                                                    handleUpdateSharing(false, false)
+                                                } else if (val === 'viewer') {
+                                                    // Viewer
+                                                    handleUpdateSharing(true, false)
+                                                } else if (val === 'editor') {
+                                                    // Editor
+                                                    handleUpdateSharing(true, true)
                                                 }
                                             }}
                                         >
                                             <option value="off">Restricted</option>
                                             <option value="viewer">Viewer</option>
-                                            <option value="commenter">Commenter</option>
                                             <option value="editor">Editor</option>
                                         </select>
                                     </div>

@@ -16,6 +16,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
             title,
             content,
             is_public,
+            allow_public_editing,
             workspace:workspaces(name),
             owner_id
         `)
@@ -28,7 +29,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
 
     const isOwner = user?.id === note?.owner_id
-    const isReadOnly = !isOwner
+    const isAllowedPublicEdit = note?.is_public && (note as any)?.allow_public_editing
+    const isReadOnly = !isOwner && !isAllowedPublicEdit
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
@@ -39,6 +41,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                     initialContent={note?.content}
                     initialTitle={note?.title || "Untitled Note"}
                     initialIsPublic={note?.is_public}
+                    initialAllowPublicEditing={(note as any)?.allow_public_editing}
                     initialWorkspace={(note as any)?.workspace?.name}
                     isReadOnly={isReadOnly}
                 />

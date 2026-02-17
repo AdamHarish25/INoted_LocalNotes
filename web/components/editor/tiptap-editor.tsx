@@ -48,7 +48,7 @@ import { default as BubbleMenuExtension } from '@tiptap/extension-bubble-menu'
 import { Bold, Italic, Strikethrough, Code, AlignLeft, AlignCenter, AlignRight, FileText } from 'lucide-react'
 import TextAlign from '@tiptap/extension-text-align'
 
-export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly = false }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
+export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialAllowPublicEditing, initialWorkspace, isReadOnly = false }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
     const [provider, setProvider] = useState<SupabaseProvider | null>(null)
     const [supabase] = useState(() => createClient())
 
@@ -83,22 +83,25 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
     }
 
     // Pass ydoc ke komponen editor juga
-    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialWorkspace={initialWorkspace} isReadOnly={isReadOnly} />
+    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialAllowPublicEditing={initialAllowPublicEditing} initialWorkspace={initialWorkspace} isReadOnly={isReadOnly} />
 }
 
-function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly }: { provider: SupabaseProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
+function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialAllowPublicEditing, initialWorkspace, isReadOnly }: { provider: SupabaseProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
     const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Error" | "View Only">(isReadOnly ? "View Only" : "Saved")
     const [title, setTitle] = useState(initialTitle || "Untitled Note")
     const [isPublic, setIsPublic] = useState(initialIsPublic || false)
+    const [allowPublicEditing, setAllowPublicEditing] = useState(initialAllowPublicEditing || false)
     const [isCopied, setIsCopied] = useState(false)
     const hasHydrated = useRef(false)
 
-    const handleShareToggle = async () => {
+    const handleUpdateSharing = async (newIsPublic: boolean, newAllowEditing: boolean) => {
         if (isReadOnly) return
-        const newStatus = !isPublic
-        setIsPublic(newStatus)
+
+        setIsPublic(newIsPublic)
+        setAllowPublicEditing(newAllowEditing)
+
         const { updateNoteSharing } = await import("@/app/actions")
-        const result = await updateNoteSharing(noteId, newStatus)
+        await updateNoteSharing(noteId, newIsPublic, newAllowEditing)
     }
 
     const copyLink = () => {
@@ -970,27 +973,47 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <Globe className="w-5 h-5 text-slate-500 dark:text-muted-foreground" />
-                                            <span className="font-medium">Publish to web</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">Publish to web</span>
+                                                <span className="text-xs text-slate-500">Anyone with the link can view</span>
+                                            </div>
                                         </div>
                                         <Button
                                             variant={isPublic ? "default" : "outline"}
-                                            onClick={handleShareToggle}
+                                            onClick={() => handleUpdateSharing(!isPublic, allowPublicEditing)}
                                         >
                                             {isPublic ? "Published" : "Private"}
                                         </Button>
                                     </div>
 
                                     {isPublic && (
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                className="flex-1 text-sm border p-2 rounded bg-slate-50 dark:bg-muted text-slate-600 dark:text-foreground outline-none"
-                                                readOnly
-                                                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/notes/${noteId}`}
-                                            />
-                                            <Button onClick={copyLink} size="icon" variant="outline">
-                                                {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                            </Button>
-                                        </div>
+                                        <>
+                                            <div className="flex items-center justify-between pl-7 border-l-2 border-slate-100 dark:border-zinc-800 ml-2.5">
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-sm">Allow Public Editing</span>
+                                                    <span className="text-xs text-slate-500">Visitors can edit this note</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={allowPublicEditing}
+                                                        onChange={(e) => handleUpdateSharing(isPublic, e.target.checked)}
+                                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <input
+                                                    className="flex-1 text-sm border p-2 rounded bg-slate-50 dark:bg-muted text-slate-600 dark:text-foreground outline-none"
+                                                    readOnly
+                                                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/notes/${noteId}`}
+                                                />
+                                                <Button onClick={copyLink} size="icon" variant="outline">
+                                                    {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </DialogContent>
