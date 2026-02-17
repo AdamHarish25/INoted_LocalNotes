@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import { Awareness } from 'y-protocols/awareness'
+import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness'
 import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js'
 import { EventEmitter } from 'events'
 
@@ -10,45 +10,66 @@ export default class SupabaseProvider extends EventEmitter {
     private channel: RealtimeChannel | null = null
     private _synced: boolean = false
     private readonly id: string
-    private readonly eventName: string = 'message'
+    private isOnline: boolean = false
 
-    constructor(doc: Y.Doc, supabase: SupabaseClient, { channel, id, tableName, columnName }: { channel: string, id?: string, tableName?: string, columnName?: string }) {
+    constructor(doc: Y.Doc, supabase: SupabaseClient, { channel }: { channel: string, id?: string, tableName?: string, columnName?: string }) {
         super()
         this.doc = doc
         this.supabase = supabase
         this.id = channel
         this.awareness = new Awareness(doc)
 
-        this.channel = this.supabase.channel(channel)
-
-        // Setup Sync
-        this.channel
-            .on('broadcast', { event: 'message' }, ({ payload }) => {
-                this.onMessage(new Uint8Array(payload))
-            })
-            .on('presence', { event: 'sync' }, () => {
-                const state = this.channel?.presenceState()
-                if (state) {
-                    // Merge presence state into Yjs awareness
-                    // Note: Simplistic mapping for now. Real implementations map robustly.
-                    // For now, we rely on broadcast for document updates mostly.
-                }
-            })
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    this.emit('status', { status: 'connected' })
-                    this.synced = true
-                } else {
-                    this.emit('status', { status: 'disconnected' })
-                    this.synced = false
-                }
-            })
+        // Using specific config to ensure we don't receive our own messages
+        this.channel = this.supabase.channel(channel, {
+            config: {
+                broadcast: { self: false }
+            }
+        })
 
         // Listen to local Yjs updates and broadcast them
         this.doc.on('update', this.onUpdate.bind(this))
 
         // Awareness updates (cursors)
-        this.awareness.on('update', this.onAwarenessUpdate.bind(this))
+        if (this.awareness) {
+            this.awareness.on('update', this.onAwarenessUpdate.bind(this))
+        }
+
+        // Setup Sync
+        this.channel
+            .on('broadcast', { event: 'message' }, ({ payload }) => {
+                this.onMessage(payload)
+            })
+            .on('presence', { event: 'sync' }, () => {
+                // We mainly rely on 'awareness' broadcast messages
+            })
+            .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+                // When a new user joins, we send our state so they can sync up
+                // Check if it's not us (though 'join' usually implies remote or all?)
+                // Safety: just send Step 1.
+                if (this.isOnline) {
+                    this.sendSyncStep1()
+                }
+            })
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    this.isOnline = true
+                    this.emit('status', { status: 'connected' })
+                    this.synced = true
+
+                    // Start Sync Protocol
+                    this.sendSyncStep1()
+
+                    // Track Presence
+                    this.channel?.track({
+                        uploaded_at: new Date().toISOString(),
+                        clientId: this.doc.clientID
+                    })
+                } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    this.isOnline = false
+                    this.emit('status', { status: 'disconnected' })
+                    this.synced = false
+                }
+            })
     }
 
     get synced() {
@@ -63,38 +84,83 @@ export default class SupabaseProvider extends EventEmitter {
         }
     }
 
+    private async sendSafe(payload: any) {
+        if (!this.isOnline || !this.channel) return
+        try {
+            await this.channel.send({
+                type: 'broadcast',
+                event: 'message',
+                payload: payload
+            })
+        } catch (err) {
+            console.error("SupabaseProvider: Error sending message", err)
+        }
+    }
+
+    private sendSyncStep1() {
+        const stateVector = Y.encodeStateVector(this.doc)
+        this.sendSafe({
+            type: 'sync-step-1',
+            payload: Array.from(stateVector)
+        })
+    }
+
+    private sendSyncStep2(targetStateVector: Uint8Array) {
+        const update = Y.encodeStateAsUpdate(this.doc, targetStateVector)
+        this.sendSafe({
+            type: 'sync-step-2',
+            payload: Array.from(update)
+        })
+    }
+
     // Handle incoming broadcast messages (remote updates)
-    private onMessage(payload: Uint8Array) {
-        Y.applyUpdate(this.doc, payload, this)
+    private onMessage(message: any) {
+        if (!message || !message.type || !message.payload) return
+
+        try {
+            const data = new Uint8Array(message.payload)
+            switch (message.type) {
+                case 'sync-step-1':
+                    this.sendSyncStep2(data)
+                    break
+                case 'sync-step-2':
+                case 'update':
+                    Y.applyUpdate(this.doc, data, this)
+                    break
+                case 'awareness':
+                    applyAwarenessUpdate(this.awareness, data, this)
+                    break
+            }
+        } catch (err) {
+            console.error("SupabaseProvider: Error processing message", err)
+        }
     }
 
     // Handle local document updates -> Broadcast
     private onUpdate(update: Uint8Array, origin: any) {
-        if (origin !== this) {
-            // Broadcast the update vector
-            // Note: Supabase Broadcast bas limits on payload/rate. 
-            // For heavy production usage, batching or throttling might be needed.
-            this.channel?.send({
-                type: 'broadcast',
-                event: 'message',
+        if (origin !== this && this.isOnline) {
+            this.sendSafe({
+                type: 'update',
                 payload: Array.from(update),
             })
         }
     }
 
     private onAwarenessUpdate({ added, updated, removed }: any, origin: any) {
-        // Sync awareness changes via Presence or Broadcast
-        // For simplicity in this demo, we can broadcast awareness arrays if needed,
-        // or use channel.track() for presence.
-        // 
-        // Implementing full awareness via Supabase Presence:
-        // const localState = this.awareness.getLocalState()
-        // this.channel?.track(localState)
+        if (origin !== this && this.isOnline) {
+            const changedClients = added.concat(updated).concat(removed)
+            const awarenessUpdate = encodeAwarenessUpdate(this.awareness, changedClients)
+            this.sendSafe({
+                type: 'awareness',
+                payload: Array.from(awarenessUpdate)
+            })
+        }
     }
 
     public destroy() {
         this.doc.off('update', this.onUpdate.bind(this))
         this.awareness.off('update', this.onAwarenessUpdate.bind(this))
+        this.isOnline = false
         if (this.channel) {
             this.supabase.removeChannel(this.channel)
             this.channel = null
