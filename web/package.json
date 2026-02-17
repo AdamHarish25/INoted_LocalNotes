@@ -11,7 +11,6 @@
   "dependencies": {
     "@auth/supabase-adapter": "^1.11.1",
     "@excalidraw/excalidraw": "^0.18.0",
-    "@hocuspocus/provider": "^3.4.1",
     "@marsidev/react-turnstile": "^1.4.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -57,6 +56,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tippy.js": "^6.3.7",
     "y-protocols": "^1.0.6",
+    "y-supabase": "^0.0.4-7-alpha",
     "yjs": "^13.6.27"
   },
   "devDependencies": {

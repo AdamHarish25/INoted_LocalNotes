@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
-import { HocuspocusProvider } from '@hocuspocus/provider'
+import SupabaseProvider from 'y-supabase'
+import { createClient } from "@/utils/supabase/client"
 import * as Y from 'yjs'
 
 export type Tool = 'hand' | 'selection' | 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line' | 'pencil' | 'text' | 'eraser'
@@ -28,7 +29,7 @@ interface UseWhiteboardStoreReturn {
     elements: CanvasElement[]
     setElements: (elements: CanvasElement[]) => void // Note: Local setElements usually not used directly if we sync, but needed for dragging optimization sometimes
     yElementsRef: React.MutableRefObject<Y.Array<CanvasElement> | null>
-    providerRef: React.MutableRefObject<HocuspocusProvider | null>
+    providerRef: React.MutableRefObject<SupabaseProvider | null>
     status: string
 }
 
@@ -39,7 +40,7 @@ export function useYjsStore({ roomId, initialData }: UseWhiteboardStoreProps): U
     // Yjs Refs
     const yDocRef = useRef<Y.Doc | null>(null)
     const yElementsRef = useRef<Y.Array<CanvasElement> | null>(null)
-    const providerRef = useRef<HocuspocusProvider | null>(null)
+    const providerRef = useRef<SupabaseProvider | null>(null)
 
     useEffect(() => {
         if (!roomId) return
@@ -73,19 +74,12 @@ export function useYjsStore({ roomId, initialData }: UseWhiteboardStoreProps): U
         }
 
         // 3. Connect Provider
-        let hostUrl = (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234')
-        if (hostUrl.startsWith('http')) hostUrl = hostUrl.replace(/^http/, 'ws')
-        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && !hostUrl.startsWith('wss:')) {
-            hostUrl = hostUrl.replace('ws://', 'wss://')
-        }
+        console.log('[useYjsStore] Connecting to Supabase Realtime')
+        const supabase = createClient()
 
-        console.log('[useYjsStore] Connecting to:', hostUrl)
-
-        const provider = new HocuspocusProvider({
-            url: hostUrl,
-            name: roomId,
-            document: ydoc,
-        })
+        const provider = new SupabaseProvider(ydoc, supabase, {
+            channel: `whiteboard-${roomId}`,
+        } as any)
         providerRef.current = provider
 
         provider.on('status', (event: any) => {
@@ -96,9 +90,6 @@ export function useYjsStore({ roomId, initialData }: UseWhiteboardStoreProps): U
         provider.on('synced', () => {
             console.log('[useYjsStore] Synced. Items:', yArray.length)
             setElements(yArray.toArray())
-
-            // Late hydration check: if synced and still empty, but we have initialData?
-            // Usually redundancy not needed if we insert above.
         })
 
         // 4. Observe Changes

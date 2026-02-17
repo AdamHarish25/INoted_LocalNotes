@@ -5,7 +5,7 @@ import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Collaboration from "@tiptap/extension-collaboration"
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor"
-import { HocuspocusProvider } from "@hocuspocus/provider"
+import SupabaseProvider from "y-supabase"
 import { EditorToolbar } from "./toolbar"
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -49,25 +49,24 @@ import { Bold, Italic, Strikethrough, Code, AlignLeft, AlignCenter, AlignRight, 
 import TextAlign from '@tiptap/extension-text-align'
 
 export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly = false }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
-    const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
+    const [provider, setProvider] = useState<SupabaseProvider | null>(null)
+    const [supabase] = useState(() => createClient())
 
     // 1. Buat dokumen Yjs secara eksplisit dan stabil menggunakan useMemo
     const ydoc = useMemo(() => new Y.Doc(), [])
 
     useEffect(() => {
         // 2. Pass dokumen yang kita buat ke provider
-        const newProvider = new HocuspocusProvider({
-            url: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || "https://127.0.0.1:1234",
-            name: noteId,
-            document: ydoc, // PENTING: Gunakan doc yang sama
-        })
+        const newProvider = new SupabaseProvider(ydoc, supabase, {
+            channel: `note-collab-${noteId}`,
+        } as any)
 
         setProvider(newProvider)
 
         return () => {
             newProvider.destroy()
         }
-    }, [noteId, ydoc])
+    }, [noteId, ydoc, supabase])
 
     if (!provider) {
         return (
@@ -84,7 +83,7 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
     return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialWorkspace={initialWorkspace} isReadOnly={isReadOnly} />
 }
 
-function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly }: { provider: HocuspocusProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
+function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialWorkspace, isReadOnly }: { provider: SupabaseProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
     const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Error" | "View Only">(isReadOnly ? "View Only" : "Saved")
     const [title, setTitle] = useState(initialTitle || "Untitled Note")
     const [isPublic, setIsPublic] = useState(initialIsPublic || false)

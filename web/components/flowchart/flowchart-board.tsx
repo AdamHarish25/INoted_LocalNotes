@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { Stage, Layer, Rect, Circle, Text as KonvaText, Line, Transformer, RegularPolygon, Path, Group, Arrow } from "react-konva"
-import { HocuspocusProvider } from "@hocuspocus/provider"
+import SupabaseProvider from "y-supabase"
 import * as Y from "yjs"
 import { Button } from "@/components/ui/button"
 import { Square, Circle as CircleIcon, Type, MousePointer2, Save, Undo, Redo, Phone, Database, Hexagon, Component, RectangleHorizontal, Diamond, Trash2, Pencil, RefreshCw, ArrowRight, Hand, ZoomIn, ZoomOut, Move, Minus, MoreHorizontal, Dot, ChevronRight, Hash, Triangle, FileText, Cloud as CloudIcon, MonitorOff, Download, Image as ImageIcon } from "lucide-react"
@@ -170,7 +170,7 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
     const [textInput, setTextInput] = useState("")
 
     // Yjs
-    const providerRef = useRef<HocuspocusProvider | null>(null)
+    const providerRef = useRef<SupabaseProvider | null>(null)
     const ydocRef = useRef<Y.Doc | null>(null)
     const yElementsRef = useRef<Y.Array<FlowchartElement> | null>(null)
     const undoManagerRef = useRef<Y.UndoManager | null>(null)
@@ -322,11 +322,11 @@ export default function FlowchartBoard({ roomId, initialData }: { roomId: string
             yArray.insert(0, initialData)
         }
 
-        const provider = new HocuspocusProvider({
-            url: process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234',
-            name: `flowchart-${roomId}`,
-            document: ydoc,
-        })
+        const supabase = createClient()
+
+        const provider = new SupabaseProvider(ydoc, supabase, {
+            channel: `flowchart-${roomId}`,
+        } as any)
         providerRef.current = provider
 
         yArray.observe(() => {

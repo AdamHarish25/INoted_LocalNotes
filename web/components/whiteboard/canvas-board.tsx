@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { HocuspocusProvider } from "@hocuspocus/provider"
+import SupabaseProvider from "y-supabase"
 import * as Y from "yjs"
 import { useTheme } from "next-themes"
 import { createClient } from "@/utils/supabase/client"
@@ -150,7 +150,7 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
 
     // Remote Cursors State
     const [remoteCursors, setRemoteCursors] = useState<{ [key: number]: { x: number, y: number, name: string, color: string, avatar?: string | null, role?: string, hasCursor?: boolean } }>({})
-    const providerRef = useRef<HocuspocusProvider | null>(null)
+    const providerRef = useRef<SupabaseProvider | null>(null)
 
 
     // Tool Options State
@@ -556,23 +556,19 @@ export default function CanvasBoard({ roomId, initialData, initialIsPublic = fal
         yElementsRef.current = yArray
 
         // Use environment variable or default
-        let hostUrl = (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234')
+        // let hostUrl = (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234')
 
-        if (hostUrl.startsWith('http')) hostUrl = hostUrl.replace(/^http/, 'ws')
-        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && !hostUrl.startsWith('wss:')) {
-            hostUrl = hostUrl.replace('ws://', 'wss://')
-        }
+        // if (hostUrl.startsWith('http')) hostUrl = hostUrl.replace(/^http/, 'ws')
+        // if (typeof window !== 'undefined' && window.location.protocol === 'https:' && !hostUrl.startsWith('wss:')) {
+        //     hostUrl = hostUrl.replace('ws://', 'wss://')
+        // }
 
-        console.log('Connecting to Hocuspocus at:', hostUrl)
+        console.log('Connecting to Supabase Realtime...')
+        const supabase = createClient()
 
-        const provider = new HocuspocusProvider({
-            url: hostUrl,
-            name: roomId,
-            document: ydoc,
-            onStatus: (item) => {
-                setConnectionStatus(item.status)
-            }
-        })
+        const provider = new SupabaseProvider(ydoc, supabase, {
+            channel: `whiteboard-${roomId}`,
+        } as any)
         providerRef.current = provider
 
         // Observer for public role changes

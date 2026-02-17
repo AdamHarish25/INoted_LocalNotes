@@ -1,7 +1,8 @@
 "use client"
 import dynamic from "next/dynamic"
 import { useEffect, useState, useRef } from "react"
-import { HocuspocusProvider } from "@hocuspocus/provider"
+import SupabaseProvider from "y-supabase"
+import { createClient } from "@/utils/supabase/client"
 import * as Y from "yjs"
 // import { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types/types"
 import { Button } from "@/components/ui/button"
@@ -30,19 +31,18 @@ export default function ExcalidrawCanvas({ roomId }: { roomId: string }) {
         // Configure Hocuspocus provider
         // Note: We use the same environment variable and path logic as before
         const hostUrl = (process.env.NEXT_PUBLIC_COLLAB_SERVER_URL || 'ws://127.0.0.1:1234')
-            .replace(/^https?:\/\//, 'wss://')
-            .replace(/^ws:\/\//, 'ws://')
+        //     .replace(/^https?:\/\//, 'wss://')
+        //     .replace(/^ws:\/\//, 'ws://')
 
-        // Ensure wss if not explicit
-        const finalUrl = hostUrl.match(/^(ws|wss):\/\//)
-            ? hostUrl
-            : `wss://${hostUrl}`
+        // // Ensure wss if not explicit
+        // const finalUrl = hostUrl.match(/^(ws|wss):\/\//)
+        //     ? hostUrl
+        //     : `wss://${hostUrl}`
 
-        const provider = new HocuspocusProvider({
-            url: finalUrl,
-            name: roomId,
-            document: ydoc,
-        })
+        const supabase = createClient()
+        const provider = new SupabaseProvider(ydoc, supabase, {
+            channel: `excalidraw-${roomId}`,
+        } as any)
 
         const yElements = ydoc.getArray("excalidraw-elements")
 
