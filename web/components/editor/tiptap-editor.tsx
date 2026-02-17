@@ -201,33 +201,72 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
     // Sync Status State
     const [isSynced, setIsSynced] = useState(false)
+    const [peerCount, setPeerCount] = useState(0)
 
     useEffect(() => {
         if (provider) {
             const handleSync = () => setIsSynced(true)
+            const handleAwarenessUpdate = () => {
+                setPeerCount(provider.awareness.getStates().size)
+            }
+
             provider.on('synced', handleSync)
+            provider.awareness.on('update', handleAwarenessUpdate)
+
             return () => {
                 provider.off('synced', handleSync)
+                provider.awareness.off('update', handleAwarenessUpdate)
             }
         }
     }, [provider])
 
     // HYDRATION LOGIC:
-    // Only hydration when we are fully synced with the server to avoid overwriting/duplicating content.
-    // If we insert content before sync, Yjs treats it as new unique content and merges it (duplication).
+    // Prevent duplication by ensuring only ONE client hydrates the document from initialContent.
+    // We use a "Leader Election" strategy based on Client ID + Grace Period.
     useEffect(() => {
-        if (isSynced && editor && !editor.isDestroyed && initialContent && !hasHydrated.current) {
-            const fragment = ydoc.getXmlFragment('default')
+        if (!isSynced || !editor || editor.isDestroyed || !initialContent || hasHydrated.current) return
 
-            // Check if Yjs is effectively empty.
-            if (fragment.toArray().length === 0) {
-                // Prevent duplicate hydration if yjs already has sync going on
-                // but here we assume if XML is empty, we must be the first.
-                editor.commands.setContent(initialContent)
-                hasHydrated.current = true
-            }
+        // Check if doc is already populated by peers
+        const fragment = ydoc.getXmlFragment('default')
+        if (fragment.toArray().length > 0) {
+            hasHydrated.current = true
+            return
         }
-    }, [isSynced, editor, initialContent, ydoc])
+
+        // Delay hydration to allow awareness/peers to sync
+        const timer = setTimeout(() => {
+            // Re-check content (maybe peers sent it during timeout)
+            if (ydoc.getXmlFragment('default').toArray().length > 0) {
+                hasHydrated.current = true
+                return
+            }
+
+            // Leader Election: Am I the "lowest" client ID among connected peers?
+            // If so, I am responsible for hydration.
+            const states = provider?.awareness.getStates()
+            if (states) {
+                const clientIds = Array.from(states.keys()).sort((a, b) => a - b)
+                const myClientId = ydoc.clientID
+                const isLeader = clientIds.length > 0 && clientIds[0] === myClientId
+
+                // If I am leader (or alone), I hydrate.
+                // If there are peers but I am leader, I hydrate.
+                // If there are peers and I am NOT leader, I do nothing and wait for leader.
+                if (isLeader || clientIds.length === 0) {
+                    // Double check emptiness
+                    if (ydoc.getXmlFragment('default').toArray().length === 0) {
+                        console.log("Hydrating as Leader/Solo...", myClientId)
+                        editor.commands.setContent(initialContent)
+                        hasHydrated.current = true
+                    }
+                } else {
+                    console.log("Waiting for leader to hydrate...", clientIds[0])
+                }
+            }
+        }, 1000) // 1s grace period for awareness propagation
+
+        return () => clearTimeout(timer)
+    }, [isSynced, editor, initialContent, ydoc, peerCount, provider])
 
     // Force save on checkbox toggle (TaskItem)
     // Tiptap's onUpdate sometimes misses attribute changes in collaborative environments
