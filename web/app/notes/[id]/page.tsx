@@ -44,6 +44,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                     initialAllowPublicEditing={(note as any)?.allow_public_editing}
                     initialWorkspace={(note as any)?.workspace?.name}
                     isReadOnly={isReadOnly}
+                    userName={user?.user_metadata?.full_name || user?.email || "Guest"}
                 />
             </div>
         </div>

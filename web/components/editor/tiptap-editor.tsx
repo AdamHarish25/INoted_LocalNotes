@@ -48,7 +48,7 @@ import { default as BubbleMenuExtension } from '@tiptap/extension-bubble-menu'
 import { Bold, Italic, Strikethrough, Code, AlignLeft, AlignCenter, AlignRight, FileText } from 'lucide-react'
 import TextAlign from '@tiptap/extension-text-align'
 
-export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialAllowPublicEditing, initialWorkspace, isReadOnly = false }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
+export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialAllowPublicEditing, initialWorkspace, isReadOnly = false, userName = "Guest", userColor }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, initialWorkspace?: string, isReadOnly?: boolean, userName?: string, userColor?: string }) {
     const [provider, setProvider] = useState<SupabaseProvider | null>(null)
     const [supabase] = useState(() => createClient())
 
@@ -83,16 +83,28 @@ export function TiptapEditor({ noteId = "example-document", initialContent, init
     }
 
     // Pass ydoc ke komponen editor juga
-    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialAllowPublicEditing={initialAllowPublicEditing} initialWorkspace={initialWorkspace} isReadOnly={isReadOnly} />
+    return <EditorWithProvider provider={provider} ydoc={ydoc} noteId={noteId} initialContent={initialContent} initialTitle={initialTitle} initialIsPublic={initialIsPublic} initialAllowPublicEditing={initialAllowPublicEditing} initialWorkspace={initialWorkspace} isReadOnly={isReadOnly} userName={userName} userColor={userColor} />
 }
 
-function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialAllowPublicEditing, initialWorkspace, isReadOnly }: { provider: SupabaseProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, initialWorkspace?: string, isReadOnly?: boolean }) {
+function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTitle, initialIsPublic, initialAllowPublicEditing, initialWorkspace, isReadOnly, userName, userColor }: { provider: SupabaseProvider, ydoc: Y.Doc, noteId: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, initialWorkspace?: string, isReadOnly?: boolean, userName: string, userColor?: string }) {
     const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Error" | "View Only">(isReadOnly ? "View Only" : "Saved")
     const [title, setTitle] = useState(initialTitle || "Untitled Note")
     const [isPublic, setIsPublic] = useState(initialIsPublic || false)
     const [allowPublicEditing, setAllowPublicEditing] = useState(initialAllowPublicEditing || false)
     const [isCopied, setIsCopied] = useState(false)
     const hasHydrated = useRef(false)
+
+    // Generate color from name if not provided
+    const stringToColor = (str: string) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+        return '#' + "00000".substring(0, 6 - c.length) + c;
+    }
+
+    const finalColor = userColor || stringToColor(userName || 'User')
 
     const handleUpdateSharing = async (newIsPublic: boolean, newAllowEditing: boolean) => {
         if (isReadOnly) return
@@ -149,7 +161,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             }),
             CollaborationCursor.configure({
                 provider: provider,
-                user: { name: 'User', color: '#' + Math.floor(Math.random() * 16777215).toString(16) }
+                user: { name: userName, color: finalColor }
             }),
             CodeBlockLowlight.extend({
                 addNodeView() {
