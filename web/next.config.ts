@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://*.supabase.co https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com https://*.supabase.co https://*.supabase.in https://accounts.google.com wss://*.supabase.co wss://*.supabase.in https://inoted-collab-server-production.up.railway.app wss://inoted-collab-server-production.up.railway.app; frame-src 'self' https://challenges.cloudflare.com https://*.supabase.co https://accounts.google.com;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://*.supabase.co https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com https://*.supabase.co https://*.supabase.in https://accounts.google.com wss://*.supabase.co wss://*.supabase.in https://inoted-collab-server-production.up.railway.app wss://inoted-collab-server-production.up.railway.app https://api.github.com; frame-src 'self' https://challenges.cloudflare.com https://*.supabase.co https://accounts.google.com;"
           }
         ],
       },
