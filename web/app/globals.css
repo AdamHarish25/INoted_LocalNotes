@@ -355,14 +355,17 @@ ul[data-type="taskList"] li>div {
     display: block !important;
   }
 
-  /* Ensure no scrollbars on print */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Force hide specific elements if needed */
-  .print-hidden {
+  ::placeholder {
     display: none !important;
+
+    /* Ensure no scrollbars on print */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Force hide specific elements if needed */
+    .print-hidden {
+      display: none !important;
+    }
   }
-}
