@@ -199,7 +199,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         ],
         editorProps: {
             attributes: {
-                className: 'prose prose-lg prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] print:placeholder:hidden',
+                className: 'prose prose-lg prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px]',
             },
         },
         onUpdate: ({ editor }) => {
@@ -1091,7 +1091,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     {title}
                 </h1>
 
-                <EditorContent editor={editor} className="dark:text-zinc-100" />
+                <EditorContent editor={editor} className="dark:text-zinc-100 placeholder:print:hidden" />
 
                 {editor && (
                     <BubbleMenu
