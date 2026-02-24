@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, BotIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -131,7 +131,7 @@ export function ChatAssistant() {
                                 size="icon"
                                 className="absolute right-1 w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all disabled:opacity-50"
                             >
-                                <Send className="w-4 h-4 ml-0.5" />
+                                <BotIcon className="w-4 h-4 ml-0.5" />
                             </Button>
                         </div>
                     </div>
