@@ -42,3 +42,10 @@ We connected the active editing canvases directly to localStorage to pass "brain
 
 ## 7. Supplemental Improvements
 - Addressed bug related to `slash-command.tsx` by implementing `activeItemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })` so keyboard arrow navigation continuously auto-scrolls the active list option into view gracefully.
+
+## 8. Post-Integration Fixes & Enhancements
+- **PDF Export Print Layout (Notes)**: Adjusted the `.print-area` in `globals.css` to completely remove the gray border and box-shadow styling during standard browser `window.print()` functionality.
+- **Document Title Text Wrapping**: Replaced the native `<input>` title with a contextually visible `<h1>` tag in print mode via `tiptap-editor.tsx` (`print:hidden` vs `print:block` and `whitespace-pre-wrap`) to elegantly wrap long titles and prevent document cutoff.
+- **Tiptap Placeholder Cleanup**: Suppressed the Tiptap empty paragraph placeholder content (`.ProseMirror p.is-empty::before`) natively in `globals.css` `@media print` so "Type / to open slash commands" doesn't render in the exported PDF file.
+- **AI UX Error Handling**: Replaced the underlying server failure response in `chat-assistant.tsx` with a cleaner, end-user legible string ("Sorry, we're having trouble connecting to the server. Please try again later.").
+- **AI Context Support in Read-Only Mode**: Extracted the document's localStorage context updating logic (`inoted_ai_context`) out of the strict `!isReadOnly` bounds inside the `tiptap-editor.tsx` onUpdate lifecycle. Added a dedicated `useEffect` hook that captures the text immediately once the Yjs document finishes loading (`isSynced`). This resolves the bug where users in "View-Only" mode could not query the AI about the active document's contents.
