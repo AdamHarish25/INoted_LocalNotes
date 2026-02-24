@@ -1100,7 +1100,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 </h1>
 
                 <div className="w-full max-w-full min-w-0 pb-10">
-                    <EditorContent editor={editor} className="dark:text-zinc-100 placeholder:print:hidden" />
+                    <EditorContent editor={editor} className="dark:text-zinc-100 placeholder:print:hidden overflow-x-hidden" />
                 </div>
 
                 {editor && (
