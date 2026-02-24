@@ -183,6 +183,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
             Table.configure({
                 resizable: true,
+                renderWrapper: true,
             }),
             TableRow,
             TableHeader,
