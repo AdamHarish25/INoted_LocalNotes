@@ -215,6 +215,8 @@ const getSuggestionItems = ({ query }: { query: string }) => {
 // 2. The Menu Component
 const CommandList = React.forwardRef((props: any, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
+    const containerRef = useRef<HTMLDivElement>(null)
+    const activeItemRef = useRef<HTMLButtonElement>(null)
 
     const selectItem = (index: number) => {
         const item = props.items[index]
@@ -226,6 +228,15 @@ const CommandList = React.forwardRef((props: any, ref) => {
     useEffect(() => {
         setSelectedIndex(0)
     }, [props.items])
+
+    useEffect(() => {
+        if (activeItemRef.current) {
+            activeItemRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+            })
+        }
+    }, [selectedIndex])
 
     useLayoutEffect(() => {
         const navigationHandler = (event: KeyboardEvent) => {
@@ -271,12 +282,16 @@ const CommandList = React.forwardRef((props: any, ref) => {
     }))
 
     return (
-        <div className="z-50 min-w-[300px] max-h-[200px] overflow-y-scroll rounded-md border bg-popover dark:bg-zinc-950 dark:border-zinc-800 p-1 shadow-md animate-in fade-in zoom-in duration-200">
+        <div
+            ref={containerRef}
+            className="z-50 min-w-[300px] max-h-[200px] overflow-y-scroll rounded-md border bg-popover dark:bg-zinc-950 dark:border-zinc-800 p-1 shadow-md animate-in fade-in zoom-in duration-200"
+        >
             <div className="flex flex-col overflow-hidden rounded-sm bg-white dark:bg-zinc-950 p-1">
                 {props.items.length ? (
                     props.items.map((item: CommandItemProps, index: number) => (
                         <button
                             key={index}
+                            ref={index === selectedIndex ? activeItemRef : null}
                             className={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none w-full text-left transition-colors ${index === selectedIndex ? 'bg-slate-100 dark:bg-zinc-900 text-slate-900 dark:text-zinc-100' : 'text-slate-500 dark:text-zinc-400 hover:bg-slate-100/50 dark:hover:bg-zinc-900/50'
                                 }`}
                             onClick={() => selectItem(index)}
