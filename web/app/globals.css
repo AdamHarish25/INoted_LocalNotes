@@ -276,6 +276,12 @@ ul[data-type="taskList"] li>div {
 }
 
 @media (max-width: 768px) {
+  .ProseMirror .tableWrapper {
+    /* Hard cap that ignores parent flex/block growth, enforcing an absolute max width based on screen size */
+    max-width: calc(100vw - 3rem) !important;
+    width: 100% !important;
+  }
+
   .ProseMirror table {
     /* Let the table grow to fit horizontally without flex/box pushing the parent out */
     width: max-content !important;
