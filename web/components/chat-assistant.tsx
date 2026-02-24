@@ -131,7 +131,7 @@ export function ChatAssistant() {
                                 size="icon"
                                 className="absolute right-1 w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all disabled:opacity-50"
                             >
-                                <BotIcon className="w-4 h-4 ml-0.5" />
+                                <Send className="w-4 h-4 ml-0.5" />
                             </Button>
                         </div>
                     </div>
@@ -141,7 +141,7 @@ export function ChatAssistant() {
                     onClick={() => setIsOpen(true)}
                     className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl flex items-center justify-center text-white transition-transform hover:scale-105 active:scale-95"
                 >
-                    <MessageCircle className="w-6 h-6" />
+                    <BotIcon className="w-6 h-6" />
                 </button>
             )}
         </div>
