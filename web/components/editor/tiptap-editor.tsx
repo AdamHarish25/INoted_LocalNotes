@@ -1099,8 +1099,9 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     {title}
                 </h1>
 
-                <div className="w-full max-w-full min-w-0 pb-10">
-                    <EditorContent editor={editor} className="dark:text-zinc-100 placeholder:print:hidden overflow-x-hidden" />
+                {/* Grid wrap trick firmly prevents max-width block blowout, without hiding internal sub-scrolls! */}
+                <div className="w-full pb-10 grid grid-cols-1">
+                    <EditorContent editor={editor} className="dark:text-zinc-100 placeholder:print:hidden min-w-0 max-w-full" />
                 </div>
 
                 {editor && (
