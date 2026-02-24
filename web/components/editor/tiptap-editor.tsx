@@ -216,16 +216,16 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         },
     }, [provider, isReadOnly]) // Re-run if provider or readOnly changes
 
+    // Sync Status State
+    const [isSynced, setIsSynced] = useState(false)
+    const [peerCount, setPeerCount] = useState(0)
+
     // Provide initial context to AI when editor is fully synced/loaded
     useEffect(() => {
         if (isSynced && editor && typeof window !== 'undefined') {
             window.localStorage.setItem('inoted_ai_context', `Document Name: ${title}\n\nCurrent textual content:\n${editor.getText()}`);
         }
     }, [isSynced, editor, title])
-
-    // Sync Status State
-    const [isSynced, setIsSynced] = useState(false)
-    const [peerCount, setPeerCount] = useState(0)
 
     useEffect(() => {
         if (provider) {
