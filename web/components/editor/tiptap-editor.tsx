@@ -199,7 +199,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         ],
         editorProps: {
             attributes: {
-                className: 'prose prose-lg prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px]',
+                className: 'prose prose-lg prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] print:placeholder:hidden',
             },
         },
         onUpdate: ({ editor }) => {
