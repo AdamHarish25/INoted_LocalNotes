@@ -1085,7 +1085,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 </div>
             </div>
 
-            <div className="print-area relative w-full max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-200 dark:border-gray-500 bg-white dark:bg-background dark:text-foreground p-4 md:p-16 rounded-lg min-h-screen flex flex-col gap-4 shadow-sm transition-colors">
+            <div className="print-area relative w-full min-w-0 overflow-hidden max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-200 dark:border-gray-500 bg-white dark:bg-background dark:text-foreground p-4 md:p-16 rounded-lg min-h-screen flex flex-col gap-4 shadow-sm transition-colors">
                 <input
                     type="text"
                     value={title}
@@ -1099,7 +1099,9 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     {title}
                 </h1>
 
-                <EditorContent editor={editor} className="dark:text-zinc-100 placeholder:print:hidden" />
+                <div className="w-full max-w-full overflow-hidden min-w-0 pb-10">
+                    <EditorContent editor={editor} className="dark:text-zinc-100 placeholder:print:hidden" />
+                </div>
 
                 {editor && (
                     <BubbleMenu
