@@ -258,12 +258,26 @@ ul[data-type="taskList"] li>div {
 }
 
 /* Tiptap Table Styles - Notion-like */
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1em 0;
+}
+
 .ProseMirror table {
   border-collapse: collapse;
   table-layout: fixed;
   width: 100%;
   margin: 0;
   overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .ProseMirror table {
+    /* Prevent table from being squished on mobile screens */
+    width: max-content;
+    min-width: 600px;
+  }
 }
 
 .ProseMirror td,
