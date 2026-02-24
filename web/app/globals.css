@@ -399,6 +399,36 @@ ul[data-type="taskList"] li>div {
     print-color-adjust: exact !important;
   }
 
+  /* Force tables to expand fully and wrap text instead of overflowing horizontally in PDFs */
+  .ProseMirror .tableWrapper {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    max-width: none !important;
+    width: 100% !important;
+    display: table !important;
+    /* Forces it to flow as a table structure */
+  }
+
+  .ProseMirror table {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+    page-break-inside: auto;
+  }
+
+  .ProseMirror tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .ProseMirror th,
+  .ProseMirror td {
+    word-break: break-word;
+    /* Ensure long words in tables wrap properly */
+    white-space: normal !important;
+  }
+
   /* Force hide specific elements if needed */
   .print-hidden {
     display: none !important;
