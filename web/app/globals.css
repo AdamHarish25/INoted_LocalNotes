@@ -359,6 +359,11 @@ ul[data-type="taskList"] li>div {
     display: none !important;
   }
 
+  .ProseMirror p.is-empty::before {
+    display: none !important;
+    content: none !important;
+  }
+
   /* Ensure no scrollbars on print */
   * {
     -webkit-print-color-adjust: exact !important;
