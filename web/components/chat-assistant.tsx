@@ -77,8 +77,7 @@ export function ChatAssistant() {
                 <div className="w-[320px] md:w-[400px] h-[500px] max-h-[80vh] bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="bg-slate-50 dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 p-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                            <h3 className="font-semibold text-slate-900 dark:text-zinc-100">AI Assistant</h3>
+                            <h3 className="font-semibold text-blue-600 dark:text-zinc-100">AI Noted</h3>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsOpen(false)}>
                             <X className="w-4 h-4" />
