@@ -65,7 +65,7 @@ export function ChatAssistant() {
             }
         } catch (error) {
             console.error(error);
-            setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I'm having trouble connecting to the server. Have you added your MISTRAL_API_KEY?" }]);
+            setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, we're having trouble connecting to the server. Please try again later." }]);
         } finally {
             setIsLoading(false);
         }
