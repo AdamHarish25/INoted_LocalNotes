@@ -247,48 +247,48 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
     // HYDRATION LOGIC:
     // Prevent duplication by ensuring only ONE client hydrates the document from initialContent.
-    // We use a "Leader Election" strategy based on Client ID + Grace Period.
+    // We use a shared Yjs Map 'meta' to lock hydration across the network globally.
     useEffect(() => {
         if (!isSynced || !editor || editor.isDestroyed || !initialContent || hasHydrated.current) return
 
-        // Check if doc is already populated by peers
-        const fragment = ydoc.getXmlFragment('default')
-        if (fragment.toArray().length > 0) {
+        const metaMap = ydoc.getMap('documentMeta')
+
+        // If another peer already marked this document as hydrated, skip!
+        if (metaMap.get('isHydrated') === true) {
             hasHydrated.current = true
             return
         }
 
         // Delay hydration to allow awareness/peers to sync
         const timer = setTimeout(() => {
-            // Re-check content (maybe peers sent it during timeout)
-            if (ydoc.getXmlFragment('default').toArray().length > 0) {
+            // Double check lock and content after delay
+            if (metaMap.get('isHydrated') === true || editor.getText().trim().length > 0) {
                 hasHydrated.current = true
                 return
             }
 
             // Leader Election: Am I the "lowest" client ID among connected peers?
-            // If so, I am responsible for hydration.
             const states = provider?.awareness.getStates()
             if (states) {
                 const clientIds = Array.from(states.keys()).sort((a, b) => a - b)
                 const myClientId = ydoc.clientID
                 const isLeader = clientIds.length > 0 && clientIds[0] === myClientId
 
-                // If I am leader (or alone), I hydrate.
-                // If there are peers but I am leader, I hydrate.
-                // If there are peers and I am NOT leader, I do nothing and wait for leader.
-                if (isLeader || clientIds.length === 0) {
-                    // Double check emptiness
-                    if (ydoc.getXmlFragment('default').toArray().length === 0) {
-                        console.log("Hydrating as Leader/Solo...", myClientId)
+                if (isLeader || clientIds.length <= 1) {
+                    if (metaMap.get('isHydrated') !== true) {
+                        console.log("Hydrating initial content to YDoc...", myClientId)
+                        // Lock hydration globally across all peers
+                        metaMap.set('isHydrated', true)
+
+                        // Hydrate content
                         editor.commands.setContent(initialContent)
                         hasHydrated.current = true
                     }
                 } else {
-                    console.log("Waiting for leader to hydrate...", clientIds[0])
+                    console.log("Waiting for leader to hydrate...")
                 }
             }
-        }, 1000) // 1s grace period for awareness propagation
+        }, 1200) // 1.2s grace period for awareness/lock propagation
 
         return () => clearTimeout(timer)
     }, [isSynced, editor, initialContent, ydoc, peerCount, provider])
