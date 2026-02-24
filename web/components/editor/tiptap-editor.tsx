@@ -207,13 +207,21 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             if (!isReadOnly) {
                 setSaveStatus("Saving...")
                 debouncedSave({ content: json })
-                // Provide context to the Mistral AI assistant
-                if (typeof window !== 'undefined') {
-                    window.localStorage.setItem('inoted_ai_context', `Document Name: ${title}\n\nCurrent textual content:\n${editor.getText()}`);
-                }
+            }
+
+            // Provide context to the Mistral AI assistant EVEN if it's read-only
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem('inoted_ai_context', `Document Name: ${title}\n\nCurrent textual content:\n${editor.getText()}`);
             }
         },
     }, [provider, isReadOnly]) // Re-run if provider or readOnly changes
+
+    // Provide initial context to AI when editor is fully synced/loaded
+    useEffect(() => {
+        if (isSynced && editor && typeof window !== 'undefined') {
+            window.localStorage.setItem('inoted_ai_context', `Document Name: ${title}\n\nCurrent textual content:\n${editor.getText()}`);
+        }
+    }, [isSynced, editor, title])
 
     // Sync Status State
     const [isSynced, setIsSynced] = useState(false)
