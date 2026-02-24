@@ -15,7 +15,7 @@ The following crucial dependencies were added to `web/package.json`:
 ## 2. Environment Variables Architecture
 To properly route the Chat UI to the newly created Custom Agent (built in the Mistral AI Studio), two environment variables were set up (locally in `.env.local` and also injected in the Netlify Dashboard):
 - `MISTRAL_API_KEY`: Secret string required to authenticate.
-- `MISTRAL_AGENT_ID`: E.g., `ag_019c8d103e47724088c39cff71c4aa4b` which targets the customized "Inoted" system instructions.
+- `MISTRAL_AGENT_ID`: targets the customized "Inoted" system instructions.
 
 ## 3. Server-Side Execution (`app/api/chat/route.ts`)
 Created a new Edge/Serverless Next.js API Route specializing in streamed AI output.
