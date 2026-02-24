@@ -1084,8 +1084,12 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     onChange={handleTitleChange}
                     readOnly={isReadOnly}
                     placeholder="Note Title"
-                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 dark:placeholder:text-muted-foreground w-full bg-transparent pt-8 text-black dark:text-white disabled:cursor-not-allowed disabled:opacity-80"
+                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 dark:placeholder:text-muted-foreground w-full bg-transparent pt-8 text-black dark:text-white disabled:cursor-not-allowed disabled:opacity-80 print:hidden"
                 />
+
+                <h1 className="hidden print:block text-4xl font-extrabold text-black pt-8 w-full break-words whitespace-pre-wrap">
+                    {title}
+                </h1>
 
                 <EditorContent editor={editor} className="dark:text-zinc-100" />
 

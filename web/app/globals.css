@@ -227,8 +227,15 @@ ul[data-type="taskList"] li>div {
 }
 
 @keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 }
 
 .collaboration-cursor__label {
@@ -244,7 +251,8 @@ ul[data-type="taskList"] li>div {
   padding: 0.1rem 0.3rem;
   border-radius: 3px 3px 3px 0;
   white-space: nowrap;
-  opacity: 1; /* Reset opacity so label is always visible if we wanted, but keeping inherit from blink is fine or we can separating blink */
+  opacity: 1;
+  /* Reset opacity so label is always visible if we wanted, but keeping inherit from blink is fine or we can separating blink */
   pointer-events: none;
   z-index: 10;
 }
@@ -338,6 +346,8 @@ ul[data-type="taskList"] li>div {
     /* Ensure text is black for printing */
     color: black !important;
     background: white !important;
+    border: none !important;
+    box-shadow: none !important;
 
     /* Reset any max-width or layout constraints */
     max-width: none !important;
