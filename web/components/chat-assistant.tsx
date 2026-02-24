@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Bot, User } from "lucide-react";
 import { Button } from "./ui/button";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 export function ChatAssistant() {
     const [isOpen, setIsOpen] = useState(false);
@@ -101,7 +102,10 @@ export function ChatAssistant() {
                                         msg.content
                                     ) : (
                                         <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:p-0">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                rehypePlugins={[rehypeRaw]}
+                                            >
                                                 {msg.content}
                                             </ReactMarkdown>
                                         </div>
