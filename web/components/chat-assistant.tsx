@@ -79,7 +79,7 @@ export function ChatAssistant() {
                         <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-blue-600 dark:text-zinc-100">AI Noted</h3>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-900 dark:text-zinc-100" onClick={() => setIsOpen(false)}>
                             <X className="w-4 h-4" />
                         </Button>
                     </div>
