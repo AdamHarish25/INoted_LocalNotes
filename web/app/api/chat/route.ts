@@ -1,13 +1,14 @@
 import { Mistral } from '@mistralai/mistralai';
 import { NextResponse } from 'next/server';
 
-const apiKey = process.env.MISTRAL_API_KEY || '';
-const client = new Mistral({ apiKey: apiKey });
-
 export async function POST(req: Request) {
+    const apiKey = process.env.MISTRAL_API_KEY || '';
+
     if (!apiKey) {
         return NextResponse.json({ error: 'MISTRAL_API_KEY is not set in environment variables.' }, { status: 500 });
     }
+
+    const client = new Mistral({ apiKey: apiKey });
 
     try {
         const { messages, context } = await req.json();
