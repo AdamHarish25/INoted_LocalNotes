@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 // import { CookieBanner } from "@/components/cookie-banner" // Waiting to see if I need to move it to a barrel file or distinct file. Done.
 import { CookieBanner } from "@/components/cookie-banner"
 import { MobileNav } from "@/components/mobile-nav"
+import { ChatAssistant } from "@/components/chat-assistant"
 
 import { useState, useEffect } from "react"
 
@@ -45,6 +46,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             </main>
             {!shouldHideSidebar && <MobileNav />}
             <CookieBanner />
+            {!shouldHideSidebar && <ChatAssistant />}
         </div>
     )
 }

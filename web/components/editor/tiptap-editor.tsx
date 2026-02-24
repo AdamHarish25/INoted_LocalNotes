@@ -207,6 +207,10 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             if (!isReadOnly) {
                 setSaveStatus("Saving...")
                 debouncedSave({ content: json })
+                // Provide context to the Mistral AI assistant
+                if (typeof window !== 'undefined') {
+                    window.localStorage.setItem('inoted_ai_context', `Document Name: ${title}\n\nCurrent textual content:\n${editor.getText()}`);
+                }
             }
         },
     }, [provider, isReadOnly]) // Re-run if provider or readOnly changes

@@ -498,6 +498,12 @@ export default function FlowchartBoard({ roomId, initialData, initialIsPublic = 
         }
     }
 
+    // useEffect(() => {
+    //     const nodesInfo = nodes.map(n => n.data.label).join(", ");
+    //     window.localStorage.setItem('inoted_ai_context', `User is making a flowchart with these steps/objects: ${nodesInfo}`);
+    // }, [nodes])
+
+
     const handleStageMouseMove = (e: any) => {
         if (isReadOnly && !isSpacePressed && activeTool !== 'hand') return
         const stage = e.target.getStage()
