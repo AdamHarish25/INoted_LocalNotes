@@ -262,6 +262,9 @@ ul[data-type="taskList"] li>div {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   margin: 1em 0;
+  max-width: 100%;
+  width: 100%;
+  display: block;
 }
 
 .ProseMirror table {
@@ -274,9 +277,15 @@ ul[data-type="taskList"] li>div {
 
 @media (max-width: 768px) {
   .ProseMirror table {
-    /* Prevent table from being squished on mobile screens */
+    /* Auto table-layout makes the cells respect min-width naturally */
+    table-layout: auto;
     width: max-content;
-    min-width: 600px;
+    min-width: 100%;
+  }
+
+  .ProseMirror th,
+  .ProseMirror td {
+    min-width: 150px !important;
   }
 }
 
