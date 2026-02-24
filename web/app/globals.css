@@ -278,6 +278,7 @@ ul[data-type="taskList"] li>div {
 @media (max-width: 768px) {
   .ProseMirror table {
     /* Auto table-layout makes the cells respect min-width naturally */
+    overflow-x: scroll;
     table-layout: auto;
     width: max-content;
     min-width: 100%;
