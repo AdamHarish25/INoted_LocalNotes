@@ -20,16 +20,23 @@ export async function POST(req: Request) {
 
         const agentId = process.env.MISTRAL_AGENT_ID;
 
-        let res;
+        let res = null;
         if (agentId) {
-            res = await client.agents.stream({
-                agentId: agentId,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    ...messages
-                ],
-            });
-        } else {
+            try {
+                res = await client.agents.stream({
+                    agentId: agentId,
+                    // Note: 'system' role is not supported in agents endpoint, so we inject context into user message
+                    messages: [
+                        ...messages
+                    ],
+                });
+            } catch (err: any) {
+                console.warn("Mistral Agent failed, falling back to standard chat model:", err.message);
+                res = null;
+            }
+        }
+
+        if (!res) {
             res = await client.chat.stream({
                 model: 'mistral-large-latest',
                 messages: [

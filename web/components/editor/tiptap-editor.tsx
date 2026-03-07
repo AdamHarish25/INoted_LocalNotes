@@ -20,7 +20,7 @@ const lowlight = createLowlight(all)
 
 // Imports for Header UI
 import { Button } from "@/components/ui/button"
-import { Share, Cloud, Globe, Copy, Check, CircleDashed, Github, Network } from "lucide-react"
+import { Share, Cloud, Globe, Copy, Check, CircleDashed, Github, Network, Undo, Redo } from "lucide-react"
 import { WorkspaceSelector } from "@/components/workspace-selector"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -154,6 +154,8 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
         extensions: [
             StarterKit.configure({
                 history: false,
+                undo: false,
+                redo: false,
                 codeBlock: false, // Disable default codeBlock to use Lowlight
             } as any),
             Collaboration.configure({
@@ -985,7 +987,33 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                         <button onClick={() => router.back()} className="p-1 border dark:border-border rounded bg-slate-50 dark:bg-muted hover:bg-slate-100 dark:hover:bg-muted/80 transition-colors">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
                         </button>
-                        <span className="font-medium text-slate-700 dark:text-foreground truncate max-w-[100px] md:max-w-[200px]">{title}</span>
+
+                        {!isReadOnly && (
+                            <div className="hidden sm:flex items-center gap-1 border-l border-r px-2 mx-1 dark:border-border">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => editor?.chain().focus().undo().run()}
+                                    disabled={!editor?.can().undo()}
+                                    className="h-7 w-7 text-slate-500 hover:text-slate-800 dark:text-muted-foreground dark:hover:text-primary rounded"
+                                    title="Undo"
+                                >
+                                    <Undo className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => editor?.chain().focus().redo().run()}
+                                    disabled={!editor?.can().redo()}
+                                    className="h-7 w-7 text-slate-500 hover:text-slate-800 dark:text-muted-foreground dark:hover:text-primary rounded"
+                                    title="Redo"
+                                >
+                                    <Redo className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+
+                        <span className="font-medium text-slate-700 dark:text-foreground truncate max-w-[100px] md:max-w-[150px] lg:max-w-[200px] ml-1">{title}</span>
                     </div>
 
                     <div className={`flex items-center gap-1 text-slate-700 dark:text-muted-foreground text-xs`}>
