@@ -18,11 +18,11 @@ export default async function LoginPage(props: {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px]">
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-md py-10">
                 <div className="flex justify-center mb-8">
                     {/* Logo stays as is or can be inverted if needed, usually logo handles itself */}
                     <Link href="..">
-                        <img src="/logo.png" alt="Logo" className="h-6" />
+                        <img src="/inotedLogo.png" alt="Logo" className="h-12" />
                     </Link>
                 </div>
 

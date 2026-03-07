@@ -90,7 +90,7 @@ export default function LandingPage() {
                     <div className="flex justify-between items-center h-16 relative">
                         {/* Logo */}
                         <div className="flex items-center gap-2">
-                            <img src={"/logo.png"} alt="logo" className="h-6" />
+                            <img src={"/inotedLogo.png"} alt="logo" className="h-10" />
                         </div>
 
                         {/* Desktop Links */}
