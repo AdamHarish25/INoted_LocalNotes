@@ -39,3 +39,18 @@ We enhanced the visual cues for collaboration to make the experience feel "premi
 *   **Modified**: `web/app/notes/[id]/page.tsx` - Data fetching and prop passing.
 *   **Modified**: `web/app/globals.css` - Global styles for cursor classes.
 *   **Created**: `web/lib/y-supabase.ts` - Core realtime logic.
+
+## [2026-03-07] Editor History & Mistral AI SDK Bug Fixes
+
+This update addresses several bugs regarding Mistral AI connection failures and Yjs collaboration history tracking conflicts in the editor.
+
+### 1. Mistral AI "Built-in Connectors" Stream Failure
+*   **Problem**: Mistral SDK's `agents.stream` endpoint unexpectedly crashes with a `400 Bad Request` ("Built-in connectors are not yet supported") if the configured Agent has advanced tools (like web search) enabled on Mistral's platform, completely breaking the in-app AI chat connection.
+*   **Solution**: Implemented a graceful fallback mechanism in `web/app/api/chat/route.ts`. If the Agent stream fails with this error, the API automatically catches it and falls back to using the standard text-generation model (`client.chat.stream` with `mistral-large-latest`), effectively preserving the assistant's functionality without breaking the UX.
+
+### 2. Tiptap / Yjs Realtime Collaboration Undo/Redo Conflict
+*   **Problem**: Tiptap's console threw a warning `[tiptap warn]: "@tiptap/extension-collaboration" comes with its own history support and is not compatible with "@tiptap/extension-undo-redo"` and the Undo/Redo functionality experienced odd behaviors.
+*   **Solution**: The `undo`, `redo`, and `history` modules embedded inside Tiptap's default `StarterKit` extension were explicitly disabled (`undo: false, redo: false, history: false`). This correctly delegates all History management directly to the Yjs `Collaboration` extension which provides robust real-time multi-player Undo/Redo.
+
+### 3. Editor UI: Google Docs-Style Undo/Redo Header
+*   **Enhancement**: Migrated the `Undo` and `Redo` buttons out of the floating bubble menu to the main top header bar of the screen (alongside the title and back button). This perfectly mimics standard editors like Google Docs, keeping the formatting bubble menu clean while ensuring history commands are always accessible.
