@@ -54,3 +54,7 @@ This update addresses several bugs regarding Mistral AI connection failures and 
 
 ### 3. Editor UI: Google Docs-Style Undo/Redo Header
 *   **Enhancement**: Migrated the `Undo` and `Redo` buttons out of the floating bubble menu to the main top header bar of the screen (alongside the title and back button). This perfectly mimics standard editors like Google Docs, keeping the formatting bubble menu clean while ensuring history commands are always accessible.
+
+### 4. Table Context Menu Viewport Overlap
+*   **Problem**: When right-clicking a table near the bottom of the screen, the custom Context Menu would render downwards, causing it to overlap and go off-screen, making the bottom actions (like "Merge Cells", "Delete Table") unclickable.
+*   **Solution**: Dynamically calculate the popup `style` dimensions against `window.innerHeight`. If the cursor's Y position is within `450px` of the bottom of the viewport, the Context Menu swaps to `bottom: window.innerHeight - contextMenu.y`. This forces the menu to render *upwards* (reversed appearance) safely into view instead of bleeding off the screen.

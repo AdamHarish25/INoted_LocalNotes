@@ -1229,12 +1229,16 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                     </BubbleMenu>
                 )}
 
-                {/* Custom Context Menu */}
                 {contextMenu && contextMenu.isOpen && (
                     <div
                         ref={contextMenuRef}
-                        className="fixed z-50 bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
-                        style={{ top: contextMenu.y, left: contextMenu.x }}
+                        className="fixed z-50 bg-white dark:bg-zinc-800 border dark:border-zinc-700 shadow-lg rounded-md overflow-hidden min-w-[160px] animate-in fade-in duration-100"
+                        style={{
+                            left: Math.min(contextMenu.x, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 200),
+                            ...(contextMenu.y + 450 > (typeof window !== 'undefined' ? window.innerHeight : 1000)
+                                ? { bottom: (typeof window !== 'undefined' ? window.innerHeight : 1000) - contextMenu.y, transformOrigin: 'bottom left' }
+                                : { top: contextMenu.y, transformOrigin: 'top left' })
+                        }}
                     >
                         <div className="p-1 flex flex-col gap-0.5">
                             <div className="px-2 py-1.5 text-[10px] font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
