@@ -121,7 +121,7 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
                 Inoted
               </h2> */}
 
-              <img src="/logo.png" alt="Logo" className="h-5" />
+              <img src="/inotedLogo.png" alt="Logo" className="h-5" />
             </div>
           )}
 
