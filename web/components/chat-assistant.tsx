@@ -1,11 +1,29 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User, BotIcon } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, BotIcon, Copy, Check, Plus } from "lucide-react";
 import { Button } from "./ui/button";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+
+const CopyButton = ({ content }: { content: string }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+        <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px] gap-1 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            onClick={() => {
+                navigator.clipboard.writeText(content);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }}
+        >
+            {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "Copied!" : "Copy text"}
+        </Button>
+    )
+}
 
 export function ChatAssistant() {
     const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +39,19 @@ export function ChatAssistant() {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    useEffect(() => {
+        const handleAskAi = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            const text = customEvent.detail?.text;
+            if (text) {
+                setIsOpen(true);
+                setInput(`Explain this highlighted text: "${text}"`);
+            }
+        };
+        window.addEventListener('ask-ai', handleAskAi);
+        return () => window.removeEventListener('ask-ai', handleAskAi);
+    }, []);
 
     const handleSend = async () => {
         if (!input.trim() || isLoading) return;
@@ -100,13 +131,30 @@ export function ChatAssistant() {
                                     {msg.role === 'user' ? (
                                         msg.content
                                     ) : (
-                                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:p-0">
-                                            <ReactMarkdown
-                                                remarkPlugins={[remarkGfm]}
-                                                rehypePlugins={[rehypeRaw]}
-                                            >
-                                                {msg.content}
-                                            </ReactMarkdown>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:p-0">
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    rehypePlugins={[rehypeRaw]}
+                                                >
+                                                    {msg.content}
+                                                </ReactMarkdown>
+                                            </div>
+                                            {(msg.content && i > 0) && (
+                                                <div className="flex items-center gap-2 mt-1 border-t border-slate-200 dark:border-zinc-700 pt-2 pb-1">
+                                                    <CopyButton content={msg.content} />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 px-2 text-[10px] gap-1 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                                        onClick={() => {
+                                                            window.dispatchEvent(new CustomEvent('insert-ai-text', { detail: { text: msg.content } }));
+                                                        }}
+                                                    >
+                                                        <Plus className="w-3 h-3" /> Insert inside document
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

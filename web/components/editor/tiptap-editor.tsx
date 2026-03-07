@@ -45,7 +45,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 import { TableRow } from '@tiptap/extension-table-row'
 import { BubbleMenu } from '@tiptap/react/menus'
 import { default as BubbleMenuExtension } from '@tiptap/extension-bubble-menu'
-import { Bold, Italic, Strikethrough, Code, AlignLeft, AlignCenter, AlignRight, FileText } from 'lucide-react'
+import { Bold, Italic, Strikethrough, Code, AlignLeft, AlignCenter, AlignRight, FileText, Sparkles } from 'lucide-react'
 import TextAlign from '@tiptap/extension-text-align'
 
 export function TiptapEditor({ noteId = "example-document", initialContent, initialTitle, initialIsPublic, initialAllowPublicEditing, initialWorkspace, isReadOnly = false, userName = "Guest", userColor }: { noteId?: string, initialContent?: any, initialTitle?: string, initialIsPublic?: boolean, initialAllowPublicEditing?: boolean, initialWorkspace?: string, isReadOnly?: boolean, userName?: string, userColor?: string }) {
@@ -581,16 +581,26 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             fileInputRef.current?.click()
         }
 
+        const handleInsertAiText = (e: Event) => {
+            const detail = (e as CustomEvent).detail
+            if (detail?.text && editor && !isReadOnly) {
+                // Remove prompt metadata or raw markdown if necessary, although Tiptap handles most strings ok
+                editor.chain().focus().insertContent(detail.text).run()
+            }
+        }
+
         window.addEventListener('open-table-dialog', handleOpenTableDialog)
         window.addEventListener('insert-whiteboard', handleInsertWhiteboard)
         window.addEventListener('insert-flowchart', handleInsertFlowchart)
         window.addEventListener('insert-image', handleInsertImage)
+        window.addEventListener('insert-ai-text', handleInsertAiText)
 
         return () => {
             window.removeEventListener('open-table-dialog', handleOpenTableDialog)
             window.removeEventListener('insert-whiteboard', handleInsertWhiteboard)
             window.removeEventListener('insert-flowchart', handleInsertFlowchart)
             window.removeEventListener('insert-image', handleInsertImage)
+            window.removeEventListener('insert-ai-text', handleInsertAiText)
         }
     }, [editor, isReadOnly])
 
@@ -1173,6 +1183,24 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                             title="Code"
                         >
                             <Code className="w-4 h-4" />
+                        </Button>
+
+                        <div className="w-px h-4 bg-slate-200 dark:bg-zinc-600 mx-1" />
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                                const { from, to } = editor.state.selection;
+                                const text = editor.state.doc.textBetween(from, to, ' ');
+                                if (text) {
+                                    window.dispatchEvent(new CustomEvent('ask-ai', { detail: { text } }));
+                                }
+                            }}
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                            title="Refer to AI"
+                        >
+                            <Sparkles className="w-4 h-4" />
                         </Button>
 
                         <div className="w-px h-4 bg-slate-200 dark:bg-zinc-600 mx-1" />
