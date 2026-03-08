@@ -7,17 +7,35 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
-const CopyButton = ({ content }: { content: string }) => {
+const CopyButton = ({ content, msgId }: { content: string, msgId: string }) => {
     const [copied, setCopied] = useState(false);
     return (
         <Button
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-[10px] gap-1 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-            onClick={() => {
-                navigator.clipboard.writeText(content);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
+            onClick={async () => {
+                try {
+                    const el = document.getElementById(msgId);
+                    if (el && window.ClipboardItem !== undefined) {
+                        const html = el.innerHTML;
+                        const data = [
+                            new ClipboardItem({
+                                "text/plain": new Blob([content], { type: "text/plain" }),
+                                "text/html": new Blob([html], { type: "text/html" })
+                            })
+                        ];
+                        await navigator.clipboard.write(data);
+                    } else {
+                        await navigator.clipboard.writeText(content);
+                    }
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                } catch (err) {
+                    navigator.clipboard.writeText(content);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                }
             }}
         >
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "Copied!" : "Copy text"}
@@ -132,7 +150,7 @@ export function ChatAssistant() {
                                         msg.content
                                     ) : (
                                         <div className="flex flex-col gap-2">
-                                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:p-0">
+                                            <div id={`ai-msg-${i}`} className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:p-0">
                                                 <ReactMarkdown
                                                     remarkPlugins={[remarkGfm]}
                                                     rehypePlugins={[rehypeRaw]}
@@ -142,13 +160,15 @@ export function ChatAssistant() {
                                             </div>
                                             {(msg.content && i > 0) && (
                                                 <div className="flex items-center gap-2 mt-1 border-t border-slate-200 dark:border-zinc-700 pt-2 pb-1">
-                                                    <CopyButton content={msg.content} />
+                                                    <CopyButton content={msg.content} msgId={`ai-msg-${i}`} />
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         className="h-6 px-2 text-[10px] gap-1 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                                                         onClick={() => {
-                                                            window.dispatchEvent(new CustomEvent('insert-ai-text', { detail: { text: msg.content } }));
+                                                            const el = document.getElementById(`ai-msg-${i}`);
+                                                            const textToInsert = el ? el.innerHTML : msg.content;
+                                                            window.dispatchEvent(new CustomEvent('insert-ai-text', { detail: { text: textToInsert } }));
                                                         }}
                                                     >
                                                         <Plus className="w-3 h-3" /> Insert inside document
