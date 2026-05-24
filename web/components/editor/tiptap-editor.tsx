@@ -212,9 +212,29 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 debouncedSave({ content: json })
             }
 
+            // Extract images from editor content
+            const extractImages = (nodes: any[]): string[] => {
+                const images: string[] = [];
+                nodes.forEach(node => {
+                    if (node.type === 'image' && node.attrs?.src) {
+                        images.push(node.attrs.src);
+                    }
+                    if (node.content) {
+                        images.push(...extractImages(node.content));
+                    }
+                });
+                return images;
+            };
+
             // Provide context to the Mistral AI assistant EVEN if it's read-only
             if (typeof window !== 'undefined') {
-                window.localStorage.setItem('inoted_ai_context', `Document Name: ${title}\n\nCurrent textual content:\n${editor.getText()}`);
+                const images = json.content ? extractImages(json.content) : [];
+                const contextData = {
+                    documentName: title,
+                    textContent: editor.getText(),
+                    images: images
+                };
+                window.localStorage.setItem('inoted_ai_context', JSON.stringify(contextData));
             }
         },
     }, [provider, isReadOnly]) // Re-run if provider or readOnly changes
@@ -226,7 +246,29 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     // Provide initial context to AI when editor is fully synced/loaded
     useEffect(() => {
         if (isSynced && editor && typeof window !== 'undefined') {
-            window.localStorage.setItem('inoted_ai_context', `Document Name: ${title}\n\nCurrent textual content:\n${editor.getText()}`);
+            const json = editor.getJSON();
+
+            // Extract images from editor content
+            const extractImages = (nodes: any[]): string[] => {
+                const images: string[] = [];
+                nodes.forEach(node => {
+                    if (node.type === 'image' && node.attrs?.src) {
+                        images.push(node.attrs.src);
+                    }
+                    if (node.content) {
+                        images.push(...extractImages(node.content));
+                    }
+                });
+                return images;
+            };
+
+            const images = json.content ? extractImages(json.content) : [];
+            const contextData = {
+                documentName: title,
+                textContent: editor.getText(),
+                images: images
+            };
+            window.localStorage.setItem('inoted_ai_context', JSON.stringify(contextData));
         }
     }, [isSynced, editor, title])
 

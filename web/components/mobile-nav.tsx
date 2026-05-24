@@ -21,12 +21,18 @@ import Image from "next/image"
 export function MobileNav() {
     const [isNavMenuOpen, setIsNavMenuOpen] = useState(false)
     const [workspaces, setWorkspaces] = useState<any[]>([])
+    const [isWorkspaceSectionCollapsed, setIsWorkspaceSectionCollapsed] = useState(false)
+    const [recentFiles, setRecentFiles] = useState<any[]>([])
 
-    // Fetch workspaces for mobile nav
+    // Fetch workspaces and recent files for mobile nav
     useEffect(() => {
         getWorkspaces().then(res => {
             if (res.success && res.data) setWorkspaces(res.data)
         })
+
+        // Fetch recent files (notes, whiteboards, flowcharts) - we'll simulate this for now
+        // In a real implementation, you'd fetch from the DB
+        setRecentFiles([])
     }, [])
 
     const pathname = usePathname()
@@ -56,10 +62,10 @@ export function MobileNav() {
             {/* Mobile Navigation Menu Overlay */}
             {isNavMenuOpen && (
                 <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col md:hidden animate-in fade-in duration-200">
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 overflow-y-auto">
+                    <div className="flex-1 flex flex-col items-center justify-start p-6 space-y-6 overflow-y-auto">
                         {/* Logo/Brand */}
-                        <div className="flex items-center gap-2 mb-4">
-                            <Image src="/logo.png" alt="logo" className="h-6" />
+                        <div className="flex items-center gap-2 mb-2">
+                            <Image src="/inotedLogo.png" alt="Inoted Logo" className="h-10" />
                         </div>
 
                         {/* Main Links */}
@@ -94,21 +100,37 @@ export function MobileNav() {
                         <div className="w-16 h-1 bg-slate-100 rounded-full" />
 
                         {/* Workspaces */}
-                        <div className="w-full max-w-xs space-y-3">
-                            <h3 className="text-sm font-medium text-slate-400 text-center uppercase tracking-wider">Workspace</h3>
-                            <div className="space-y-1">
-                                {workspaces.map((ws) => (
-                                    <Link key={ws.id} onClick={() => setIsNavMenuOpen(false)} href={`/workspace/${ws.id}`} className="w-full block">
-                                        <Button variant="ghost" className={`w-full justify-start text-slate-600 ${pathname === `/workspace/${ws.id}` ? 'bg-blue-50/50' : ''}`}>
-                                            <Folder className="mr-3 h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                            <span className="truncate">{ws.name}</span>
-                                        </Button>
-                                    </Link>
-                                ))}
-                                {workspaces.length === 0 && (
-                                    <div className="text-center text-sm text-slate-400 italic py-2">No workspaces</div>
+                        <div className="w-full max-w-xs space-y-2">
+                            <button 
+                                className="flex items-center justify-center w-full gap-2"
+                                onClick={() => setIsWorkspaceSectionCollapsed(!isWorkspaceSectionCollapsed)}
+                            >
+                                {isWorkspaceSectionCollapsed ? (
+                                    <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M9 18l6-6-6-6" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M6 9l6 6 6-6" />
+                                    </svg>
                                 )}
-                            </div>
+                                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Workspace</h3>
+                            </button>
+                            {!isWorkspaceSectionCollapsed && (
+                                <div className="space-y-1">
+                                    {workspaces.map((ws) => (
+                                        <Link key={ws.id} onClick={() => setIsNavMenuOpen(false)} href={`/workspace/${ws.id}`} className="w-full block">
+                                            <Button variant="ghost" className={`w-full justify-start text-slate-600 ${pathname === `/workspace/${ws.id}` ? 'bg-blue-50/50' : ''}`}>
+                                                <Folder className="mr-3 h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                                <span className="truncate">{ws.name}</span>
+                                            </Button>
+                                        </Link>
+                                    ))}
+                                    {workspaces.length === 0 && (
+                                        <div className="text-center text-sm text-slate-400 italic py-2">No workspaces</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex-1" />

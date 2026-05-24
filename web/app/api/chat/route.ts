@@ -14,9 +14,53 @@ export async function POST(req: Request) {
         const { messages, context } = await req.json();
 
         let systemPrompt = "You are a helpful AI assistant for the INoted app. Answer concisely and assist the user.";
+        
+        // Build content array for Mistral (text + images)
+        let contextContent: any[] = [];
         if (context) {
-            systemPrompt += `\n\nHere is the current context of the document the user is working on:\n${context}`;
+            let parsedContext;
+            try {
+                parsedContext = typeof context === 'string' ? JSON.parse(context) : context;
+            } catch (e) {
+                parsedContext = { textContent: context, images: [] };
+            }
+            
+            if (parsedContext.documentName) {
+                systemPrompt += `\n\nDocument Name: ${parsedContext.documentName}`;
+            }
+            
+            if (parsedContext.textContent) {
+                contextContent.push({ type: 'text', text: `Current document text content:\n${parsedContext.textContent}` });
+            }
+            
+            if (parsedContext.images && Array.isArray(parsedContext.images)) {
+                parsedContext.images.forEach((imageUrl: string) => {
+                    contextContent.push({ type: 'image_url', image_url: { url: imageUrl } });
+                });
+            }
         }
+
+        // Build messages array for Mistral
+        const mistralMessages: any[] = [];
+        
+        // Add system prompt as first message
+        mistralMessages.push({ role: 'system', content: systemPrompt });
+        
+        // Add context if available
+        if (contextContent.length > 0) {
+            mistralMessages.push({ 
+                role: 'user', 
+                content: [
+                    { type: 'text', text: 'Here is the current content of the document I am working on:' },
+                    ...contextContent
+                ]
+            });
+        }
+        
+        // Add user messages
+        messages.forEach((msg: any) => {
+            mistralMessages.push(msg);
+        });
 
         const agentId = process.env.MISTRAL_AGENT_ID;
 
@@ -26,9 +70,7 @@ export async function POST(req: Request) {
                 res = await client.agents.stream({
                     agentId: agentId,
                     // Note: 'system' role is not supported in agents endpoint, so we inject context into user message
-                    messages: [
-                        ...messages
-                    ],
+                    messages: mistralMessages,
                 });
             } catch (err: any) {
                 console.warn("Mistral Agent failed, falling back to standard chat model:", err.message);
@@ -39,10 +81,7 @@ export async function POST(req: Request) {
         if (!res) {
             res = await client.chat.stream({
                 model: 'mistral-large-latest',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    ...messages
-                ],
+                messages: mistralMessages,
             });
         }
 

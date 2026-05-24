@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react"
+import { Plus, FileText, PenTool, Sparkles, Zap } from "lucide-react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -102,66 +102,101 @@ export default async function WorkspaceDashboardPage(props: {
         .order("created_at", { ascending: false })
 
     return (
-        <div className="p-8 space-y-8 bg-muted/30 dark:bg-background min-h-screen">
+        <div className="p-6 md:p-12 space-y-10 bg-gradient-to-br from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 min-h-screen">
             {/* Guest Banner */}
             {isGuest && <GuestBanner />}
 
-            {/* Header & Search */}
-            <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800 dark:text-zinc-100">{currentWorkspace.name}</h1>
-                        <p className="text-slate-500 text-sm dark:text-zinc-400">Workspace Dashboard</p>
-                    </div>
-                    <WorkspaceOptions workspaceId={workspaceId} workspaceName={currentWorkspace.name} />
+            {/* Hero Section */}
+            <div className="text-center space-y-4 mb-8">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                    <Sparkles className="w-6 h-6 text-yellow-500" />
+                    <h1 className="text-3xl md:text-5xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        {currentWorkspace.name}
+                    </h1>
                 </div>
+                <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
+                    Workspace Dashboard - manage your notes and whiteboards in one place
+                </p>
+            </div>
 
-                <div className="flex justify-center mb-2">
+            {/* Header & Options */}
+            <div className="flex items-center justify-between">
+                <p className="text-slate-500 text-sm dark:text-slate-400">Your workspace resources</p>
+                <WorkspaceOptions workspaceId={workspaceId} workspaceName={currentWorkspace.name} />
+            </div>
+
+            {/* Quick Actions Section */}
+            <section>
+                <h2 className="text-lg md:text-xl font-semibold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-yellow-500" />
+                    Quick Actions
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                    <CreateResourceModal type="note" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
+                        <button className="w-full h-full">
+                            <Card className="h-40 border-2 border-blue-200 dark:border-blue-900/50 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-950/50 group transition-all duration-300 flex flex-col items-center justify-center hover:shadow-xl cursor-pointer hover:border-blue-400 dark:hover:border-blue-700">
+                                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl group-hover:shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300 mb-3">
+                                    <FileText className="text-white w-7 h-7" />
+                                </div>
+                                <span className="text-base font-semibold text-blue-700 dark:text-blue-300 group-hover:text-blue-800 dark:group-hover:text-blue-200">Create Note</span>
+                            </Card>
+                        </button>
+                    </CreateResourceModal>
+
+                    <CreateResourceModal type="whiteboard" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
+                        <button className="w-full h-full">
+                            <Card className="h-40 border-2 border-green-200 dark:border-green-900/50 bg-white dark:bg-slate-900 hover:bg-green-50 dark:hover:bg-green-950/50 group transition-all duration-300 flex flex-col items-center justify-center hover:shadow-xl cursor-pointer hover:border-green-400 dark:hover:border-green-700">
+                                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl group-hover:shadow-lg shadow-green-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300 mb-3">
+                                    <PenTool className="text-white w-7 h-7" />
+                                </div>
+                                <span className="text-base font-semibold text-green-700 dark:text-green-300 group-hover:text-green-800 dark:group-hover:text-green-200">Create Whiteboard</span>
+                            </Card>
+                        </button>
+                    </CreateResourceModal>
+                </div>
+            </section>
+
+            {/* Search Bar */}
+            <div className="flex justify-center mb-10">
+                <div className="w-full max-w-2xl">
                     <SearchInput />
                 </div>
             </div>
 
             {/* My Notes Section */}
             <section>
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="p-1">
-                        <svg
-                            className="w-5 h-5 text-slate-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                        </svg>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                        <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <h2 className="text-xl font-bold text-slate-400">Notes</h2>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Notes</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {/* Notes List & New Note Button Combined */}
                     {[
                         ...(notes || []).map((note) => {
                             const previewText = getPreviewText(note.content);
                             const words = previewText.split(/\s+/).filter(w => w.length > 0);
-                            const truncatedPreview = words.slice(0, 5).join(" ") + (words.length > 5 ? "..." : "");
+                            const truncatedPreview = words.slice(0, 10).join(" ") + (words.length > 10 ? "..." : "");
 
                             return (
                                 <div key={note.id} className="relative group">
                                     <Link href={`/notes/${note.id}`}>
-                                        <Card className="h-48 py-4 hover:shadow-md hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all duration-200 cursor-pointer border-slate-200 dark:border-zinc-800 bg-white dark:bg-black flex flex-col group/card">
-                                            <CardHeader className="pb-2">
-                                                <CardTitle className="text-sm font-medium group-hover/card:text-blue-600 dark:group-hover/card:text-blue-400 text-slate-700 dark:text-zinc-200 truncate mr-6">{note.title || "Untitled"}</CardTitle>
-                                                <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-                                                    {new Date(note.created_at).toLocaleDateString()}
+                                        <Card className="h-56 py-4 hover:shadow-xl hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all duration-300 cursor-pointer border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col group/card hover:border-blue-300 dark:hover:border-blue-800">
+                                            <CardHeader className="pb-3">
+                                                <CardTitle className="text-lg font-semibold group-hover/card:text-blue-700 dark:group-hover/card:text-blue-300 text-slate-800 dark:text-slate-200 truncate mr-6">{note.title || "Untitled"}</CardTitle>
+                                                <p className="text-xs text-slate-500 dark:text-slate-500">
+                                                    {new Date(note.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                 </p>
                                             </CardHeader>
-                                            <CardContent className="flex-1 overflow-hidden flex items-center justify-center p-4">
-                                                <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium text-center break-all italic">
-                                                    {truncatedPreview || "No content"}
+                                            <CardContent className="flex-1 overflow-hidden p-4 pt-0">
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 text-left line-clamp-3">
+                                                    {truncatedPreview || "Click to start writing..."}
                                                 </p>
                                             </CardContent>
-                                            <CardFooter className="pt-2 pb-4 flex justify-end">
-                                                <span className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500 text-[10px] px-3 py-1 rounded-full font-medium shadow-sm truncate max-w-[100px] border border-yellow-200 dark:border-yellow-900/50">
+                                            <CardFooter className="pt-2 pb-4 flex justify-start px-4">
+                                                <span className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 text-xs px-3 py-1 rounded-full font-medium border border-yellow-200 dark:border-yellow-800/50">
                                                     {currentWorkspace.name}
                                                 </span>
                                             </CardFooter>
@@ -171,15 +206,15 @@ export default async function WorkspaceDashboardPage(props: {
                                 </div>
                             )
                         }),
-                        <div key="new-note-btn" className="relative group block h-48">
+                        <div key="new-note-btn" className="relative group block h-56">
                             <CreateResourceModal type="note" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
                                 <button className="w-full h-full">
-                                    <Card className="h-48 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 group transition-all duration-200 flex items-center justify-center hover:shadow-md cursor-pointer group border-dashed">
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-12 h-12 bg-blue-500 rounded-full group-hover:shadow-md shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform mb-2">
-                                                <Plus className="text-white w-6 h-6" />
+                                    <Card className="h-56 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 group transition-all duration-300 flex items-center justify-center hover:shadow-xl cursor-pointer group border-dashed border-2 hover:border-blue-400 dark:hover:border-blue-700">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl group-hover:shadow-xl shadow-blue-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
+                                                <Plus className="text-white w-7 h-7" />
                                             </div>
-                                            <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">New Note +</span>
+                                            <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-blue-700 dark:group-hover:text-blue-300">New Note</span>
                                         </div>
                                     </Card>
                                 </button>
@@ -191,26 +226,19 @@ export default async function WorkspaceDashboardPage(props: {
 
             {/* My Whiteboard Section */}
             <section>
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="p-1">
-                        <svg
-                            className="w-5 h-5 text-slate-400 dark:text-zinc-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl">
+                        <PenTool className="w-6 h-6 text-green-600 dark:text-green-400" />
                     </div>
-                    <h2 className="text-xl font-bold text-slate-400 dark:text-zinc-500">Whiteboards</h2>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Whiteboards</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {/* Whiteboards List */}
                     {whiteboards?.map((board) => (
                         <div key={board.id} className="relative group block">
                             <Link href={`/whiteboard/${board.id}`}>
-                                <Card className="h-40 hover:shadow-md transition-all duration-200 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer border-slate-200 dark:border-zinc-800 bg-white dark:bg-black overflow-hidden mb-2 group/card">
+                                <Card className="h-52 hover:shadow-xl transition-all duration-300 hover:bg-green-50/50 dark:hover:bg-green-950/30 cursor-pointer border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden mb-2 group/card hover:border-green-300 dark:hover:border-green-800">
                                     <div className="p-4 flex flex-col h-full">
                                         <div className="flex-1 flex items-center justify-center">
                                             {board.content?.preview ? (
@@ -218,7 +246,7 @@ export default async function WorkspaceDashboardPage(props: {
                                                     <img
                                                         src={board.content.preview}
                                                         alt="Whiteboard preview"
-                                                        className="w-full h-full object-contain"
+                                                        className="w-full h-full object-cover rounded-lg"
                                                     />
                                                 ) : (
                                                     <div
@@ -227,7 +255,7 @@ export default async function WorkspaceDashboardPage(props: {
                                                     />
                                                 )
                                             ) : (
-                                                <svg viewBox="0 0 100 60" className="w-full h-40 stroke-slate-300 dark:stroke-zinc-700 group-hover/card:stroke-blue-400 transition-colors duration-200 stroke-2 fill-none">
+                                                <svg viewBox="0 0 100 60" className="w-full h-48 stroke-slate-300 dark:stroke-slate-700 group-hover/card:stroke-green-500 transition-colors duration-300 stroke-2 fill-none">
                                                     <path d="M10,10 Q30,50 50,30 T90,30" />
                                                     <rect x="20" y="20" width="10" height="10" />
                                                 </svg>
@@ -236,7 +264,7 @@ export default async function WorkspaceDashboardPage(props: {
                                     </div>
                                 </Card>
                                 <div className="text-center">
-                                    <span className="text-sm text-slate-500 dark:text-zinc-400 font-medium hover:text-slate-700 dark:hover:text-zinc-200 transition-colors">{board.title || "Untitled"}</span>
+                                    <span className="text-base font-semibold text-slate-700 dark:text-slate-300 hover:text-green-700 dark:hover:text-green-300 transition-colors">{board.title || "Untitled"}</span>
                                 </div>
                             </Link>
                             <ResourceOptions id={board.id} title={board.title || "Untitled"} type="whiteboard" />
@@ -246,15 +274,15 @@ export default async function WorkspaceDashboardPage(props: {
                     {/* New Whiteboard Button */}
                     <CreateResourceModal type="whiteboard" workspaces={workspaces || []} defaultWorkspaceId={workspaceId} isGuest={isGuest}>
                         <button className="w-full h-full group">
-                            <Card className="h-40 border-slate-200 dark:border-zinc-800 bg-white dark:bg-black group hover:bg-zinc-50 dark:hover:bg-zinc-900 flex items-center justify-center hover:shadow-md transition-colors duration-200 cursor-pointer mb-2 border-dashed">
-                                <div className="flex flex-col items-center">
-                                    <div className="w-10 h-10 bg-blue-500 group-hover:shadow-md shadow-blue-200 dark:shadow-none rounded-full flex items-center justify-center group-hover:scale-105 transition-transform mb-2">
-                                        <Plus className="text-white w-5 h-5" />
+                            <Card className="h-52 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 group hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center hover:shadow-xl transition-all duration-300 cursor-pointer mb-2 border-dashed border-2 hover:border-green-400 dark:hover:border-green-700">
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl group-hover:shadow-xl shadow-green-200 dark:shadow-none flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
+                                        <Plus className="text-white w-7 h-7" />
                                     </div>
                                 </div>
                             </Card>
                             <div className="text-center">
-                                <span className="text-sm text-slate-500 dark:text-zinc-400 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">New Whiteboard +</span>
+                                <span className="text-base font-semibold text-slate-600 dark:text-slate-300 group-hover:text-green-700 dark:group-hover:text-green-300 transition-colors">New Whiteboard</span>
                             </div>
                         </button>
                     </CreateResourceModal>

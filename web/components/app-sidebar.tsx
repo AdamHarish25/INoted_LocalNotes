@@ -43,6 +43,7 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = useState("")
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false)
+  const [isWorkspaceSectionCollapsed, setIsWorkspaceSectionCollapsed] = useState(false)
 
   const handleCreateWorkspace = async () => {
     if (!newWorkspaceName.trim()) return
@@ -212,9 +213,27 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
         <div className={`${isCollapsed ? "px-1" : "px-3"} py-2`}>
           <div className={cn("flex items-center px-4 mb-2", isCollapsed ? "justify-center" : "justify-between")}>
             {!isCollapsed && (
-              <h2 className="text-xs font-semibold tracking-tight text-slate-500">
-                Workspace
-              </h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-0 text-slate-500 hover:text-slate-900"
+                  onClick={() => setIsWorkspaceSectionCollapsed(!isWorkspaceSectionCollapsed)}
+                >
+                  {isWorkspaceSectionCollapsed ? (
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  )}
+                </Button>
+                <h2 className="text-xs font-semibold tracking-tight text-slate-500">
+                  Workspace
+                </h2>
+              </div>
             )}
 
             {!isCollapsed ? (
@@ -265,7 +284,7 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
             )}
           </div>
           <div className="space-y-1">
-            {!isCollapsed ? (
+            {!isCollapsed && !isWorkspaceSectionCollapsed ? (
               <>
                 {workspaces.map((ws) => (
                   <Link key={ws.id} href={`/workspace/${ws.id}`}>
@@ -280,10 +299,6 @@ export function AppSidebar({ className, isCollapsed = false, onToggle }: Sidebar
                 )}
               </>
             ) : (
-              // Collapsed workspace view - maybe just a summary or nothing? 
-              // Let's hide detailed workspaces in collapsed mode for now as they are dynamic
-              // Or user can click the folder icon above to expand?
-              // Actually, let's just show little dots or generic icons if busy
               null
             )}
           </div>
