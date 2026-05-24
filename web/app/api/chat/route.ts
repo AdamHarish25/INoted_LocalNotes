@@ -5,6 +5,7 @@ export async function POST(req: Request) {
     const apiKey = process.env.MISTRAL_API_KEY || '';
 
     if (!apiKey) {
+        console.error("MISTRAL_API_KEY is not set in environment variables!");
         return NextResponse.json({ error: 'MISTRAL_API_KEY is not set in environment variables.' }, { status: 500 });
     }
 
@@ -32,28 +33,19 @@ export async function POST(req: Request) {
             if (parsedContext.textContent) {
                 contextContent.push({ type: 'text', text: `Current document text content:\n${parsedContext.textContent}` });
             }
-            
-            if (parsedContext.images && Array.isArray(parsedContext.images)) {
-                parsedContext.images.forEach((imageUrl: string) => {
-                    contextContent.push({ type: 'image_url', image_url: { url: imageUrl } });
-                });
-            }
         }
 
-        // Build messages array for Mistral
+        // Build messages array for Mistral - keep it simple initially
         const mistralMessages: any[] = [];
         
         // Add system prompt as first message
         mistralMessages.push({ role: 'system', content: systemPrompt });
         
-        // Add context if available
+        // Add context if available (text only for now to avoid issues)
         if (contextContent.length > 0) {
             mistralMessages.push({ 
                 role: 'user', 
-                content: [
-                    { type: 'text', text: 'Here is the current content of the document I am working on:' },
-                    ...contextContent
-                ]
+                content: 'Here is the current content of the document I am working on:\n' + contextContent.map(c => c.text).join('\n')
             });
         }
         
@@ -62,11 +54,14 @@ export async function POST(req: Request) {
             mistralMessages.push(msg);
         });
 
+        console.log("Mistral Messages to send:", mistralMessages);
+
         const agentId = process.env.MISTRAL_AGENT_ID;
 
         let res = null;
         if (agentId) {
             try {
+                console.log("Attempting to use Mistral Agent with ID:", agentId);
                 res = await client.agents.stream({
                     agentId: agentId,
                     // Note: 'system' role is not supported in agents endpoint, so we inject context into user message
@@ -79,8 +74,9 @@ export async function POST(req: Request) {
         }
 
         if (!res) {
+            console.log("Using standard Mistral chat model");
             res = await client.chat.stream({
-                model: 'mistral-large-latest',
+                model: 'mistral-medium-latest',
                 messages: mistralMessages,
             });
         }
@@ -95,7 +91,8 @@ export async function POST(req: Request) {
                         }
                     }
                     controller.close();
-                } catch (e) {
+                } catch (e: any) {
+                    console.error("Stream error:", e);
                     controller.error(e);
                 }
             }
@@ -111,6 +108,7 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("Mistral API Error:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
         return NextResponse.json({ error: error.message || 'An error occurred' }, { status: 500 });
     }
 }
