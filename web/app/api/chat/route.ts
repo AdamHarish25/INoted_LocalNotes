@@ -33,19 +33,28 @@ export async function POST(req: Request) {
             if (parsedContext.textContent) {
                 contextContent.push({ type: 'text', text: `Current document text content:\n${parsedContext.textContent}` });
             }
+            
+            if (parsedContext.images && Array.isArray(parsedContext.images) && parsedContext.images.length > 0) {
+                parsedContext.images.forEach((imageUrl: string) => {
+                    contextContent.push({ type: 'image_url', image_url: { url: imageUrl } });
+                });
+            }
         }
 
-        // Build messages array for Mistral - keep it simple initially
+        // Build messages array for Mistral
         const mistralMessages: any[] = [];
         
         // Add system prompt as first message
         mistralMessages.push({ role: 'system', content: systemPrompt });
         
-        // Add context if available (text only for now to avoid issues)
+        // Add context if available
         if (contextContent.length > 0) {
             mistralMessages.push({ 
                 role: 'user', 
-                content: 'Here is the current content of the document I am working on:\n' + contextContent.map(c => c.text).join('\n')
+                content: [
+                    { type: 'text', text: 'Here is the current content of the document I am working on:' },
+                    ...contextContent
+                ]
             });
         }
         
