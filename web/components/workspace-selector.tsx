@@ -54,7 +54,7 @@ export function WorkspaceSelector({ noteId, initialWorkspaceName }: { noteId: st
             <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-1 md:gap-2 cursor-pointer group">
                     <span className="text-xs text-slate-400 group-hover:text-slate-600 transition-colors hidden md:inline">Organize to:</span>
-                    <span className="bg-yellow-400 text-white text-[10px] px-2 md:px-3 py-1 rounded-full font-bold hover:bg-yellow-500 transition-colors truncate max-w-[100px] md:max-w-[150px]">
+                    <span className="bg-yellow-400 text-white text-[10px] px-2 md:px-3 py-1 rounded-full font-bold hover:bg-yellow-500 transition-colors truncate max-w-[80px] sm:max-w-[100px] md:max-w-[150px]">
                         {workspaceName}
                     </span>
                 </div>

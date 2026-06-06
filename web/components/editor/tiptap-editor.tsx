@@ -1033,56 +1033,55 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             </Dialog>
 
             {/* Integrated Header */}
-            <div className="flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-100 dark:border-b-gray-500 mb-4 sticky top-0 bg-white dark:bg-card z-40 transition-colors print-hidden">
-                <div className="flex items-center gap-2 md:gap-4">
-                    <div className="flex items-center gap-2 text-slate-400 dark:text-muted-foreground text-sm">
-                        <button onClick={() => router.back()} className="p-1 border dark:border-border rounded bg-slate-50 dark:bg-muted hover:bg-slate-100 dark:hover:bg-muted/80 transition-colors">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
-                        </button>
+            <div className="flex items-center justify-between px-2 md:px-6 py-2 md:py-3 border-b border-gray-100 dark:border-b-gray-500 mb-2 md:mb-4 sticky top-0 bg-white dark:bg-card z-40 transition-colors print-hidden shadow-sm">
+                <div className="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
+                    <button onClick={() => router.back()} className="p-1.5 md:p-2 border dark:border-border rounded-md bg-slate-50 dark:bg-muted hover:bg-slate-100 dark:hover:bg-muted/80 transition-colors shrink-0">
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                    </button>
 
-                        {!isReadOnly && (
-                            <div className="hidden sm:flex items-center gap-1 border-l border-r px-2 mx-1 dark:border-border">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => editor?.chain().focus().undo().run()}
-                                    disabled={!editor?.can().undo()}
-                                    className="h-7 w-7 text-slate-500 hover:text-slate-800 dark:text-muted-foreground dark:hover:text-primary rounded"
-                                    title="Undo"
-                                >
-                                    <Undo className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => editor?.chain().focus().redo().run()}
-                                    disabled={!editor?.can().redo()}
-                                    className="h-7 w-7 text-slate-500 hover:text-slate-800 dark:text-muted-foreground dark:hover:text-primary rounded"
-                                    title="Redo"
-                                >
-                                    <Redo className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        )}
+                    {!isReadOnly && (
+                        <div className="hidden sm:flex items-center gap-1 border-l border-r px-2 mx-1 dark:border-border shrink-0">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => editor?.chain().focus().undo().run()}
+                                disabled={!editor?.can().undo()}
+                                className="h-7 w-7 text-slate-500 hover:text-slate-800 dark:text-muted-foreground dark:hover:text-primary rounded"
+                                title="Undo"
+                            >
+                                <Undo className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => editor?.chain().focus().redo().run()}
+                                disabled={!editor?.can().redo()}
+                                className="h-7 w-7 text-slate-500 hover:text-slate-800 dark:text-muted-foreground dark:hover:text-primary rounded"
+                                title="Redo"
+                            >
+                                <Redo className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
 
-                        <span className="font-medium text-slate-700 dark:text-foreground truncate max-w-[100px] md:max-w-[150px] lg:max-w-[200px] ml-1">{title}</span>
-                    </div>
-
-                    <div className={`flex items-center gap-1 text-slate-700 dark:text-muted-foreground text-xs`}>
-                        {saveStatus === "Saved" ? <Cloud className="w-3 h-3 " /> : (saveStatus === "View Only" ? <Globe className="w-3 h-3" /> : <CircleDashed className={`w-3 h-3 animate-spin`} />)}
-                        <span className="hidden md:inline">{saveStatus === 'Saved' ? 'Saved to Cloud' : saveStatus}</span>
+                    <div className="flex flex-col min-w-0 ml-1 md:ml-2">
+                        <span className="font-semibold text-sm md:text-base text-slate-800 dark:text-foreground truncate">{title}</span>
+                        <div className={`flex items-center gap-1 text-slate-500 dark:text-muted-foreground text-[10px] md:text-xs`}>
+                            {saveStatus === "Saved" ? <Cloud className="w-3 h-3 text-green-500" /> : (saveStatus === "View Only" ? <Globe className="w-3 h-3 text-blue-500" /> : <CircleDashed className={`w-3 h-3 animate-spin text-yellow-500`} />)}
+                            <span className="truncate">{saveStatus === 'Saved' ? 'Saved to Cloud' : saveStatus}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 md:gap-4">
+                <div className="flex items-center gap-1 md:gap-3 shrink-0">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => setIsGitDialogOpen(true)}
                         title="Git Integration"
-                        className="text-slate-500 hover:text-slate-700 dark:text-muted-foreground dark:hover:text-primary"
+                        className="text-slate-500 hover:text-slate-700 dark:text-muted-foreground dark:hover:text-primary h-8 w-8 md:h-9 md:w-9"
                     >
-                        <Github className="w-4 h-4" />
+                        <Github className="w-4 h-4 md:w-5 md:h-5" />
                     </Button>
 
                     <Button
@@ -1090,11 +1089,10 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                         size="icon"
                         onClick={handleExportPDF}
                         title="Export to PDF"
-                        className="text-slate-500 hover:text-slate-700 dark:text-muted-foreground dark:hover:text-primary"
+                        className="hidden sm:inline-flex text-slate-500 hover:text-slate-700 dark:text-muted-foreground dark:hover:text-primary h-8 w-8 md:h-9 md:w-9"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     </Button>
-
 
                     {!isReadOnly && <WorkspaceSelector noteId={noteId} initialWorkspaceName={initialWorkspace} />}
 
@@ -1166,14 +1164,14 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 </div>
             </div>
 
-            <div className="print-area relative w-full min-w-0 max-w-5xl md:max-w-3xl lg:max-w-4xl mb-10 mx-auto border border-gray-200 dark:border-gray-500 bg-white dark:bg-background dark:text-foreground p-4 md:p-16 rounded-lg min-h-screen flex flex-col gap-4 shadow-sm transition-colors">
+            <div className="print-area relative w-full min-w-0 max-w-5xl md:max-w-3xl lg:max-w-4xl mb-4 md:mb-10 mx-auto border-none sm:border border-gray-200 dark:border-gray-500 bg-white dark:bg-background dark:text-foreground p-4 sm:p-8 md:p-16 sm:rounded-lg min-h-screen flex flex-col gap-2 md:gap-4 shadow-none sm:shadow-sm transition-colors">
                 <input
                     type="text"
                     value={title}
                     onChange={handleTitleChange}
                     readOnly={isReadOnly}
                     placeholder="Note Title"
-                    className="text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 dark:placeholder:text-muted-foreground w-full bg-transparent pt-8 text-black dark:text-white disabled:cursor-not-allowed disabled:opacity-80 print:hidden"
+                    className="text-3xl md:text-4xl font-extrabold border-none outline-none placeholder:text-slate-300 dark:placeholder:text-muted-foreground w-full bg-transparent pt-4 md:pt-8 text-black dark:text-white disabled:cursor-not-allowed disabled:opacity-80 print:hidden"
                 />
 
                 <h1 className="hidden print:block text-4xl font-extrabold text-black pt-8 w-full break-words whitespace-pre-wrap">
@@ -1188,7 +1186,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 {editor && (
                     <BubbleMenu
                         editor={editor}
-                        className="flex items-center gap-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-lg p-1 rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        className="flex items-center gap-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-lg p-1 rounded-lg overflow-x-auto overflow-y-hidden max-w-[95vw] md:max-w-none hide-scrollbar animate-in fade-in zoom-in-95 duration-200"
                     >
                         <Button
                             variant="ghost"
