@@ -94,6 +94,14 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     const [isCopied, setIsCopied] = useState(false)
     const hasHydrated = useRef(false)
 
+    // Synchronize page tab title dynamically with note title
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            document.title = title ? `${title} - INoted` : "INoted"
+        }
+    }, [title])
+
+
     // Generate color from name if not provided
     const stringToColor = (str: string) => {
         let hash = 0;

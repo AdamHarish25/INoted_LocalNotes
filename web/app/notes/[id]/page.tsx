@@ -4,6 +4,23 @@ import { Share, Cloud } from "lucide-react"
 
 import { createClient } from "@/utils/supabase/server"
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params
+    const supabase = await createClient()
+
+    const { data: note } = await supabase
+        .from("notes")
+        .select("title")
+        .eq("id", id)
+        .single()
+
+    const title = note?.title || "Untitled Note"
+    return {
+        title: `${title} - INoted`,
+    }
+}
 
 export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
