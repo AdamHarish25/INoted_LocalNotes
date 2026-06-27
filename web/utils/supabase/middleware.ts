@@ -53,23 +53,15 @@ export async function updateSession(request: NextRequest) {
         cookie.name.includes('next-auth.session-token')
     )
 
-    const path = request.nextUrl.pathname
-    const isPublicNote = path.startsWith('/notes/') && path !== '/notes/'
-    const isPublicWhiteboard = path.startsWith('/whiteboard/') && path !== '/whiteboard/'
-    const isPublicFlowchart = path.startsWith('/flowchart/') && path !== '/flowchart/'
-
     if (
         !user &&
         !hasNextAuthSession &&
-        !isPublicNote &&
-        !isPublicWhiteboard &&
-        !isPublicFlowchart &&
-        !path.startsWith('/login') &&
-        !path.startsWith('/auth') &&
-        !path.startsWith('/forgot-password') &&
-        !path.startsWith('/update-password') &&
-        !path.startsWith('/api') && // Allow API routes (including auth)
-        path !== '/'
+        !request.nextUrl.pathname.startsWith('/login') &&
+        !request.nextUrl.pathname.startsWith('/auth') &&
+        !request.nextUrl.pathname.startsWith('/forgot-password') &&
+        !request.nextUrl.pathname.startsWith('/update-password') &&
+        !request.nextUrl.pathname.startsWith('/api') && // Allow API routes (including auth)
+        request.nextUrl.pathname !== '/'
     ) {
         // allow public assets if missed by matcher, but generally redirect to login
         const url = request.nextUrl.clone()
