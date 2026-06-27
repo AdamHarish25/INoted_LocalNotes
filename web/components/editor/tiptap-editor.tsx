@@ -668,124 +668,27 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
     const handleExportPDF = async () => {
         try {
             // Import secara dinamis agar tidak error saat SSR
-            const { default: jsPDF } = await import('jspdf')
-            const { default: autoTable } = await import('jspdf-autotable')
+            const html2pdf = (await import('html2pdf.js')).default
 
-            const doc = new jsPDF({
-                orientation: 'p',
-                unit: 'pt',
-                format: 'a4'
-            })
-
-            const json = editor?.getJSON()
-            if (!json || !json.content) return
-
-            let yOffset = 40
-            const margin = 40
-            const pageHeight = doc.internal.pageSize.height
-            const maxWidth = doc.internal.pageSize.width - margin * 2
-
-            // Menulis Judul Utama PDF
-            doc.setFontSize(22)
-            doc.setFont('helvetica', 'bold')
-            const linesTitle = doc.splitTextToSize(title || "Untitled Note", maxWidth)
-            doc.text(linesTitle, margin, yOffset)
-            yOffset += (linesTitle.length * 24) + 20
-
-            // Parser rekursif untuk mengubah Node Tiptap menjadi PDF text/table
-            const processNode = (node: any) => {
-                // Auto-pagination text manual
-                if (yOffset > pageHeight - margin) {
-                    doc.addPage()
-                    yOffset = margin + 20
-                }
-
-                if (node.type === 'heading') {
-                    const level = node.attrs?.level || 1
-                    const fontSize = 24 - (level * 2)
-                    doc.setFontSize(fontSize)
-                    doc.setFont('helvetica', 'bold')
-                    const text = node.content ? node.content.map((c: any) => c.text).join('') : ''
-                    if (text) {
-                        const lines = doc.splitTextToSize(text, maxWidth)
-                        doc.text(lines, margin, yOffset)
-                        yOffset += (lines.length * fontSize) + 10
-                    }
-                    doc.setFont('helvetica', 'normal')
-                }
-                else if (node.type === 'paragraph') {
-                    doc.setFontSize(12)
-                    doc.setFont('helvetica', 'normal')
-                    const text = node.content ? node.content.map((c: any) => c.text).join('') : ''
-                    if (text.trim() === '') {
-                        yOffset += 15
-                    } else {
-                        const lines = doc.splitTextToSize(text, maxWidth)
-                        doc.text(lines, margin, yOffset)
-                        yOffset += (lines.length * 14) + 10
-                    }
-                }
-                else if (node.type === 'bulletList' || node.type === 'orderedList' || node.type === 'taskList') {
-                    doc.setFontSize(12)
-                    doc.setFont('helvetica', 'normal')
-                    node.content?.forEach((listItem: any, index: number) => {
-                        if (yOffset > pageHeight - margin) {
-                            doc.addPage()
-                            yOffset = margin + 20
-                        }
-                        const text = listItem.content ? listItem.content.map((p: any) =>
-                            p.content ? p.content.map((t: any) => t.text).join('') : ''
-                        ).join('\n') : ''
-
-                        const prefix = node.type === 'orderedList' ? `${index + 1}. ` : (node.type === 'taskList' ? (listItem.attrs?.checked ? '[x] ' : '[ ] ') : '• ')
-                        const lines = doc.splitTextToSize(prefix + text, maxWidth)
-                        doc.text(lines, margin, yOffset)
-                        yOffset += (lines.length * 14) + 5
-                    })
-                    yOffset += 10
-                }
-                else if (node.type === 'table') {
-                    const head: any[] = []
-                    const body: any[][] = []
-
-                    // Ekstrak baris dan kolom tabel dari JSON Tiptap
-                    node.content?.forEach((rowNode: any, rowIndex: number) => {
-                        const rowData: string[] = []
-                        rowNode.content?.forEach((cellNode: any) => {
-                            const text = cellNode.content ? cellNode.content.map((p: any) =>
-                                p.content ? p.content.map((t: any) => t.text || '').join('') : ''
-                            ).join('\n') : ''
-                            rowData.push(text)
-                        })
-                        
-                        // Cek jika baris pertama adalah Header
-                        if (rowIndex === 0 && rowNode.content?.[0]?.type === 'tableHeader') {
-                            head.push(rowData)
-                        } else {
-                            body.push(rowData)
-                        }
-                    })
-
-                    // Inject jspdf-autotable
-                    autoTable(doc, {
-                        head: head.length > 0 ? head : undefined,
-                        body: body,
-                        startY: yOffset,
-                        margin: { left: margin, right: margin },
-                        styles: { fontSize: 10, cellPadding: 5 },
-                        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-                        theme: 'grid',
-                        didDrawPage: (data) => {
-                            if (data.cursor) {
-                                yOffset = data.cursor.y + 20
-                            }
-                        }
-                    })
-                }
+            // Ambil elemen editor yang akan di-print
+            const element = document.querySelector('.print-area') as HTMLElement
+            if (!element) {
+                alert("Area editor tidak ditemukan!")
+                return
             }
 
-            json.content.forEach(processNode)
-            doc.save(`${title.replace(/\s+/g, '_') || 'Catatan_INoted'}.pdf`)
+            // Gunakan konfigurasi standar html2pdf
+            const opt = {
+                margin:       15,
+                filename:     `${(title || 'Catatan_INoted').replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg' as const, quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF:        { unit: 'pt' as const, format: 'a4' as const, orientation: 'portrait' as const },
+                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+            }
+
+            // Eksekusi render PDF (ini akan me-render emoji ⭐ persis seperti di layar HTML)
+            await html2pdf().set(opt).from(element).save()
 
         } catch (error) {
             console.error("Gagal men-generate PDF:", error)
