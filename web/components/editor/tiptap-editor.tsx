@@ -667,62 +667,133 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
     const handleExportPDF = async () => {
         try {
-            // Import library secara dinamis
-            const htmlToImage = await import('html-to-image')
+            // Import secara dinamis agar tidak error saat SSR
             const { default: jsPDF } = await import('jspdf')
+            const { default: autoTable } = await import('jspdf-autotable')
 
-            const element = document.querySelector('.print-area') as HTMLElement
-            if (!element) {
-                alert("Area editor tidak ditemukan!")
-                return
-            }
-
-            // [SOLUSI FINAL]: Menggunakan html-to-image yang memanfaatkan mesin browser murni (SVG).
-            // Ini bebas dari bug html2canvas sehingga mendukung penuh Tailwind v4 (oklch) dan Emoji.
-            const dataUrl = await htmlToImage.toPng(element, { 
-                pixelRatio: 2,
-                backgroundColor: '#ffffff',
-                style: {
-                    margin: '0', // Hilangkan margin luar saat di-screenshot
-                }
-            })
-
-            const pdf = new jsPDF({
+            const doc = new jsPDF({
                 orientation: 'p',
-                unit: 'mm',
+                unit: 'pt',
                 format: 'a4'
             })
 
-            const pdfWidth = pdf.internal.pageSize.getWidth()
-            const pdfHeight = pdf.internal.pageSize.getHeight()
-            
-            // Dapatkan dimensi asli gambar
-            const img = new Image()
-            img.src = dataUrl
-            await new Promise((resolve) => { img.onload = resolve })
+            const json = editor?.getJSON()
+            if (!json || !json.content) return
 
-            const margin = 10 // Margin 10mm untuk PDF
-            const imgWidth = pdfWidth - (margin * 2)
-            // Kalkulasi rasio tinggi gambar agar proporsional di kertas A4
-            const imgHeight = (img.height * imgWidth) / img.width
+            let yOffset = 40
+            const margin = 40
+            const pageHeight = doc.internal.pageSize.height
+            const maxWidth = doc.internal.pageSize.width - margin * 2
 
-            const usableHeight = pdfHeight - (margin * 2)
-            let heightLeft = imgHeight
-            let position = margin
-
-            // Halaman pertama
-            pdf.addImage(dataUrl, 'PNG', margin, position, imgWidth, imgHeight)
-            heightLeft -= usableHeight
-
-            // Logika Slicing: Jika konten lebih panjang dari 1 halaman, lakukan pemotongan gambar
-            while (heightLeft > 0) {
-                pdf.addPage()
-                position -= usableHeight // Geser gambar ke atas (negatif) sebesar satu halaman penuh
-                pdf.addImage(dataUrl, 'PNG', margin, position, imgWidth, imgHeight)
-                heightLeft -= usableHeight
+            // Fungsi pembersih untuk menghapus EMOJI dan karakter Unicode ekstrim 
+            // agar tidak berubah menjadi +P pada font Helvetica bawaan jsPDF
+            const sanitizeText = (str: string) => {
+                if (!str) return '';
+                // Menghapus emoji dan karakter di luar latin dasar
+                return str.replace(/[^\x00-\x7F\xA0-\xFF]/g, '');
             }
 
-            pdf.save(`${(title || 'Catatan_INoted').replace(/\s+/g, '_')}.pdf`)
+            // Menulis Judul Utama PDF
+            doc.setFontSize(22)
+            doc.setFont('helvetica', 'bold')
+            const linesTitle = doc.splitTextToSize(sanitizeText(title || "Untitled Note"), maxWidth)
+            doc.text(linesTitle, margin, yOffset)
+            yOffset += (linesTitle.length * 24) + 20
+
+            // Parser rekursif untuk mengubah Node Tiptap menjadi PDF text/table
+            const processNode = (node: any) => {
+                // Auto-pagination text manual
+                if (yOffset > pageHeight - margin) {
+                    doc.addPage()
+                    yOffset = margin + 20
+                }
+
+                if (node.type === 'heading') {
+                    const level = node.attrs?.level || 1
+                    const fontSize = 24 - (level * 2)
+                    doc.setFontSize(fontSize)
+                    doc.setFont('helvetica', 'bold')
+                    const text = node.content ? node.content.map((c: any) => c.text).join('') : ''
+                    if (text) {
+                        const lines = doc.splitTextToSize(sanitizeText(text), maxWidth)
+                        doc.text(lines, margin, yOffset)
+                        yOffset += (lines.length * fontSize) + 10
+                    }
+                    doc.setFont('helvetica', 'normal')
+                }
+                else if (node.type === 'paragraph') {
+                    doc.setFontSize(12)
+                    doc.setFont('helvetica', 'normal')
+                    const text = node.content ? node.content.map((c: any) => c.text).join('') : ''
+                    if (text.trim() === '') {
+                        yOffset += 15
+                    } else {
+                        const lines = doc.splitTextToSize(sanitizeText(text), maxWidth)
+                        doc.text(lines, margin, yOffset)
+                        yOffset += (lines.length * 14) + 10
+                    }
+                }
+                else if (node.type === 'bulletList' || node.type === 'orderedList' || node.type === 'taskList') {
+                    doc.setFontSize(12)
+                    doc.setFont('helvetica', 'normal')
+                    node.content?.forEach((listItem: any, index: number) => {
+                        if (yOffset > pageHeight - margin) {
+                            doc.addPage()
+                            yOffset = margin + 20
+                        }
+                        const text = listItem.content ? listItem.content.map((p: any) =>
+                            p.content ? p.content.map((t: any) => t.text).join('') : ''
+                        ).join('\n') : ''
+
+                        const prefix = node.type === 'orderedList' ? `${index + 1}. ` : (node.type === 'taskList' ? (listItem.attrs?.checked ? '[x] ' : '[ ] ') : '• ')
+                        const lines = doc.splitTextToSize(prefix + sanitizeText(text), maxWidth)
+                        doc.text(lines, margin, yOffset)
+                        yOffset += (lines.length * 14) + 5
+                    })
+                    yOffset += 10
+                }
+                else if (node.type === 'table') {
+                    const head: any[] = []
+                    const body: any[][] = []
+
+                    // Ekstrak baris dan kolom tabel dari JSON Tiptap
+                    node.content?.forEach((rowNode: any, rowIndex: number) => {
+                        const rowData: string[] = []
+                        rowNode.content?.forEach((cellNode: any) => {
+                            const text = cellNode.content ? cellNode.content.map((p: any) =>
+                                p.content ? p.content.map((t: any) => t.text || '').join('') : ''
+                            ).join('\n') : ''
+                            rowData.push(sanitizeText(text))
+                        })
+                        
+                        // Cek jika baris pertama adalah Header
+                        if (rowIndex === 0 && rowNode.content?.[0]?.type === 'tableHeader') {
+                            head.push(rowData)
+                        } else {
+                            body.push(rowData)
+                        }
+                    })
+
+                    // Inject jspdf-autotable
+                    autoTable(doc, {
+                        head: head.length > 0 ? head : undefined,
+                        body: body,
+                        startY: yOffset,
+                        margin: { left: margin, right: margin },
+                        styles: { fontSize: 10, cellPadding: 5 },
+                        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+                        theme: 'grid',
+                        didDrawPage: (data) => {
+                            if (data.cursor) {
+                                yOffset = data.cursor.y + 20
+                            }
+                        }
+                    })
+                }
+            }
+
+            json.content.forEach(processNode)
+            doc.save(`${sanitizeText(title).replace(/\s+/g, '_') || 'Catatan_INoted'}.pdf`)
 
         } catch (error) {
             console.error("Gagal men-generate PDF:", error)
