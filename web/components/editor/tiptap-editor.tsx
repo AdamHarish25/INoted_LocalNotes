@@ -677,6 +677,34 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 return
             }
 
+            // [PERBAIKAN BUG] html2canvas crash saat membaca warna oklch()/lab() modern.
+            // Kita inject CSS khusus sementara untuk menimpa warna oklch() dengan HEX standar saat rendering PDF.
+            const tempStyle = document.createElement('style')
+            tempStyle.innerHTML = `
+                .print-area {
+                    --background: #ffffff !important;
+                    --foreground: #000000 !important;
+                    --card: #ffffff !important;
+                    --card-foreground: #000000 !important;
+                    --popover: #ffffff !important;
+                    --popover-foreground: #000000 !important;
+                    --primary: #171717 !important;
+                    --primary-foreground: #ffffff !important;
+                    --secondary: #f5f5f5 !important;
+                    --secondary-foreground: #171717 !important;
+                    --muted: #f5f5f5 !important;
+                    --muted-foreground: #737373 !important;
+                    --accent: #f5f5f5 !important;
+                    --accent-foreground: #171717 !important;
+                    --destructive: #ef4444 !important;
+                    --destructive-foreground: #ffffff !important;
+                    --border: #e5e5e5 !important;
+                    --input: #e5e5e5 !important;
+                    --ring: #a3a3a3 !important;
+                }
+            `
+            document.head.appendChild(tempStyle)
+
             // Gunakan konfigurasi standar html2pdf
             const opt = {
                 margin:       15,
@@ -687,8 +715,14 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
             }
 
-            // Eksekusi render PDF (ini akan me-render emoji ⭐ persis seperti di layar HTML)
-            await html2pdf().set(opt).from(element).save()
+            // Eksekusi render PDF di dalam try-finally agar style terhapus apapun yang terjadi
+            try {
+                await html2pdf().set(opt).from(element).save()
+            } finally {
+                if (document.head.contains(tempStyle)) {
+                    document.head.removeChild(tempStyle)
+                }
+            }
 
         } catch (error) {
             console.error("Gagal men-generate PDF:", error)
