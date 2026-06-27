@@ -667,62 +667,62 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
 
     const handleExportPDF = async () => {
         try {
-            // Import secara dinamis agar tidak error saat SSR
-            const html2pdf = (await import('html2pdf.js')).default
+            // Import library secara dinamis
+            const htmlToImage = await import('html-to-image')
+            const { default: jsPDF } = await import('jspdf')
 
-            // Ambil elemen editor yang akan di-print
             const element = document.querySelector('.print-area') as HTMLElement
             if (!element) {
                 alert("Area editor tidak ditemukan!")
                 return
             }
 
-            // [PERBAIKAN BUG] html2canvas crash saat membaca warna oklch()/lab() modern.
-            // Kita inject CSS khusus sementara untuk menimpa warna oklch() dengan HEX standar saat rendering PDF.
-            const tempStyle = document.createElement('style')
-            tempStyle.innerHTML = `
-                .print-area {
-                    --background: #ffffff !important;
-                    --foreground: #000000 !important;
-                    --card: #ffffff !important;
-                    --card-foreground: #000000 !important;
-                    --popover: #ffffff !important;
-                    --popover-foreground: #000000 !important;
-                    --primary: #171717 !important;
-                    --primary-foreground: #ffffff !important;
-                    --secondary: #f5f5f5 !important;
-                    --secondary-foreground: #171717 !important;
-                    --muted: #f5f5f5 !important;
-                    --muted-foreground: #737373 !important;
-                    --accent: #f5f5f5 !important;
-                    --accent-foreground: #171717 !important;
-                    --destructive: #ef4444 !important;
-                    --destructive-foreground: #ffffff !important;
-                    --border: #e5e5e5 !important;
-                    --input: #e5e5e5 !important;
-                    --ring: #a3a3a3 !important;
+            // [SOLUSI FINAL]: Menggunakan html-to-image yang memanfaatkan mesin browser murni (SVG).
+            // Ini bebas dari bug html2canvas sehingga mendukung penuh Tailwind v4 (oklch) dan Emoji.
+            const dataUrl = await htmlToImage.toPng(element, { 
+                pixelRatio: 2,
+                backgroundColor: '#ffffff',
+                style: {
+                    margin: '0', // Hilangkan margin luar saat di-screenshot
                 }
-            `
-            document.head.appendChild(tempStyle)
+            })
 
-            // Gunakan konfigurasi standar html2pdf
-            const opt = {
-                margin:       15,
-                filename:     `${(title || 'Catatan_INoted').replace(/\s+/g, '_')}.pdf`,
-                image:        { type: 'jpeg' as const, quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-                jsPDF:        { unit: 'pt' as const, format: 'a4' as const, orientation: 'portrait' as const },
-                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4'
+            })
+
+            const pdfWidth = pdf.internal.pageSize.getWidth()
+            const pdfHeight = pdf.internal.pageSize.getHeight()
+            
+            // Dapatkan dimensi asli gambar
+            const img = new Image()
+            img.src = dataUrl
+            await new Promise((resolve) => { img.onload = resolve })
+
+            const margin = 10 // Margin 10mm untuk PDF
+            const imgWidth = pdfWidth - (margin * 2)
+            // Kalkulasi rasio tinggi gambar agar proporsional di kertas A4
+            const imgHeight = (img.height * imgWidth) / img.width
+
+            const usableHeight = pdfHeight - (margin * 2)
+            let heightLeft = imgHeight
+            let position = margin
+
+            // Halaman pertama
+            pdf.addImage(dataUrl, 'PNG', margin, position, imgWidth, imgHeight)
+            heightLeft -= usableHeight
+
+            // Logika Slicing: Jika konten lebih panjang dari 1 halaman, lakukan pemotongan gambar
+            while (heightLeft > 0) {
+                pdf.addPage()
+                position -= usableHeight // Geser gambar ke atas (negatif) sebesar satu halaman penuh
+                pdf.addImage(dataUrl, 'PNG', margin, position, imgWidth, imgHeight)
+                heightLeft -= usableHeight
             }
 
-            // Eksekusi render PDF di dalam try-finally agar style terhapus apapun yang terjadi
-            try {
-                await html2pdf().set(opt).from(element).save()
-            } finally {
-                if (document.head.contains(tempStyle)) {
-                    document.head.removeChild(tempStyle)
-                }
-            }
+            pdf.save(`${(title || 'Catatan_INoted').replace(/\s+/g, '_')}.pdf`)
 
         } catch (error) {
             console.error("Gagal men-generate PDF:", error)
