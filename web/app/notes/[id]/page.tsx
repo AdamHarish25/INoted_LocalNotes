@@ -17,8 +17,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         .single()
 
     const title = note?.title || "Untitled Note"
+    const description = "View and collaborate on this note on INoted."
     return {
         title: `${title} - INoted`,
+        description,
+        openGraph: {
+            title: `${title} - INoted`,
+            description,
+            type: "article",
+        },
+        twitter: {
+            card: "summary",
+            title: `${title} - INoted`,
+            description,
+        }
     }
 }
 

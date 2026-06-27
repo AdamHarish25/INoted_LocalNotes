@@ -4,6 +4,35 @@ import { Share, Cloud } from "lucide-react"
 
 import { createClient } from "@/utils/supabase/server"
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params
+    const supabase = await createClient()
+
+    const { data: whiteboard } = await supabase
+        .from("whiteboards")
+        .select("title")
+        .eq("id", id)
+        .single()
+
+    const title = whiteboard?.title || "Untitled Whiteboard"
+    const description = "View and collaborate on this whiteboard on INoted."
+    return {
+        title: `${title} - INoted`,
+        description,
+        openGraph: {
+            title: `${title} - INoted`,
+            description,
+            type: "article",
+        },
+        twitter: {
+            card: "summary",
+            title: `${title} - INoted`,
+            description,
+        }
+    }
+}
 
 export default async function WhiteboardPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -12,7 +41,7 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ id:
 
     const { data: whiteboard } = await supabase
         .from("whiteboards")
-        .select("content, is_public, allow_public_editing, owner_id")
+        .select("title, content, is_public, allow_public_editing, owner_id")
         .eq("id", id)
         .single()
 
