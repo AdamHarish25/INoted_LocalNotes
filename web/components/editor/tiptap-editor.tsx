@@ -693,6 +693,14 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 return str.replace(/[^\x00-\x7F\xA0-\xFF]/g, '');
             }
 
+            // Fungsi rekursif untuk mengekstrak semua teks dari node tanpa peduli tingkat sarang (nesting)
+            const extractText = (n: any): string => {
+                if (n.type === 'text') return n.text || '';
+                if (n.type === 'hardBreak') return '\n';
+                if (n.content) return n.content.map(extractText).join('');
+                return '';
+            }
+
             // Menulis Judul Utama PDF
             doc.setFontSize(22)
             doc.setFont('helvetica', 'bold')
@@ -701,22 +709,25 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
             yOffset += (linesTitle.length * 24) + 20
 
             // Parser rekursif untuk mengubah Node Tiptap menjadi PDF text/table
-            const processNode = (node: any) => {
+            const processNode = (node: any, depth: number = 0) => {
                 // Auto-pagination text manual
                 if (yOffset > pageHeight - margin) {
                     doc.addPage()
                     yOffset = margin + 20
                 }
 
+                const currentX = margin + (depth * 20)
+                const currentMaxWidth = maxWidth - (depth * 20)
+
                 if (node.type === 'heading') {
                     const level = node.attrs?.level || 1
                     const fontSize = 24 - (level * 2)
                     doc.setFontSize(fontSize)
                     doc.setFont('helvetica', 'bold')
-                    const text = node.content ? node.content.map((c: any) => c.text).join('') : ''
+                    const text = extractText(node)
                     if (text) {
-                        const lines = doc.splitTextToSize(sanitizeText(text), maxWidth)
-                        doc.text(lines, margin, yOffset)
+                        const lines = doc.splitTextToSize(sanitizeText(text), currentMaxWidth)
+                        doc.text(lines, currentX, yOffset)
                         yOffset += (lines.length * fontSize) + 10
                     }
                     doc.setFont('helvetica', 'normal')
@@ -724,12 +735,12 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 else if (node.type === 'paragraph') {
                     doc.setFontSize(12)
                     doc.setFont('helvetica', 'normal')
-                    const text = node.content ? node.content.map((c: any) => c.text).join('') : ''
+                    const text = extractText(node)
                     if (text.trim() === '') {
                         yOffset += 15
                     } else {
-                        const lines = doc.splitTextToSize(sanitizeText(text), maxWidth)
-                        doc.text(lines, margin, yOffset)
+                        const lines = doc.splitTextToSize(sanitizeText(text), currentMaxWidth)
+                        doc.text(lines, currentX, yOffset)
                         yOffset += (lines.length * 14) + 10
                     }
                 }
@@ -741,16 +752,51 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                             doc.addPage()
                             yOffset = margin + 20
                         }
-                        const text = listItem.content ? listItem.content.map((p: any) =>
-                            p.content ? p.content.map((t: any) => t.text).join('') : ''
-                        ).join('\n') : ''
-
-                        const prefix = node.type === 'orderedList' ? `${index + 1}. ` : (node.type === 'taskList' ? (listItem.attrs?.checked ? '[x] ' : '[ ] ') : '• ')
-                        const lines = doc.splitTextToSize(prefix + sanitizeText(text), maxWidth)
-                        doc.text(lines, margin, yOffset)
-                        yOffset += (lines.length * 14) + 5
+                        
+                        let itemText = ""
+                        const childLists: any[] = []
+                        
+                        listItem.content?.forEach((child: any) => {
+                            if (child.type === 'bulletList' || child.type === 'orderedList' || child.type === 'taskList') {
+                                childLists.push(child)
+                            } else {
+                                const pText = extractText(child)
+                                if (pText) {
+                                    itemText += pText + '\n'
+                                }
+                            }
+                        })
+                        
+                        itemText = itemText.trim()
+                        
+                        let prefix = '• '
+                        if (node.type === 'orderedList') {
+                            prefix = `${index + 1}. `
+                        } else if (node.type === 'taskList') {
+                            prefix = listItem.attrs?.checked ? '[x] ' : '[ ] '
+                        } else if (node.type === 'bulletList') {
+                            if (depth % 3 === 0) prefix = '• '
+                            else if (depth % 3 === 1) prefix = '○ '
+                            else prefix = '■ '
+                        }
+                        
+                        const textOffset = 20
+                        
+                        doc.text(prefix, currentX, yOffset)
+                        
+                        if (itemText) {
+                            const lines = doc.splitTextToSize(sanitizeText(itemText), currentMaxWidth - textOffset)
+                            doc.text(lines, currentX + textOffset, yOffset)
+                            yOffset += (lines.length * 14) + 5
+                        } else {
+                            yOffset += 14 + 5
+                        }
+                        
+                        childLists.forEach(childList => {
+                            processNode(childList, depth + 1)
+                        })
                     })
-                    yOffset += 10
+                    if (depth === 0) yOffset += 10
                 }
                 else if (node.type === 'table') {
                     const head: any[] = []
@@ -792,7 +838,7 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                 }
             }
 
-            json.content.forEach(processNode)
+            json.content.forEach((node: any) => processNode(node, 0))
             doc.save(`${sanitizeText(title).replace(/\s+/g, '_') || 'Catatan_INoted'}.pdf`)
 
         } catch (error) {
