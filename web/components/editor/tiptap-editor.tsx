@@ -769,15 +769,16 @@ function EditorWithProvider({ provider, ydoc, noteId, initialContent, initialTit
                         
                         itemText = itemText.trim()
                         
-                        let prefix = '• '
+                        let prefix = '- '
                         if (node.type === 'orderedList') {
-                            prefix = `${index + 1}. `
+                            const start = node.attrs?.start !== undefined ? node.attrs.start : 1
+                            prefix = `${start + index}. `
                         } else if (node.type === 'taskList') {
                             prefix = listItem.attrs?.checked ? '[x] ' : '[ ] '
                         } else if (node.type === 'bulletList') {
-                            if (depth % 3 === 0) prefix = '• '
-                            else if (depth % 3 === 1) prefix = '○ '
-                            else prefix = '■ '
+                            if (depth % 3 === 0) prefix = '- '
+                            else if (depth % 3 === 1) prefix = 'o '
+                            else prefix = '* '
                         }
                         
                         const textOffset = 20
