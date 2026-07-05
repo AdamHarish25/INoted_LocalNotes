@@ -58,3 +58,22 @@ This update addresses several bugs regarding Mistral AI connection failures and 
 ### 4. Table Context Menu Viewport Overlap
 *   **Problem**: When right-clicking a table near the bottom of the screen, the custom Context Menu would render downwards, causing it to overlap and go off-screen, making the bottom actions (like "Merge Cells", "Delete Table") unclickable.
 *   **Solution**: Dynamically calculate the popup `style` dimensions against `window.innerHeight`. If the cursor's Y position is within `450px` of the bottom of the viewport, the Context Menu swaps to `bottom: window.innerHeight - contextMenu.y`. This forces the menu to render *upwards* (reversed appearance) safely into view instead of bleeding off the screen.
+
+## [2026-07-05] PDF Export Enhancements & Formatting Fixes
+
+This update significantly improves the Tiptap-to-PDF export pipeline (`handleExportPDF` in `tiptap-editor.tsx`), addressing layout accuracy, nested structures, and font encoding limitations in jsPDF.
+
+### 1. Accurate Nested List Rendering
+*   **Recursive Depth Tracking**: The PDF generator now recursively tracks the `depth` of nested lists (Bullet, Ordered, and Task lists). Each level of nesting applies an additional `20pt` indentation to perfectly mimic the Tiptap editor's visual hierarchy.
+*   **Multi-line Text Alignment**: Implemented a `textOffset` constraint so that text wrapping onto multiple lines aligns with the text block itself, rather than wrapping underneath the bullet symbol.
+
+### 2. Bullet Point Encoding Fix (jsPDF)
+*   **Problem**: jsPDF's built-in lightweight fonts (like Helvetica with WinAnsiEncoding) fail to render Unicode bullet characters (e.g., `•`, `○`, `■`), resulting in garbled text (`%E`) in the output PDF.
+*   **Solution**: Swapped Unicode bullet symbols to standard ASCII characters based on nesting depth (`-` for level 1, `o` for level 2, `*` for level 3), guaranteeing cross-platform font compatibility without requiring heavy external `.ttf` font injections.
+
+### 3. Ordered List Numbering Continuity
+*   **Problem**: When an ordered list in Tiptap is visually separated by a standard paragraph, the engine splits it into separate `orderedList` nodes. The naive export script treated these as entirely new lists, incorrectly rendering the prefix as `1.` repeatedly.
+*   **Solution**: Added logic to dynamically read the `node.attrs.start` property injected by Tiptap. Ordered lists now intelligently resume numbering (e.g., `4.`, `5.`) even when dispersed across different JSON nodes.
+
+### 4. Flawless Text Extraction
+*   **Robust Recursion**: Replaced naive text mapping with a highly robust `extractText()` recursive function. This guarantees that deep block structures (like blockquotes) and inline formatting marks (bold, italic, links) inside lists or paragraphs will never result in silently dropped or lost text during PDF conversion.
