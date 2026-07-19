@@ -22,7 +22,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (pathname === "/dashboard") {
             setIsSidebarCollapsed(false)
-        } else if (pathname === "/login" || pathname === "/") {
+        } else if (pathname === "/login" || pathname === "/" || pathname === "/ainoted") {
             setIsSidebarCollapsed(true)
         }
     }, [pathname])

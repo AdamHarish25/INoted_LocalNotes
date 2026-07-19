@@ -1,15 +1,23 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { Send, PanelLeftClose, PanelLeft, Plus, MessageSquare, Bot, User, LayoutDashboard } from "lucide-react"
+import { Send, PanelLeftClose, PanelLeft, Plus, MessageSquare, Bot, User, LayoutDashboard, FileText, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { createClient } from "@/utils/supabase/client"
 
 type Message = {
     role: "user" | "assistant" | "system"
     content: string
+}
+
+type AttachedNote = {
+    id: string
+    title: string
+    content: any
+    type: string
 }
 
 export default function AINotedPage() {
@@ -17,6 +25,14 @@ export default function AINotedPage() {
     const [inputValue, setInputValue] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(true)
+
+    // Mention state
+    const [showMentionMenu, setShowMentionMenu] = useState(false)
+    const [mentionQuery, setMentionQuery] = useState("")
+    const [mentionResults, setMentionResults] = useState<any[]>([])
+    const [attachedNotes, setAttachedNotes] = useState<AttachedNote[]>([])
+    const supabase = createClient()
+
     const scrollRef = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -35,6 +51,75 @@ export default function AINotedPage() {
         }
     }, [inputValue])
 
+    const extractText = (content: any): string => {
+        if (!content) return "";
+        try {
+            if (typeof content === 'string') return content;
+            if (content.type === 'doc' && content.content) {
+                const ext = (nodes: any[]): string => {
+                    return nodes.reduce((acc, node) => {
+                        if (node.text) return acc + node.text + " ";
+                        if (node.content) return acc + ext(node.content);
+                        return acc;
+                    }, "");
+                };
+                return ext(content.content).trim();
+            }
+            return JSON.stringify(content);
+        } catch (e) {
+            return "";
+        }
+    }
+
+    const searchResources = async (query: string) => {
+        const { data } = await supabase
+            .from("notes")
+            .select("id, title, content")
+            .ilike("title", `%${query}%`)
+            .limit(5)
+
+        if (data) {
+            setMentionResults(data.map(d => ({ ...d, type: 'note' })))
+        }
+    }
+
+    const attachNote = (note: any) => {
+        if (attachedNotes.length >= 10) return;
+        if (!attachedNotes.find(n => n.id === note.id)) {
+            setAttachedNotes([...attachedNotes, note]);
+        }
+
+        const cursor = textareaRef.current?.selectionStart || 0;
+        const textBeforeCursor = inputValue.substring(0, cursor);
+        const textAfterCursor = inputValue.substring(cursor);
+
+        const newTextBefore = textBeforeCursor.replace(/@[a-zA-Z0-9_-]*$/, '');
+        setInputValue(newTextBefore + textAfterCursor);
+        setShowMentionMenu(false);
+
+        setTimeout(() => {
+            textareaRef.current?.focus();
+        }, 10);
+    }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const val = e.target.value
+        setInputValue(val)
+
+        const cursor = e.target.selectionStart
+        const textBeforeCursor = val.substring(0, cursor)
+
+        const match = textBeforeCursor.match(/@([a-zA-Z0-9_-]*)$/);
+
+        if (match) {
+            setShowMentionMenu(true)
+            setMentionQuery(match[1])
+            searchResources(match[1])
+        } else {
+            setShowMentionMenu(false)
+        }
+    }
+
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isLoading) return
 
@@ -47,12 +132,16 @@ export default function AINotedPage() {
         setMessages((prev) => [...prev, { role: "assistant", content: "" }])
 
         try {
+            const contextText = attachedNotes.length > 0
+                ? attachedNotes.map(n => `--- Document Attached: ${n.title} ---\n${extractText(n.content)}`).join('\n\n')
+                : null;
+
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     messages: [...messages, userMessage],
-                    context: null // We'll use this later for context injection
+                    context: contextText
                 }),
             })
 
@@ -193,14 +282,14 @@ export default function AINotedPage() {
                             {messages.map((message, index) => (
                                 <div key={index} className={`flex gap-4 ${message.role === "assistant" ? "flex-row" : "flex-row-reverse"}`}>
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${message.role === "assistant"
-                                            ? "bg-blue-600 text-white"
-                                            : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                                         }`}>
                                         {message.role === "assistant" ? <Bot className="w-5 h-5" /> : <User className="w-5 h-5" />}
                                     </div>
                                     <div className={`max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-2xl ${message.role === "assistant"
-                                            ? "bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 prose prose-slate dark:prose-invert prose-sm md:prose-base prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-white"
-                                            : "bg-blue-600 text-white"
+                                        ? "bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 prose prose-slate dark:prose-invert prose-sm md:prose-base prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-white"
+                                        : "bg-blue-600 text-white"
                                         }`}>
                                         {message.role === "user" ? (
                                             <div className="whitespace-pre-wrap">{message.content}</div>
@@ -231,27 +320,72 @@ export default function AINotedPage() {
                 {/* Input Area */}
                 <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800">
                     <div className="max-w-4xl mx-auto relative">
-                        <div className="relative flex items-end shadow-sm group border border-slate-300 dark:border-slate-700 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden transition-all">
+                        {/* Mention Menu */}
+                        {showMentionMenu && (
+                            <div className="absolute bottom-full mb-2 left-4 z-50 bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-700 rounded-xl w-64 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                <div className="px-3 py-2 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                    Attach Note (Max 10)
+                                </div>
+                                <div className="max-h-48 overflow-y-auto p-1">
+                                    {mentionResults.length === 0 ? (
+                                        <div className="p-3 text-sm text-slate-500 italic text-center">No notes found...</div>
+                                    ) : (
+                                        mentionResults.map(note => (
+                                            <button
+                                                key={note.id}
+                                                onClick={() => attachNote(note)}
+                                                className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2 text-slate-700 dark:text-slate-300"
+                                            >
+                                                <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                                                <span className="truncate">{note.title || 'Untitled'}</span>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
-                            <textarea
-                                ref={textareaRef}
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Message AINoted... (Type @ to reference a note)"
-                                className="w-full max-h-48 py-3 pl-4 pr-12 bg-transparent border-0 resize-none focus:outline-none focus:ring-0 text-slate-800 dark:text-slate-200"
-                                rows={1}
-                            />
+                        <div className="relative flex flex-col shadow-sm group border border-slate-300 dark:border-slate-700 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden transition-all">
 
-                            <div className="absolute right-2 bottom-2 font-sans flex items-center">
-                                <Button
-                                    onClick={handleSendMessage}
-                                    disabled={!inputValue.trim() || isLoading}
-                                    size="icon"
-                                    className="h-8 w-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm disabled:opacity-50 transition-all font-sans"
-                                >
-                                    <Send className="h-4 w-4" />
-                                </Button>
+                            {/* Attached Notes Chips */}
+                            {attachedNotes.length > 0 && (
+                                <div className="flex flex-wrap gap-2 pt-3 px-3 pb-1 w-full bg-slate-50/50 dark:bg-slate-900/50">
+                                    {attachedNotes.map(note => (
+                                        <div key={note.id} className="flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-md text-xs font-medium shadow-sm transition-all hover:bg-blue-200 dark:hover:bg-blue-800/60">
+                                            <FileText className="w-3.5 h-3.5" />
+                                            <span className="max-w-[120px] truncate">{note.title || 'Untitled'}</span>
+                                            <button
+                                                onClick={() => setAttachedNotes(prev => prev.filter(n => n.id !== note.id))}
+                                                className="ml-0.5 p-0.5 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800/80 transition-colors"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="relative flex items-end w-full">
+                                <textarea
+                                    ref={textareaRef}
+                                    value={inputValue}
+                                    onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={attachedNotes.length >= 10 ? "Max notes reached. Type message..." : "Message AINoted... (Type @ to attach a note)"}
+                                    className="w-full max-h-48 py-3 pl-4 pr-12 bg-transparent border-0 resize-none focus:outline-none focus:ring-0 text-slate-800 dark:text-slate-200"
+                                    rows={1}
+                                />
+
+                                <div className="absolute right-2 bottom-2 font-sans flex items-center">
+                                    <Button
+                                        onClick={handleSendMessage}
+                                        disabled={!inputValue.trim() || isLoading}
+                                        size="icon"
+                                        className="h-8 w-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm disabled:opacity-50 transition-all font-sans"
+                                    >
+                                        <Send className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                         <div className="text-center mt-2 px-2 text-xs text-slate-500">
