@@ -206,7 +206,7 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
             return (
               <div key={note.id} className="relative group/wrapper">
                 <Link href={`/notes/${note.id}`}>
-                  <Card className="p-4 hover:shadow-md hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all duration-300 cursor-pointer border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center text-right gap-4 group/card hover:border-blue-300 dark:hover:border-blue-800">
+                  <Card className="p-4 hover:shadow-md hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all duration-300 cursor-pointer border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-start justify-between gap-4 group/card hover:border-blue-300 dark:hover:border-blue-800">
                     <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
                       <FileText className="w-5 h-5" />
                     </div>
