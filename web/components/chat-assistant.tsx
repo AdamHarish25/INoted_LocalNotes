@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User, BotIcon, Copy, Check, Plus } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, BotIcon, Copy, Check, Plus, Expand } from "lucide-react";
 import { Button } from "./ui/button";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import Link from "next/link";
 
 const CopyButton = ({ content, msgId }: { content: string, msgId: string }) => {
     const [copied, setCopied] = useState(false);
@@ -125,8 +126,11 @@ export function ChatAssistant() {
             {isOpen ? (
                 <div className="w-[320px] md:w-[400px] h-[500px] max-h-[80vh] bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="bg-slate-50 dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-8">
                             <h3 className="font-semibold text-blue-600 dark:text-zinc-100">AI Noted</h3>
+                            <Link href="/ainoted" className="text-blue-600 dark:text-zinc-100 block">
+                                <Expand className="w-4 h-4" />
+                            </Link>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-900 dark:text-zinc-100" onClick={() => setIsOpen(false)}>
                             <X className="w-4 h-4" />
