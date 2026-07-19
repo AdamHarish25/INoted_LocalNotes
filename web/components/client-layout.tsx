@@ -14,7 +14,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const isLoginPage = pathname === "/login"
     const isLandingPage = pathname === "/"
-    const shouldHideSidebar = isLoginPage || isLandingPage
+    const isAiNotedPage = pathname === "/ainoted"
+    const shouldHideSidebar = isLoginPage || isLandingPage || isAiNotedPage;
 
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
