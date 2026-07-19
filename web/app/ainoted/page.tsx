@@ -1,5 +1,6 @@
 import { AINotedClient } from "./client"
 import { getSupabaseUser } from "@/utils/supabase/get-user"
+import { getWorkspaces } from "@/app/actions"
 import { redirect } from "next/navigation"
 
 export default async function AINotedPage() {
@@ -9,5 +10,7 @@ export default async function AINotedPage() {
         redirect("/login")
     }
 
-    return <AINotedClient initialUserId={user.id} />
+    const { data: workspaces } = await getWorkspaces()
+
+    return <AINotedClient initialUserId={user.id} initialWorkspaces={workspaces || []} />
 }

@@ -20,7 +20,12 @@ type AttachedNote = {
     type: string
 }
 
-export function AINotedClient({ initialUserId }: { initialUserId: string }) {
+type Workspace = {
+    id: string
+    name: string
+}
+
+export function AINotedClient({ initialUserId, initialWorkspaces }: { initialUserId: string, initialWorkspaces: Workspace[] }) {
     const [messages, setMessages] = useState<Message[]>([])
     const [inputValue, setInputValue] = useState("")
     const [isLoading, setIsLoading] = useState(false)
@@ -139,13 +144,18 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
                 ? attachedNotes.map(n => `--- Document Attached: ${n.title} ---\n${extractText(n.content)}`).join('\n\n')
                 : null;
 
+            const workspacesContext = initialWorkspaces.length > 0
+                ? `\nAvailable Workspaces for the user:\n` + initialWorkspaces.map(w => `- ID: ${w.id} | Name: ${w.name}`).join('\n')
+                : "";
+
             const strictJSONRule = `\n\nSYSTEM INSTRUCTION FOR NOTE CREATION:\nIf the user asks you to create, draft, or make a new note, you MUST output your suggested note exactly in this JSON format inside a markdown code block labeled \`json-note\`:
 \`\`\`json-note
 {
   "title": "Title of Note",
+  "workspace_id": "Valid Workspace ID string or null",
   "content": "Rich text content here..."
 }
-\`\`\`\nDo not use this format unless the user explicitly wants you to create a new file/note.`;
+\`\`\`\nDo not use this format unless the user explicitly wants you to create a new file/note.${workspacesContext}`;
 
             const contextText = (documentContext || "") + strictJSONRule;
 
@@ -193,6 +203,15 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
         } finally {
             setIsLoading(false)
         }
+    }
+
+    const handleInsertNoteTemplate = () => {
+        const template = `Tolong buatkan saya note baru!
+- Nama Notes: [Isi Judul Disini]
+- Workspace: [Pilih nama workspace atau kosongkan]
+- Isi Notes: [Deskripsikan isi note yang kamu inginkan]`
+        setInputValue(template)
+        setTimeout(() => textareaRef.current?.focus(), 10)
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -274,17 +293,20 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl w-full text-left">
                                 {[
+                                    "📝 Formulir Note Baru...",
                                     "Help me brainstorm ideas for...",
                                     "Summarize the key points about...",
-                                    "Create an outline for a presentation...",
                                     "Write a code snippet to..."
                                 ].map((suggestion, i) => (
                                     <button
                                         key={i}
-                                        onClick={() => setInputValue(suggestion)}
-                                        className="p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-blue-300 text-sm text-slate-600 dark:text-slate-300 transition-colors"
+                                        onClick={() => {
+                                            if (i === 0) handleInsertNoteTemplate();
+                                            else setInputValue(suggestion);
+                                        }}
+                                        className="p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-blue-300 text-sm text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2"
                                     >
-                                        <MessageSquare className="w-4 h-4 mb-2 opacity-50" />
+                                        {i === 0 ? <FileText className="w-4 h-4 opacity-50" /> : <MessageSquare className="w-4 h-4 mb-2 opacity-50" />}
                                         {suggestion}
                                     </button>
                                 ))}
@@ -319,17 +341,25 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
                                                             } catch (e) {
                                                                 return <pre className="p-4 bg-slate-900 text-white rounded-lg overflow-x-auto text-sm"><code>{children}</code></pre>
                                                             }
+                                                            const workspaceName = initialWorkspaces.find(w => w.id === noteData.workspace_id)?.name;
                                                             return (
                                                                 <div className="not-prose border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 my-4 font-sans text-slate-800 dark:text-slate-200 shadow-sm">
-                                                                    <div className="flex items-center gap-2 mb-3 border-b border-blue-200 dark:border-blue-800 pb-2">
-                                                                        <FileText className="w-5 h-5 text-blue-500" />
-                                                                        <span className="font-semibold text-blue-900 dark:text-blue-100">{noteData.title || "Untitled Note"}</span>
+                                                                    <div className="flex items-center justify-between gap-2 mb-3 border-b border-blue-200 dark:border-blue-800 pb-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <FileText className="w-5 h-5 text-blue-500" />
+                                                                            <span className="font-semibold text-blue-900 dark:text-blue-100">{noteData.title || "Untitled Note"}</span>
+                                                                        </div>
+                                                                        {workspaceName && (
+                                                                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-200/50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                                                                                {workspaceName}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 whitespace-pre-wrap">{noteData.content}</p>
 
                                                                     <form action={async () => {
                                                                         const { createNote } = await import("@/app/actions");
-                                                                        await createNote({ title: noteData.title, content: noteData.content });
+                                                                        await createNote({ title: noteData.title, content: noteData.content, workspace_id: noteData.workspace_id });
                                                                     }}>
                                                                         <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2 font-medium">
                                                                             <Plus className="w-4 h-4" /> Save as New Note
@@ -430,7 +460,18 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
                                     rows={1}
                                 />
 
-                                <div className="absolute right-2 bottom-2 font-sans flex items-center">
+                                <div className="absolute right-2 bottom-2 font-sans flex items-center gap-2">
+                                    <Button
+                                        title="Insert Note Template"
+                                        onClick={handleInsertNoteTemplate}
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all font-sans"
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                    </Button>
+
                                     <Button
                                         onClick={handleSendMessage}
                                         disabled={!inputValue.trim() || isLoading}
