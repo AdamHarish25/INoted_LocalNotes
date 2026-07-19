@@ -32,6 +32,16 @@ export default function AINotedPage() {
     const [mentionResults, setMentionResults] = useState<any[]>([])
     const [attachedNotes, setAttachedNotes] = useState<AttachedNote[]>([])
     const supabase = createClient()
+    const [user, setUser] = useState<any>(null)
+
+    // Fetch user on mount
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data } = await supabase.auth.getUser()
+            setUser(data.user)
+        }
+        fetchUser()
+    }, [supabase.auth])
 
     const scrollRef = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -72,9 +82,12 @@ export default function AINotedPage() {
     }
 
     const searchResources = async (query: string) => {
+        if (!user) return
+
         const { data } = await supabase
             .from("notes")
             .select("id, title, content")
+            .eq("owner_id", user.id)
             .ilike("title", `%${query}%`)
             .limit(5)
 
