@@ -1,6 +1,9 @@
 import { Mistral } from '@mistralai/mistralai';
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 120; // Allow long-running AI streams (up to 2 mins)
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
     const apiKey = process.env.MISTRAL_API_KEY || '';
 
@@ -15,7 +18,7 @@ export async function POST(req: Request) {
         const { messages, context } = await req.json();
 
         let systemPrompt = "You are a helpful AI assistant for the INoted app. Answer concisely and assist the user.";
-        
+
         // Build content array for Mistral (text + images)
         let contextContent: any[] = [];
         if (context) {
@@ -25,11 +28,11 @@ export async function POST(req: Request) {
             } catch (e) {
                 parsedContext = { textContent: context, images: [] };
             }
-            
+
             if (parsedContext.documentName) {
                 systemPrompt += `\n\nDocument Name: ${parsedContext.documentName}`;
             }
-            
+
             if (parsedContext.textContent) {
                 contextContent.push({ type: 'text', text: `Current document text content:\n${parsedContext.textContent}` });
             }
@@ -37,18 +40,18 @@ export async function POST(req: Request) {
 
         // Build messages array for Mistral - keep it simple initially
         const mistralMessages: any[] = [];
-        
+
         // Add system prompt as first message
         mistralMessages.push({ role: 'system', content: systemPrompt });
-        
+
         // Add context if available (text only for now to avoid issues)
         if (contextContent.length > 0) {
-            mistralMessages.push({ 
-                role: 'user', 
+            mistralMessages.push({
+                role: 'user',
                 content: 'Here is the current content of the document I am working on:\n' + contextContent.map(c => c.text).join('\n')
             });
         }
-        
+
         // Add user messages
         messages.forEach((msg: any) => {
             mistralMessages.push(msg);
@@ -64,8 +67,8 @@ export async function POST(req: Request) {
                 console.log("Attempting to use Mistral Agent with ID:", agentId);
                 res = await client.agents.stream({
                     agentId: agentId,
-                    // Note: 'system' role is not supported in agents endpoint, so we inject context into user message
                     messages: mistralMessages,
+                    maxTokens: 4000,
                 });
             } catch (err: any) {
                 console.warn("Mistral Agent failed, falling back to standard chat model:", err.message);
@@ -78,6 +81,7 @@ export async function POST(req: Request) {
             res = await client.chat.stream({
                 model: 'mistral-medium-latest',
                 messages: mistralMessages,
+                maxTokens: 4000,
             });
         }
 
@@ -85,14 +89,14 @@ export async function POST(req: Request) {
             async start(controller) {
                 try {
                     for await (const chunk of res) {
-                        const content = chunk.data.choices[0].delta.content;
+                        const content = chunk.data?.choices?.[0]?.delta?.content;
                         if (typeof content === 'string') {
                             controller.enqueue(new TextEncoder().encode(content));
                         }
                     }
                     controller.close();
                 } catch (e: any) {
-                    console.error("Stream error:", e);
+                    console.error("Stream error in API route:", e);
                     controller.error(e);
                 }
             }
@@ -108,7 +112,6 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("Mistral API Error:", error);
-        console.error("Error details:", JSON.stringify(error, null, 2));
         return NextResponse.json({ error: error.message || 'An error occurred' }, { status: 500 });
     }
 }
