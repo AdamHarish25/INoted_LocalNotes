@@ -45,7 +45,7 @@ async function checkTitleExists(supabase: any, table: string, column: string, ti
     return !!data
 }
 
-export async function createNote(formData: FormData | { title: string, workspace_id?: string }) {
+export async function createNote(formData: FormData | { title: string, workspace_id?: string, content?: any }) {
     const { supabase, user } = await getSupabaseUser()
 
     // Check if user is logged in
@@ -55,13 +55,28 @@ export async function createNote(formData: FormData | { title: string, workspace
 
     let title = "Untitled Note";
     let workspace_id = null;
+    let content: any = {};
 
     if (formData instanceof FormData) {
         title = formData.get("title") as string || "Untitled Note";
         workspace_id = formData.get("workspace_id") as string || null;
+        const formContent = formData.get("content");
+        if (formContent) {
+            try {
+                content = JSON.parse(formContent as string);
+            } catch {
+                content = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: formContent as string }] }] };
+            }
+        }
     } else if (typeof formData === 'object') {
         title = formData.title || "Untitled Note";
         workspace_id = formData.workspace_id || null;
+
+        if (typeof formData.content === 'string') {
+            content = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: formData.content }] }] };
+        } else if (formData.content) {
+            content = formData.content;
+        }
     }
 
     title = await getUniqueTitle(supabase, "notes", "title", title, user.id)
@@ -72,7 +87,7 @@ export async function createNote(formData: FormData | { title: string, workspace
             title,
             owner_id: user.id,
             workspace_id,
-            content: {}, // Empty content initially
+            content: content,
         })
         .select()
         .single()
