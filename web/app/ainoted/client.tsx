@@ -75,15 +75,14 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
     const searchResources = async (query: string) => {
         if (!user) return
 
-        const { data } = await supabase
-            .from("notes")
-            .select("id, title, content")
-            .eq("owner_id", user.id)
-            .ilike("title", `%${query}%`)
-            .limit(5)
-
-        if (data) {
-            setMentionResults(data.map(d => ({ ...d, type: 'note' })))
+        try {
+            const { searchUserNotes } = await import("@/app/actions")
+            const data = await searchUserNotes(query)
+            if (data) {
+                setMentionResults(data.map(d => ({ ...d, type: 'note' })))
+            }
+        } catch (error) {
+            console.error("Error searching notes:", error)
         }
     }
 
@@ -97,7 +96,7 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
         const textBeforeCursor = inputValue.substring(0, cursor);
         const textAfterCursor = inputValue.substring(cursor);
 
-        const newTextBefore = textBeforeCursor.replace(/@[a-zA-Z0-9_-]*$/, '');
+        const newTextBefore = textBeforeCursor.replace(/@([a-zA-Z0-9_\- ]*)$/, '');
         setInputValue(newTextBefore + textAfterCursor);
         setShowMentionMenu(false);
 
@@ -113,7 +112,7 @@ export function AINotedClient({ initialUserId }: { initialUserId: string }) {
         const cursor = e.target.selectionStart
         const textBeforeCursor = val.substring(0, cursor)
 
-        const match = textBeforeCursor.match(/@([a-zA-Z0-9_-]*)$/);
+        const match = textBeforeCursor.match(/@([a-zA-Z0-9_\- ]*)$/);
 
         if (match) {
             setShowMentionMenu(true)

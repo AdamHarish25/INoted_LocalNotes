@@ -675,3 +675,17 @@ export async function getWhiteboards() {
 
     return { success: true, data }
 }
+
+export async function searchUserNotes(query: string) {
+    const { supabase, user } = await getSupabaseUser()
+    if (!user) return []
+    
+    let { data } = await supabase
+        .from("notes")
+        .select("id, title, content")
+        .eq("owner_id", user.id)
+        .ilike("title", `%${query}%`)
+        .limit(5)
+        
+    return data || []
+}
