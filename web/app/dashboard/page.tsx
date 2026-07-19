@@ -218,7 +218,7 @@ export default async function DashboardPage(props: { searchParams?: Promise<{ q?
                         {truncatedPreview || "Empty note"}
                       </p> */}
                     </div>
-                    <div className="hidden sm:flex flex-col items-start gap-1 shrink-0 px-8">
+                    <div className="hidden sm:flex flex-col items-start justify-start gap-1 shrink-0 px-8">
                       <span className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-medium">
                         {workspaceName}
                       </span>
